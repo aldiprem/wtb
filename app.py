@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import sys
 import time
@@ -19,56 +18,195 @@ JASEB_DIR = '/root/jaseb'
 if JASEB_DIR not in sys.path:
     sys.path.insert(0, JASEB_DIR)
 
+jaseb_api_bp = None
 try:
     from services.data_service import jaseb_api_bp
     print("✅ Jaseb API blueprint imported successfully")
 except ImportError as e1:
-    print(f"❌ First import attempt failed: {e1}")
-    try:
-        # Coba dengan menambahkan path secara eksplisit
-        import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "data_service", 
-            os.path.join(JASEB_DIR, "services", "data_service.py")
-        )
-        data_service = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(data_service)
-        jaseb_api_bp = data_service.jaseb_api_bp
-        print("✅ Jaseb API blueprint imported via spec")
-    except Exception as e2:
-        print(f"❌ Second import attempt failed: {e2}")
-        jaseb_api_bp = None
+    print(f"⚠️ Jaseb import skipped: {e1}")
+    jaseb_api_bp = None
 
 # Menambahkan direktori root ke path
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT_DIR)
 
-# Import semua blueprint dari folder services
-from services.website_service import website_bp
-from services.vcr_service import vcr_bp
-from services.pmb_service import pmb_bp
-from services.prd_service import prd_bp
-from services.ssl_service import ssl_bp
-from services.tmp_service import tmp_bp
-from services.tmp_font_service import tmp_font_bp
-from services.trx_service import trx_bp
-from services.users_service import user_bp
-from services.image_service import image_bp
-from services.frag_service import frag_bp
-from services.tgs_service import tgs_bp
-from games.services.games_plinko_service import plinko_bp
-from giveaway.services.giveaway_service import giveaway_bp
-from services.crash_service import crash_bp
-from games.services.games_service import games_bp
-from giveaway.services.create_service import create_bp, set_bot_client
-from winedash.services.web_service import winedash_bp
-from winedash.services.offers_service import offers_bp
-from winedash.services.auctions_service import auctions_bp
-from winedash.services.debug_service import debug_bp
-from winedash.services.admin_service import admin_bp
-from winedash.services.market_service import market_bp
-from services.source_code_service import get_winedash_source_logic
-from services.gift_scanned_service import gift_scanned_bp
+# Import semua blueprint dari folder services (dengan error handling)
+website_bp = None
+vcr_bp = None
+pmb_bp = None
+prd_bp = None
+ssl_bp = None
+tmp_bp = None
+tmp_font_bp = None
+trx_bp = None
+user_bp = None
+image_bp = None
+frag_bp = None
+tgs_bp = None
+gift_scanned_bp = None
+plinko_bp = None
+giveaway_bp = None
+crash_bp = None
+games_bp = None
+create_bp = None
+winedash_bp = None
+offers_bp = None
+auctions_bp = None
+debug_bp = None
+admin_bp = None
+market_bp = None
+
+try:
+    from services.website_service import website_bp
+    print("✅ website_service imported")
+except ImportError as e:
+    print(f"⚠️ website_service skipped: {e}")
+
+try:
+    from services.vcr_service import vcr_bp
+    print("✅ vcr_service imported")
+except ImportError as e:
+    print(f"⚠️ vcr_service skipped: {e}")
+
+try:
+    from services.pmb_service import pmb_bp
+    print("✅ pmb_service imported")
+except ImportError as e:
+    print(f"⚠️ pmb_service skipped: {e}")
+
+try:
+    from services.prd_service import prd_bp
+    print("✅ prd_service imported")
+except ImportError as e:
+    print(f"⚠️ prd_service skipped: {e}")
+
+try:
+    from services.ssl_service import ssl_bp
+    print("✅ ssl_service imported")
+except ImportError as e:
+    print(f"⚠️ ssl_service skipped: {e}")
+
+try:
+    from services.tmp_service import tmp_bp
+    print("✅ tmp_service imported")
+except ImportError as e:
+    print(f"⚠️ tmp_service skipped: {e}")
+
+try:
+    from services.tmp_font_service import tmp_font_bp
+    print("✅ tmp_font_service imported")
+except ImportError as e:
+    print(f"⚠️ tmp_font_service skipped: {e}")
+
+try:
+    from services.trx_service import trx_bp
+    print("✅ trx_service imported")
+except ImportError as e:
+    print(f"⚠️ trx_service skipped: {e}")
+
+try:
+    from services.users_service import user_bp
+    print("✅ users_service imported")
+except ImportError as e:
+    print(f"⚠️ users_service skipped: {e}")
+
+try:
+    from services.image_service import image_bp
+    print("✅ image_service imported")
+except ImportError as e:
+    print(f"⚠️ image_service skipped: {e}")
+
+try:
+    from services.frag_service import frag_bp
+    print("✅ frag_service imported")
+except ImportError as e:
+    print(f"⚠️ frag_service skipped: {e}")
+
+try:
+    from services.tgs_service import tgs_bp
+    print("✅ tgs_service imported")
+except ImportError as e:
+    print(f"⚠️ tgs_service skipped: {e}")
+
+try:
+    from games.services.games_plinko_service import plinko_bp
+    print("✅ games_plinko_service imported")
+except ImportError as e:
+    print(f"⚠️ games_plinko_service skipped: {e}")
+
+try:
+    from giveaway.services.giveaway_service import giveaway_bp
+    print("✅ giveaway_service imported")
+except ImportError as e:
+    print(f"⚠️ giveaway_service skipped: {e}")
+
+try:
+    from services.crash_service import crash_bp
+    print("✅ crash_service imported")
+except ImportError as e:
+    print(f"⚠️ crash_service skipped: {e}")
+
+try:
+    from games.services.games_service import games_bp
+    print("✅ games_service imported")
+except ImportError as e:
+    print(f"⚠️ games_service skipped: {e}")
+
+try:
+    from giveaway.services.create_service import create_bp, set_bot_client
+    print("✅ create_service imported")
+except ImportError as e:
+    print(f"⚠️ create_service skipped: {e}")
+
+try:
+    from winedash.services.web_service import winedash_bp
+    print("✅ winedash_web_service imported")
+except ImportError as e:
+    print(f"⚠️ winedash_web_service skipped: {e}")
+
+try:
+    from winedash.services.offers_service import offers_bp
+    print("✅ offers_service imported")
+except ImportError as e:
+    print(f"⚠️ offers_service skipped: {e}")
+
+try:
+    from winedash.services.auctions_service import auctions_bp
+    print("✅ auctions_service imported")
+except ImportError as e:
+    print(f"⚠️ auctions_service skipped: {e}")
+
+try:
+    from winedash.services.debug_service import debug_bp
+    print("✅ debug_service imported")
+except ImportError as e:
+    print(f"⚠️ debug_service skipped: {e}")
+
+try:
+    from winedash.services.admin_service import admin_bp
+    print("✅ admin_service imported")
+except ImportError as e:
+    print(f"⚠️ admin_service skipped: {e}")
+
+try:
+    from winedash.services.market_service import market_bp
+    print("✅ market_service imported")
+except ImportError as e:
+    print(f"⚠️ market_service skipped: {e}")
+
+try:
+    from services.source_code_service import get_winedash_source_logic
+    print("✅ source_code_service imported")
+except ImportError as e:
+    print(f"⚠️ source_code_service skipped: {e}")
+    def get_winedash_source_logic():
+        return "<p>Source code viewer temporarily unavailable</p>"
+
+try:
+    from services.gift_scanned_service import gift_scanned_bp
+    print("✅ gift_scanned_service imported")
+except ImportError as e:
+    print(f"⚠️ gift_scanned_service skipped: {e}")
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -255,31 +393,55 @@ def internal_error_handler(e):
 
 # ==================== ROUTE REGISTRATION ====================
 
-# Register semua blueprint
-app.register_blueprint(website_bp, url_prefix='/api')
-app.register_blueprint(vcr_bp, url_prefix='/api')
-app.register_blueprint(pmb_bp, url_prefix='/api')
-app.register_blueprint(prd_bp, url_prefix='/api')
-app.register_blueprint(ssl_bp, url_prefix='/api')
-app.register_blueprint(tmp_bp, url_prefix='/api')
-app.register_blueprint(tmp_font_bp, url_prefix='/api')
-app.register_blueprint(trx_bp, url_prefix='/api')
-app.register_blueprint(user_bp, url_prefix='/api')
-app.register_blueprint(image_bp, url_prefix='/api/images')
-app.register_blueprint(frag_bp)
-app.register_blueprint(tgs_bp)
-app.register_blueprint(plinko_bp)
-app.register_blueprint(giveaway_bp, url_prefix='/api/giveaway')
-app.register_blueprint(crash_bp, url_prefix='/api/crash')
-app.register_blueprint(games_bp)
-app.register_blueprint(create_bp, url_prefix='/api/giveaway')
-app.register_blueprint(winedash_bp, url_prefix='/api/winedash')
-app.register_blueprint(offers_bp)
-app.register_blueprint(auctions_bp)
-app.register_blueprint(debug_bp)
-app.register_blueprint(admin_bp)
-app.register_blueprint(market_bp)
-app.register_blueprint(gift_scanned_bp, url_prefix='/gift-scam')
+# Register semua blueprint yang berhasil diimport
+if website_bp:
+    app.register_blueprint(website_bp, url_prefix='/api')
+if vcr_bp:
+    app.register_blueprint(vcr_bp, url_prefix='/api')
+if pmb_bp:
+    app.register_blueprint(pmb_bp, url_prefix='/api')
+if prd_bp:
+    app.register_blueprint(prd_bp, url_prefix='/api')
+if ssl_bp:
+    app.register_blueprint(ssl_bp, url_prefix='/api')
+if tmp_bp:
+    app.register_blueprint(tmp_bp, url_prefix='/api')
+if tmp_font_bp:
+    app.register_blueprint(tmp_font_bp, url_prefix='/api')
+if trx_bp:
+    app.register_blueprint(trx_bp, url_prefix='/api')
+if user_bp:
+    app.register_blueprint(user_bp, url_prefix='/api')
+if image_bp:
+    app.register_blueprint(image_bp, url_prefix='/api/images')
+if frag_bp:
+    app.register_blueprint(frag_bp)
+if tgs_bp:
+    app.register_blueprint(tgs_bp)
+if plinko_bp:
+    app.register_blueprint(plinko_bp)
+if giveaway_bp:
+    app.register_blueprint(giveaway_bp, url_prefix='/api/giveaway')
+if crash_bp:
+    app.register_blueprint(crash_bp, url_prefix='/api/crash')
+if games_bp:
+    app.register_blueprint(games_bp)
+if create_bp:
+    app.register_blueprint(create_bp, url_prefix='/api/giveaway')
+if winedash_bp:
+    app.register_blueprint(winedash_bp, url_prefix='/api/winedash')
+if offers_bp:
+    app.register_blueprint(offers_bp)
+if auctions_bp:
+    app.register_blueprint(auctions_bp)
+if debug_bp:
+    app.register_blueprint(debug_bp)
+if admin_bp:
+    app.register_blueprint(admin_bp)
+if market_bp:
+    app.register_blueprint(market_bp)
+if gift_scanned_bp:
+    app.register_blueprint(gift_scanned_bp, url_prefix='/gift-scam')
 
 # ==================== ROUTE UNTUK JASEB DASHBOARD ====================
 
@@ -341,17 +503,11 @@ def jaseb_health_check():
 @app.route('/source-viewer')
 def source_viewer_page():
     try:
-        # 1. Ambil konten kode dari service
         all_code_content = get_winedash_source_logic()
-        
-        # 2. Baca file template HTML secara manual (menghindari TemplateNotFound)
         template_path = os.path.join(base_dir, 'html', 'source-code.html')
         with open(template_path, 'r', encoding='utf-8') as f:
             html_template = f.read()
-        
-        # 3. Inject kode ke dalam placeholder {{ CONTENT }}
         final_html = html_template.replace('{{ CONTENT }}', all_code_content)
-        
         return final_html
     except Exception as e:
         return f"Error: {str(e)}", 500
@@ -440,13 +596,11 @@ def serve_crash_page():
     """Halaman Crash Game"""
     return send_from_directory(os.path.join(base_dir, 'games', 'html'), 'crash.html')
 
-# Route untuk CSS giveaway
 @app.route('/giveaway/css/<path:filename>')
 def serve_giveaway_css(filename):
     """Serve CSS files for Giveaway"""
     return send_from_directory(os.path.join(base_dir, 'giveaway', 'css'), filename)
 
-# Route untuk JS giveaway
 @app.route('/giveaway/js/<path:filename>')
 def serve_giveaway_js(filename):
     """Serve JS files for Giveaway"""
@@ -505,8 +659,6 @@ def serve_image_direct():
     except Exception as e:
         print(f"❌ Error serving image: {e}")
         return "Image service error", 500
-
-# Tambahkan di app.py setelah route winedash lainnya
 
 @app.route('/winedash/photo/<string:username>')
 def serve_winedash_photo(username):
@@ -636,7 +788,6 @@ def fragment_pay_page():
     """Halaman pembayaran QRIS"""
     return send_from_directory(os.path.join(base_dir, 'fragment', 'html'), 'pay-lobby.html')
 
-# Route untuk fragment static files (hanya HTML/CSS/JS, BUKAN API)
 @app.route('/fragment')
 def serve_fragment_page():
     return send_from_directory(os.path.join(base_dir, 'fragment', 'html'), 'lobby.html')
@@ -762,9 +913,7 @@ def notify_withdraw():
     message = f"""✅ *WITHDRAW BERHASIL!*
     
 Jumlah: *{amount} TON*
-Wallet: `{wallet_address}`
-
-Dana telah dikirim ke wallet TON Anda.
+Wallet: `{wallet_address}`Dana telah dikirim ke wallet TON Anda.
 Terima kasih telah menggunakan BarackGift! 🎉
 """
     
@@ -796,17 +945,17 @@ if __name__ == '__main__':
     print("🛡️ Security Features: Enabled")
     print("="*60)
     print("\n📋 Registered Blueprints (API):")
-    print("   - website_bp (/api/websites)")
-    print("   - vcr_bp (/api/voucher)")
-    print("   - pmb_bp (/api/payments)")
-    print("   - prd_bp (/api/products)")
-    print("   - ssl_bp (/api/social)")
-    print("   - tmp_bp (/api/tampilan)")
-    print("   - tmp_font_bp (/api/font-templates)")
-    print("   - trx_bp (/api/transactions)")
-    print("   - user_bp (/api/user)")
-    print("   - image_bp (/api/images)")
-    print("   - frag_bp (/api/fragment)")
+    if website_bp: print("   - website_bp (/api/websites)")
+    if vcr_bp: print("   - vcr_bp (/api/voucher)")
+    if pmb_bp: print("   - pmb_bp (/api/payments)")
+    if prd_bp: print("   - prd_bp (/api/products)")
+    if ssl_bp: print("   - ssl_bp (/api/social)")
+    if tmp_bp: print("   - tmp_bp (/api/tampilan)")
+    if tmp_font_bp: print("   - tmp_font_bp (/api/font-templates)")
+    if trx_bp: print("   - trx_bp (/api/transactions)")
+    if user_bp: print("   - user_bp (/api/user)")
+    if image_bp: print("   - image_bp (/api/images)")
+    if frag_bp: print("   - frag_bp (/api/fragment)")
     print("="*60)
     print("\n📋 Static Website Routes:")
     print("   GET  /")
