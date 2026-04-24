@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import sys
 import time
@@ -23,8 +24,21 @@ try:
     from services.data_service import jaseb_api_bp
     print("✅ Jaseb API blueprint imported successfully")
 except ImportError as e1:
-    print(f"⚠️ Jaseb import skipped: {e1}")
-    jaseb_api_bp = None
+    print(f"⚠️ First import attempt failed: {e1}")
+    try:
+        # Coba dengan menambahkan path secara eksplisit
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "data_service", 
+            os.path.join(JASEB_DIR, "services", "data_service.py")
+        )
+        data_service = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(data_service)
+        jaseb_api_bp = data_service.jaseb_api_bp
+        print("✅ Jaseb API blueprint imported via spec")
+    except Exception as e2:
+        print(f"⚠️ Second import attempt failed: {e2}")
+        jaseb_api_bp = None
 
 # Menambahkan direktori root ke path
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -443,6 +457,11 @@ if market_bp:
 if gift_scanned_bp:
     app.register_blueprint(gift_scanned_bp, url_prefix='/gift-scam')
 
+# Register Jaseb API blueprint if available
+if jaseb_api_bp:
+    app.register_blueprint(jaseb_api_bp, url_prefix='/api/jaseb')
+    print("✅ Jaseb API blueprint registered")
+
 # ==================== ROUTE UNTUK JASEB DASHBOARD ====================
 
 @app.route('/jaseb')
@@ -464,7 +483,7 @@ def serve_jaseb_dashboard():
 
 @app.route('/jaseb/<path:filename>')
 def serve_jaseb_path(filename):
-    """Serve CSS files for Jaseb"""
+    """Serve static files for Jaseb"""
     return send_from_directory(os.path.join(JASEB_DIR), filename)
 
 @app.route('/jaseb/css/<path:filename>')
@@ -918,7 +937,9 @@ def notify_withdraw():
     message = f"""✅ *WITHDRAW BERHASIL!*
     
 Jumlah: *{amount} TON*
-Wallet: `{wallet_address}`Dana telah dikirim ke wallet TON Anda.
+Wallet: `{wallet_address}`
+
+Dana telah dikirim ke wallet TON Anda.
 Terima kasih telah menggunakan BarackGift! 🎉
 """
     
@@ -961,6 +982,7 @@ if __name__ == '__main__':
     if user_bp: print("   - user_bp (/api/user)")
     if image_bp: print("   - image_bp (/api/images)")
     if frag_bp: print("   - frag_bp (/api/fragment)")
+    if jaseb_api_bp: print("   - jaseb_api_bp (/api/jaseb)")
     print("="*60)
     print("\n📋 Static Website Routes:")
     print("   GET  /")
