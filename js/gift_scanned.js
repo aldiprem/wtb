@@ -5,14 +5,15 @@
 // ==================== STATE ====================
 const state = {
     currentPage: 1,
-    totalPages: 1,
     limit: 30,
     allLoaded: false,
+    searchMode: 'gift',
     searchQuery: '',
     filterName: '',
+    selectedFilterNames: [],
     gifts: [],
     allNames: [],
-    selectedFilterName: '',
+    nameCounts: {},
     lottiePlaying: false,
     isLoading: false,
     isLoadingMore: false
@@ -80,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ==================== EVENT LISTENERS ====================
 function setupEventListeners() {
+  // Search
   elements.searchBtn?.addEventListener('click', handleSearch);
   elements.searchInput?.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSearch(); });
   elements.searchInput?.addEventListener('input', () => {
@@ -96,8 +98,67 @@ function setupEventListeners() {
   // Toggle Play/Stop
   elements.togglePlayBtn?.addEventListener('click', toggleLottiePlay);
 
-  // ✅ Infinite Scroll - ganti pagination
+  // Infinite Scroll
   setupInfiniteScroll();
+
+  // ✅ Swap dropdown
+  const swapBtn = document.getElementById('searchSwapBtn');
+  const swapDropdown = document.getElementById('searchSwapDropdown');
+  
+  if (swapBtn && swapDropdown) {
+    swapBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      swapDropdown.classList.toggle('show');
+    });
+    
+    // Tutup dropdown saat klik di luar
+    document.addEventListener('click', (e) => {
+      if (!swapBtn.contains(e.target) && !swapDropdown.contains(e.target)) {
+        swapDropdown.classList.remove('show');
+      }
+    });
+    
+    // Swap options
+    swapDropdown.querySelectorAll('.search-swap-option').forEach(opt => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const mode = opt.dataset.mode;
+        state.searchMode = mode;
+        
+        // Update label di tombol swap
+        const label = document.getElementById('searchSwapLabel');
+        if (label) {
+          if (mode === 'gift') label.textContent = 'Gift';
+          else if (mode === 'msgid') label.textContent = 'MsgID';
+          else if (mode === 'userid') label.textContent = 'UserID';
+        }
+        
+        // Update active class
+        swapDropdown.querySelectorAll('.search-swap-option').forEach(o => o.classList.remove('active'));
+        opt.classList.add('active');
+        
+        // Update placeholder input
+        const input = document.getElementById('searchInput');
+        if (input) {
+          if (mode === 'gift') input.placeholder = 'Cari gift...';
+          else if (mode === 'msgid') input.placeholder = 'Masukkan Message ID...';
+          else if (mode === 'userid') input.placeholder = 'Masukkan User ID...';
+          input.value = '';
+          // Sembunyikan clear button
+          if (elements.clearBtn) elements.clearBtn.style.display = 'none';
+        }
+        
+        // Reset state pencarian
+        state.searchQuery = '';
+        state.currentPage = 1;
+        state.allLoaded = false;
+        state.gifts = [];
+        
+        // Tutup dropdown
+        swapDropdown.classList.remove('show');
+      });
+    });
+  }
 }
 
 function setupModalListeners() {
@@ -213,28 +274,108 @@ function selectFilterChip(name) {
     renderFilterChips();
 }
 
+function toggleSelectAll() {
+    const selectAllBtn = document.getElementById('filterSelectAll');
+    const allNames = state.allNames.length > 0 ? state.allNames : collectAllNamesFromGifts();
+    
+    if (state.selectedFilterNames.length === allNames.length) {
+        // Unselect all
+        state.selectedFilterNames = [];
+        selectAllBtn.classList.remove('all-selected');
+        selectAllBtn.innerHTML = '<i class="fas fa-check-double"></i> Select All';
+    } else {
+        // Select all
+        state.selectedFilterNames = [...allNames];
+        selectAllBtn.classList.add('all-selected');
+        selectAllBtn.innerHTML = '<i class="fas fa-times"></i> Unselect All';
+    }
+    
+    renderFilterChips();
+}
+
+function selectFilterChip(name) {
+    const index = state.selectedFilterNames.indexOf(name);
+    if (index > -1) {
+        state.selectedFilterNames.splice(index, 1);
+    } else {
+        state.selectedFilterNames.push(name);
+    }
+    
+    // Update Select All button
+    const selectAllBtn = document.getElementById('filterSelectAll');
+    const allNames = state.allNames.length > 0 ? state.allNames : collectAllNamesFromGifts();
+    
+    if (state.selectedFilterNames.length === allNames.length) {
+        selectAllBtn.classList.add('all-selected');
+        selectAllBtn.innerHTML = '<i class="fas fa-times"></i> Unselect All';
+    } else {
+        selectAllBtn.classList.remove('all-selected');
+        selectAllBtn.innerHTML = '<i class="fas fa-check-double"></i> Select All';
+    }
+    
+    renderFilterChips();
+}
+
+function renderFilterChips() {
+    if (!elements.filterList) return;
+    
+    const names = state.allNames.length > 0 ? state.allNames : collectAllNamesFromGifts();
+    
+    let html = '';
+    names.forEach(name => {
+        const isSelected = state.selectedFilterNames.includes(name);
+        const count = (state.nameCounts && state.nameCounts[name]) ? state.nameCounts[name] : '?';
+        html += `
+            <div class="filter-list-item ${isSelected ? 'selected' : ''}" 
+                 data-name="${escapeHtml(name)}"
+                 onclick="selectFilterChip('${escapeHtml(name).replace(/'/g, "\\'")}')">
+                <div class="filter-checkbox ${isSelected ? 'checked' : ''}">
+                    ${isSelected ? '<i class="fas fa-check"></i>' : ''}
+                </div>
+                <span class="filter-item-name">${escapeHtml(name)}</span>
+                <span class="filter-item-count">${count}</span>
+            </div>
+        `;
+    });
+    
+    elements.filterList.innerHTML = html;
+}
+
 function applyFilter() {
-  state.filterName = state.selectedFilterName;
-  state.currentPage = 1;
-  state.allLoaded = false;
-  state.gifts = [];
-  elements.filterPanel.style.display = 'none';
-  loadGifts();
-  scrollToTop();
-  showToast(`Filter: ${state.filterName || 'Semua'}`, 'info');
+    // ✅ Simpan array selected names
+    state.filterName = state.selectedFilterNames.join(',');
+    state.currentPage = 1;
+    state.allLoaded = false;
+    state.gifts = [];
+    elements.filterPanel.style.display = 'none';
+    loadGifts();
+    scrollToTop();
+    
+    const filterText = state.selectedFilterNames.length > 0 
+        ? `${state.selectedFilterNames.length} gift terpilih` 
+        : 'Semua';
+    showToast(`Filter: ${filterText}`, 'info');
 }
 
 function resetFilter() {
-  state.selectedFilterName = '';
-  state.filterName = '';
-  state.currentPage = 1;
-  state.allLoaded = false;
-  state.gifts = [];
-  renderFilterChips();
-  elements.filterPanel.style.display = 'none';
-  loadGifts();
-  scrollToTop();
-  showToast('Filter direset', 'info');
+    state.selectedFilterNames = [];
+    state.filterName = '';
+    state.currentPage = 1;
+    state.allLoaded = false;
+    state.gifts = [];
+    
+    // Reset Select All button
+    const selectAllBtn = document.getElementById('filterSelectAll');
+    if (selectAllBtn) {
+        selectAllBtn.classList.remove('all-selected');
+        selectAllBtn.innerHTML = '<i class="fas fa-check-double"></i> Select All';
+    }
+    
+    renderFilterChips();
+    elements.filterPanel.style.display = 'none';
+    loadGifts();
+    scrollToTop();
+    showToast('Filter direset', 'info');
 }
 
 // ==================== API CALLS ====================
@@ -290,14 +431,16 @@ async function loadGifts() {
         let url;
         let searchQuery = state.searchQuery;
         
-        // ✅ Handle msgid: prefix
         if (searchQuery.startsWith('msgid:')) {
             const messageId = searchQuery.replace('msgid:', '');
             url = `/gift-scam/api/by-message/${messageId}`;
+        } else if (searchQuery.startsWith('userid:')) {
+            const userId = searchQuery.replace('userid:', '');
+            url = `/gift-scam/api/by-user/${userId}`;
         } else {
             const params = new URLSearchParams({
                 page: 1,
-                limit: state.limit,
+                limit: 300, // Load banyak untuk filter client-side
                 search: searchQuery
             });
             url = `/gift-scam/api/list?${params}`;
@@ -311,12 +454,16 @@ async function loadGifts() {
         if (data.success) {
             let items = data.data || [];
             
-            if (state.filterName && !searchQuery.startsWith('msgid:')) {
-                items = items.filter(g => g.name === state.filterName);
+            // ✅ Filter by multiple names
+            if (state.filterName && !searchQuery.startsWith('msgid:') && !searchQuery.startsWith('userid:')) {
+                const filterNames = state.filterName.split(',').filter(Boolean);
+                if (filterNames.length > 0) {
+                    items = items.filter(g => filterNames.includes(g.name));
+                }
             }
 
             state.gifts = items;
-            state.allLoaded = true; // Untuk search by msgid, load semua
+            state.allLoaded = true;
 
             if (items.length === 0) {
                 showEmpty();
@@ -500,6 +647,7 @@ function renderGifts(gifts) {
 function createGiftCard(gift, index) {
     const card = document.createElement('div');
     card.className = 'gift-card';
+    const msgLink = `https://t.me/listgiftkotor/${gift.message_id}`;
     
     card.innerHTML = `
         <div class="card-lottie-wrapper">
@@ -510,9 +658,13 @@ function createGiftCard(gift, index) {
             </div>
         </div>
         <div class="card-info">
-            <div class="card-name">${escapeHtml(gift.name)}</div>
-            <div class="card-slug">${escapeHtml(gift.slug)}</div>
-            <div class="card-msg-id">Msg.ID: ${gift.message_id}</div>
+            <div class="card-name-row">
+                <span class="card-name">${escapeHtml(gift.name)}</span>
+                ${gift.number ? `<span class="card-number">#${escapeHtml(gift.number)}</span>` : ''}
+            </div>
+            <a href="${msgLink}" target="_blank" rel="noopener" class="card-visit-btn" onclick="event.stopPropagation()">
+                <i class="fas fa-external-link-alt"></i> Visit Message
+            </a>
         </div>
     `;
     
@@ -750,21 +902,44 @@ function showEmpty() {
 // ==================== EVENT HANDLERS ====================
 function handleSearch() {
     const query = elements.searchInput?.value.trim() || '';
-    state.searchQuery = query;
     state.currentPage = 1;
     state.allLoaded = false;
     state.gifts = [];
-
-    const msgIdMatch = query.match(/(?:listgiftkotor\/|t\.me\/listgiftkotor\/)(\d+)/);
     
-    if (msgIdMatch) {
-        // Extract message ID
-        const messageId = msgIdMatch[1];
-        // Set search ke message_id khusus
-        state.searchQuery = `msgid:${messageId}`;
-        // Update input visual
+    if (state.searchMode === 'msgid') {
+        // Search by Message ID
+        const msgId = parseInt(query);
+        if (isNaN(msgId)) {
+            showToast('Masukkan angka Message ID yang valid', 'error');
+            return;
+        }
+        state.searchQuery = `msgid:${msgId}`;
         if (elements.searchInput) {
-            elements.searchInput.value = `Msg.ID: ${messageId}`;
+            elements.searchInput.value = `Msg.ID: ${msgId}`;
+        }
+    } else if (state.searchMode === 'userid') {
+        // Search by User ID
+        const userId = parseInt(query);
+        if (isNaN(userId)) {
+            showToast('Masukkan angka User ID yang valid', 'error');
+            return;
+        }
+        state.searchQuery = `userid:${userId}`;
+        if (elements.searchInput) {
+            elements.searchInput.value = `User.ID: ${userId}`;
+        }
+    } else {
+        // Search by Gift (slug/link)
+        state.searchQuery = query;
+        
+        // Deteksi link message ID
+        const msgIdMatch = query.match(/(?:listgiftkotor\/|t\.me\/listgiftkotor\/)(\d+)/);
+        if (msgIdMatch) {
+            state.searchMode = 'msgid';
+            state.searchQuery = `msgid:${msgIdMatch[1]}`;
+            if (elements.searchInput) {
+                elements.searchInput.value = `Msg.ID: ${msgIdMatch[1]}`;
+            }
         }
     }
     

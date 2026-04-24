@@ -424,7 +424,7 @@ body {
     font-size: 13px;
 }
 
-/* ===== GIFT GRID - PASTIKAN 2 kolom di semua ukuran ===== */
+/* ===== GIFT GRID - SELALU 2 kolom, tidak pernah 1 kolom ===== */
 .gift-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);  /* SELALU 2 kolom */
@@ -432,7 +432,7 @@ body {
     margin-bottom: 20px;
 }
 
-/* Container max-width lebih besar untuk desktop */
+/* Container max-width */
 .gift-container {
     max-width: 900px;
     margin: 0 auto;
@@ -442,7 +442,7 @@ body {
     flex-direction: column;
 }
 
-/* ===== GIFT CARD - Ringkas ===== */
+/* ===== GIFT CARD ===== */
 .gift-card {
     background: var(--bg-card);
     border: none;
@@ -482,70 +482,62 @@ body {
     border-color: rgba(139, 92, 246, 0.4);
 }
 
-/* Info */
+/* ===== CARD INFO - Slug kiri, ID kanan ===== */
 .card-info {
     padding: 8px 10px 10px 10px;
     text-align: left;
+}
+
+.card-name-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
 }
 
 .card-name {
     font-size: 11px;
     font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: 2px;
     line-height: 1.2;
-}
-
-.card-slug {
-    font-size: 9px;
-    color: var(--text-muted);
-    font-family: monospace;
-    word-break: break-all;
-}
-
-.card-msg-id {
-    font-size: 8px;
-    color: var(--accent-color);
-    font-family: monospace;
-    font-weight: 500;
-}
-
-/* ✅ HANYA di bawah 390px baru 1 kolom */
-@media (max-width: 390px) {
-    .gift-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .gift-card {
-        flex-direction: row;
-        align-items: center;
-    }
-    
-    .card-lottie-wrapper {
-        padding: 8px;
-        flex-shrink: 0;
-    }
-    
-    .card-lottie-border {
-        width: 60px;
-        height: 60px;
-        padding: 4px;
-    }
-    
-    .card-info {
-        padding: 8px 8px 8px 0;
-        flex: 1;
-    }
+    flex: 1;
+    word-break: break-word;
 }
 
 .card-number {
-    display: inline-block;
-    background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
-    color: white;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 11px;
+    font-size: 9px;
+    color: var(--accent-color);
+    font-family: monospace;
+    font-weight: 500;
+    background: rgba(139, 92, 246, 0.15);
+    padding: 2px 8px;
+    border-radius: 12px;
+    white-space: nowrap;
+    margin-left: 6px;
+    flex-shrink: 0;
+}
+
+/* Visit Message Button di card */
+.card-visit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(46, 204, 113, 0.2);
+    border: 1px solid rgba(46, 204, 113, 0.3);
+    border-radius: 15px;
+    color: #2ecc71;
+    font-size: 9px;
     font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    font-family: 'Inter', sans-serif;
+}
+
+.card-visit-btn:hover {
+    background: rgba(46, 204, 113, 0.3);
+    color: white;
 }
 
 /* ===== PAGINATION SECTION ===== */
@@ -977,7 +969,7 @@ body {
     margin-left: auto;
 }
 
-/* ===== SEARCH + FILTER ===== */
+/* ===== SEARCH + FILTER SECTION ===== */
 .search-filter-section {
     margin-bottom: 16px;
 }
@@ -990,11 +982,114 @@ body {
     border-radius: 14px;
     padding: 5px;
     transition: all 0.2s;
+    align-items: center;
 }
 
 .search-box:focus-within {
     border-color: var(--primary-color);
     box-shadow: var(--shadow-glow);
+}
+
+/* Swap button */
+.search-swap-btn {
+    width: 36px;
+    height: 36px;
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 10px;
+    color: var(--accent-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.search-swap-btn:hover {
+    background: rgba(139, 92, 246, 0.25);
+}
+
+.search-swap-current {
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 2px;
+}
+
+.search-swap-arrows {
+    display: flex;
+    flex-direction: column;
+    font-size: 8px;
+    line-height: 1;
+    margin-left: 1px;
+}
+
+/* Swap dropdown */
+.search-swap-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 4px;
+    z-index: 100;
+    min-width: 140px;
+    display: none;
+    box-shadow: var(--shadow-lg);
+}
+
+.search-swap-dropdown.show {
+    display: block;
+}
+
+.search-swap-option {
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.15s;
+}
+
+.search-swap-option:hover {
+    background: rgba(255,255,255,0.08);
+    color: var(--text-primary);
+}
+
+.search-swap-option.active {
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+/* Select All di filter */
+.filter-select-all {
+    padding: 8px 14px;
+    background: rgba(139, 92, 246, 0.08);
+    border: 1px solid rgba(139, 92, 246, 0.15);
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent-color);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    margin-bottom: 8px;
+    user-select: none;
+}
+
+.filter-select-all:hover {
+    background: rgba(139, 92, 246, 0.15);
+}
+
+.filter-select-all.all-selected {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--success-color);
 }
 
 .filter-btn {

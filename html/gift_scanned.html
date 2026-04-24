@@ -59,6 +59,21 @@
         <!-- Search + Filter Section -->
         <div class="search-filter-section">
             <div class="search-box">
+                <!-- Swap button -->
+                <div class="search-swap-btn" id="searchSwapBtn" title="Ganti mode pencarian">
+                    <span class="search-swap-current" id="searchSwapLabel">Gift</span>
+                    <span class="search-swap-arrows">
+                        <i class="fas fa-chevron-up"></i>
+                        <i class="fas fa-chevron-down"></i>
+                    </span>
+                    <!-- Dropdown -->
+                    <div class="search-swap-dropdown" id="searchSwapDropdown">
+                        <div class="search-swap-option active" data-mode="gift">🎁 Gift</div>
+                        <div class="search-swap-option" data-mode="msgid">💬 ID Pesan</div>
+                        <div class="search-swap-option" data-mode="userid">👤 ID User</div>
+                    </div>
+                </div>
+                
                 <i class="fas fa-search search-icon"></i>
                 <input type="text" id="searchInput" class="search-input" placeholder="Cari gift..." autocomplete="off">
                 <button id="searchBtn" class="search-btn"><i class="fas fa-search"></i></button>
@@ -67,11 +82,15 @@
             </div>
         </div>
 
-        <!-- Filter Panel (Hidden by default) -->
+        <!-- Filter Panel -->
         <div id="filterPanel" class="filter-panel" style="display:none;">
             <div class="filter-header">
                 <h3><i class="fas fa-filter"></i> Filter by Name</h3>
                 <button id="filterClose" class="filter-close-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <!-- ✅ Select All button -->
+            <div class="filter-select-all" id="filterSelectAll" onclick="toggleSelectAll()">
+                <i class="fas fa-check-double"></i> Select All
             </div>
             <div class="filter-list" id="filterList"></div>
             <div class="filter-actions">

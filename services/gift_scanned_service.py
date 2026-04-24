@@ -421,3 +421,70 @@ def api_get_gifts_by_message(message_id):
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+@gift_scanned_bp.route('/api/by-user/<int:user_id>')
+def api_get_gifts_by_user(user_id):
+    """API: Mendapatkan semua gift dari sender_id tertentu"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'success': False, 'error': 'Database tidak ditemukan'}), 500
+        
+        cur = conn.cursor()
+        
+        cur.execute("PRAGMA table_info(gift_scanned)")
+        existing_cols = {col[1] for col in cur.fetchall()}
+        
+        select_cols = ['slug', 'message_id', 'text', 'rowid']
+        optional_cols = ['sender_id', 'model', 'model_rarity', 
+                        'background', 'background_rarity', 
+                        'symbol', 'symbol_rarity',
+                        'original_details', 
+                        'availability_issued', 'availability_total',
+                        'lottie_url', 'fragment_url']
+        
+        for col in optional_cols:
+            if col in existing_cols:
+                select_cols.append(col)
+        
+        select_sql = ', '.join(select_cols)
+        
+        cur.execute(f"""
+            SELECT {select_sql}
+            FROM gift_scanned 
+            WHERE sender_id = ?
+            ORDER BY slug
+        """, (user_id,))
+        
+        rows = cur.fetchall()
+        conn.close()
+        
+        gift_list = []
+        for row in rows:
+            slug = row['slug']
+            parts = slug.rsplit('-', 1)
+            gift_name = parts[0] if len(parts) == 2 and parts[1].isdigit() else slug
+            gift_number = parts[1] if len(parts) == 2 and parts[1].isdigit() else ''
+            
+            lottie_url = row['lottie_url'] if ('lottie_url' in row.keys() and row['lottie_url']) else f"https://nft.fragment.com/gift/{slug}.lottie.json"
+            fragment_url = row['fragment_url'] if ('fragment_url' in row.keys() and row['fragment_url']) else f"https://nft.fragment.com/gift/{slug}"
+            
+            gift_list.append({
+                'id': row['rowid'],
+                'slug': slug,
+                'name': gift_name,
+                'number': gift_number,
+                'message_id': row['message_id'],
+                'sender_id': row['sender_id'] if 'sender_id' in row.keys() else None,
+                'lottie_url': lottie_url,
+                'fragment_url': fragment_url,
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': gift_list,
+            'total': len(gift_list)
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
