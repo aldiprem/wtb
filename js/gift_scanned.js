@@ -181,21 +181,38 @@ function collectAllNamesFromGifts() {
 function renderFilterChips() {
     if (!elements.filterList) return;
     
-    // Collect names from current gifts
     const names = collectAllNamesFromGifts();
     state.allNames = names;
     
-    elements.filterList.innerHTML = names.map(name => `
-        <div class="filter-chip ${state.selectedFilterName === name ? 'selected' : ''}" 
-             data-name="${escapeHtml(name)}"
-             onclick="selectFilterChip('${escapeHtml(name).replace(/'/g, "\\'")}')">
-            ${escapeHtml(name)}
-        </div>
-    `).join('');
+    let html = '';
+    names.forEach(name => {
+        const isSelected = state.selectedFilterName === name;
+        html += `
+            <div class="filter-list-item ${isSelected ? 'selected' : ''}" 
+                 data-name="${escapeHtml(name)}"
+                 onclick="selectFilterChip('${escapeHtml(name).replace(/'/g, "\\'")}')">
+                <div class="filter-checkbox ${isSelected ? 'checked' : ''}">
+                    ${isSelected ? '<i class="fas fa-check"></i>' : ''}
+                </div>
+                <span class="filter-item-name">${escapeHtml(name)}</span>
+                <span class="filter-item-count">${countGiftsByName(name)}</span>
+            </div>
+        `;
+    });
+    
+    elements.filterList.innerHTML = html;
+}
+
+function countGiftsByName(name) {
+    return state.gifts.filter(g => g.name === name).length;
 }
 
 function selectFilterChip(name) {
-    state.selectedFilterName = state.selectedFilterName === name ? '' : name;
+    if (state.selectedFilterName === name) {
+        state.selectedFilterName = '';
+    } else {
+        state.selectedFilterName = name;
+    }
     renderFilterChips();
 }
 
@@ -399,23 +416,45 @@ async function loadGiftDetail(slug) {
     }
 }
 
-// ==================== SLUG SCANNER ====================
 function extractSlugsFromText(text) {
     if (!text) return [];
-    // Pattern untuk mencocokkan slug NFT di text
-    const pattern = /([A-Za-z][A-Za-z0-9]+-\d+)/g;
-    const matches = text.match(pattern) || [];
-    // Filter unique
-    return [...new Set(matches)];
+    
+    const patterns = [
+        /(?:t\.me|telegram\.me)\/nft\/([A-Za-z][A-Za-z0-9]+-\d+)/g,
+        /\/nft\/([A-Za-z][A-Za-z0-9]+-\d+)/g,
+        /nft\.fragment\.com\/gift\/([A-Za-z][A-Za-z0-9]+-\d+)/g,
+        /([A-Za-z][A-Za-z0-9]+-\d{3,})/g
+    ];
+    
+    const slugs = new Set();
+    
+    patterns.forEach(pattern => {
+        let match;
+        while ((match = pattern.exec(text)) !== null) {
+            const slug = match[1] || match[0];
+            if (/[A-Za-z].*-\d+/.test(slug)) {
+                slugs.add(slug);
+            }
+        }
+    });
+    
+    return [...slugs];
 }
 
 function scanSlugsInText(text, container) {
     const slugs = extractSlugsFromText(text);
     
     if (slugs.length === 0) {
-        container.innerHTML = '<div class="slug-scanner-empty">Tidak ada slug NFT ditemukan</div>';
+        container.innerHTML = '<div class="slug-scanner-empty"><i class="fas fa-search"></i> Tidak ada slug NFT ditemukan dalam pesan</div>';
         return;
     }
+    
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = `
+        <div class="slug-scan-result-count">
+            <i class="fas fa-check-circle"></i> Ditemukan ${slugs.length} slug
+        </div>
+    `;
     
     const scrollContainer = document.createElement('div');
     scrollContainer.className = 'slug-scroll-container';
@@ -427,12 +466,15 @@ function scanSlugsInText(text, container) {
         
         const miniCard = document.createElement('div');
         miniCard.className = 'slug-mini-card';
-        miniCard.title = `Klik untuk detail ${slug}`;
+        miniCard.title = `${slug}\nKlik untuk detail`;
         miniCard.innerHTML = `
-            <lottie-player src="${escapeHtml(lottieUrl)}" background="transparent" speed="1" 
-                style="width:60px;height:60px;margin:0 auto;" loop ${state.lottiePlaying ? 'autoplay' : ''}>
-            </lottie-player>
+            <div class="slug-mini-lottie">
+                <lottie-player src="${escapeHtml(lottieUrl)}" background="transparent" speed="1" 
+                    style="width:50px;height:50px;margin:0 auto;" loop ${state.lottiePlaying ? 'autoplay' : ''}>
+                </lottie-player>
+            </div>
             <div class="slug-mini-name">${escapeHtml(name)}</div>
+            <div class="slug-mini-number">#${slug.split('-').pop()}</div>
         `;
         
         miniCard.addEventListener('click', (e) => {
@@ -443,8 +485,9 @@ function scanSlugsInText(text, container) {
         scrollContainer.appendChild(miniCard);
     });
     
+    wrapper.appendChild(scrollContainer);
     container.innerHTML = '';
-    container.appendChild(scrollContainer);
+    container.appendChild(wrapper);
 }
 
 // ==================== RENDER GIFTS (Initial - Replace all) ====================
@@ -464,15 +507,18 @@ function createGiftCard(gift, index) {
     card.style.animationDelay = `${index * 0.03}s`;
     
     card.innerHTML = `
-        <div class="card-badge"><i class="fas fa-gift"></i> #${gift.id || '?'}</div>
-        <div class="card-lottie-container">
-            <lottie-player src="${escapeHtml(gift.lottie_url)}" background="transparent" speed="1"
-                style="width:100%;height:100%;" loop ${state.lottiePlaying ? 'autoplay' : ''} mode="normal">
-            </lottie-player>
+        <div class="card-lottie-wrapper">
+            <div class="card-lottie-border">
+                <lottie-player src="${escapeHtml(gift.lottie_url)}" background="transparent" speed="1"
+                    style="width:100%;height:100%;" loop ${state.lottiePlaying ? 'autoplay' : ''} mode="normal">
+                </lottie-player>
+            </div>
         </div>
-        <h3 class="card-name">${escapeHtml(gift.name)}</h3>
-        <p class="card-slug">${escapeHtml(gift.slug)}</p>
-        ${gift.number ? `<span class="card-number">#${escapeHtml(gift.number)}</span>` : ''}
+        <div class="card-info">
+            <div class="card-name">${escapeHtml(gift.name)}</div>
+            <div class="card-slug">${escapeHtml(gift.slug)}</div>
+            <div class="card-msg-id">Msg.ID: ${gift.message_id}</div>
+        </div>
     `;
     
     card.addEventListener('click', () => loadGiftDetail(gift.slug));
