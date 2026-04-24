@@ -424,25 +424,39 @@ body {
     font-size: 13px;
 }
 
-/* ===== GIFT GRID ===== */
+/* ===== GIFT GRID - 2 per baris, tanpa border luar ===== */
 .gift-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, 1fr);  /* 2 card per baris */
     gap: 12px;
     margin-bottom: 20px;
 }
 
-/* ===== GIFT CARD ===== */
+/* ===== GIFT CARD - Hapus border ===== */
 .gift-card {
     background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 20px;
-    padding: 20px;
+    border: none;  /* Hilangkan border */
+    border-radius: 16px;
+    padding: 16px;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     position: relative;
     overflow: hidden;
     text-align: center;
+}
+
+.gift-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+    background: var(--bg-card-hover);
+    outline: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+/* Responsive: 1 kolom di mobile kecil */
+@media (max-width: 480px) {
+    .gift-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .gift-card::before {
@@ -458,13 +472,6 @@ body {
 
 .gift-card:hover::before {
     left: 100%;
-}
-
-.gift-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-md);
-    border-color: rgba(139, 92, 246, 0.4);
-    background: var(--bg-card-hover);
 }
 
 .gift-card:active {
