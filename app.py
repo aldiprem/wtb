@@ -11,7 +11,6 @@ from flask_cors import CORS
 from collections import defaultdict, Counter
 import logging
 import requests
-import sys
 
 # ==================== INTEGRASI JASEB USERBOT MANAGER ====================
 
@@ -26,7 +25,6 @@ try:
 except ImportError as e1:
     print(f"⚠️ First import attempt failed: {e1}")
     try:
-        # Coba dengan menambahkan path secara eksplisit
         import importlib.util
         spec = importlib.util.spec_from_file_location(
             "data_service", 
@@ -69,6 +67,7 @@ auctions_bp = None
 debug_bp = None
 admin_bp = None
 market_bp = None
+panel_bp = None
 
 try:
     from services.website_service import website_bp
@@ -227,7 +226,6 @@ try:
     print("✅ panel_service imported")
 except ImportError as e:
     print(f"⚠️ panel_service skipped: {e}")
-    panel_bp = None
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -417,52 +415,79 @@ def internal_error_handler(e):
 # Register semua blueprint yang berhasil diimport
 if website_bp:
     app.register_blueprint(website_bp, url_prefix='/api')
+    print("✅ Registered website_bp")
 if vcr_bp:
     app.register_blueprint(vcr_bp, url_prefix='/api')
+    print("✅ Registered vcr_bp")
 if pmb_bp:
     app.register_blueprint(pmb_bp, url_prefix='/api')
+    print("✅ Registered pmb_bp")
 if prd_bp:
     app.register_blueprint(prd_bp, url_prefix='/api')
+    print("✅ Registered prd_bp")
 if ssl_bp:
     app.register_blueprint(ssl_bp, url_prefix='/api')
+    print("✅ Registered ssl_bp")
 if tmp_bp:
     app.register_blueprint(tmp_bp, url_prefix='/api')
+    print("✅ Registered tmp_bp")
 if tmp_font_bp:
     app.register_blueprint(tmp_font_bp, url_prefix='/api')
+    print("✅ Registered tmp_font_bp")
 if trx_bp:
     app.register_blueprint(trx_bp, url_prefix='/api')
+    print("✅ Registered trx_bp")
 if user_bp:
     app.register_blueprint(user_bp, url_prefix='/api')
+    print("✅ Registered user_bp")
 if image_bp:
     app.register_blueprint(image_bp, url_prefix='/api/images')
+    print("✅ Registered image_bp")
 if frag_bp:
     app.register_blueprint(frag_bp)
+    print("✅ Registered frag_bp")
 if tgs_bp:
     app.register_blueprint(tgs_bp)
+    print("✅ Registered tgs_bp")
 if plinko_bp:
     app.register_blueprint(plinko_bp)
+    print("✅ Registered plinko_bp")
 if giveaway_bp:
     app.register_blueprint(giveaway_bp, url_prefix='/api/giveaway')
+    print("✅ Registered giveaway_bp")
 if crash_bp:
     app.register_blueprint(crash_bp, url_prefix='/api/crash')
+    print("✅ Registered crash_bp")
 if games_bp:
     app.register_blueprint(games_bp)
+    print("✅ Registered games_bp")
 if create_bp:
     app.register_blueprint(create_bp, url_prefix='/api/giveaway')
+    print("✅ Registered create_bp")
 if winedash_bp:
     app.register_blueprint(winedash_bp, url_prefix='/api/winedash')
+    print("✅ Registered winedash_bp")
 if offers_bp:
     app.register_blueprint(offers_bp)
+    print("✅ Registered offers_bp")
 if auctions_bp:
     app.register_blueprint(auctions_bp)
+    print("✅ Registered auctions_bp")
 if debug_bp:
     app.register_blueprint(debug_bp)
+    print("✅ Registered debug_bp")
 if admin_bp:
     app.register_blueprint(admin_bp)
+    print("✅ Registered admin_bp")
 if market_bp:
     app.register_blueprint(market_bp)
+    print("✅ Registered market_bp")
 if gift_scanned_bp:
     app.register_blueprint(gift_scanned_bp, url_prefix='/gift-scam')
+    print("✅ Registered gift_scanned_bp at /gift-scam")
+if panel_bp:
+    app.register_blueprint(panel_bp)
+    print("✅ Registered panel_bp")
 
 # Register Jaseb API blueprint if available
 if jaseb_api_bp:
@@ -546,18 +571,63 @@ def source_viewer_page():
     try:
         all_code_content = get_winedash_source_logic()
         template_path = os.path.join(base_dir, 'html', 'source-code.html')
-        with open(template_path, 'r', encoding='utf-8') as f:
-            html_template = f.read()
-        final_html = html_template.replace('{{ CONTENT }}', all_code_content)
-        return final_html
+        if os.path.exists(template_path):
+            with open(template_path, 'r', encoding='utf-8') as f:
+                html_template = f.read()
+            final_html = html_template.replace('{{ CONTENT }}', all_code_content)
+            return final_html
+        else:
+            return f"Template not found at {template_path}", 404
     except Exception as e:
         return f"Error: {str(e)}", 500
+
+# ==================== GIFT SCANNED ROUTES ====================
+# Route untuk akses langsung ke halaman gift_scanned
+@app.route('/gift-scam')
+@app.route('/gift-scam/')
+def serve_gift_scam_page():
+    """Halaman utama Gift Collection"""
+    try:
+        # Coba dari folder html
+        html_path = os.path.join(base_dir, 'html', 'gift_scanned.html')
+        if os.path.exists(html_path):
+            return send_from_directory(os.path.join(base_dir, 'html'), 'gift_scanned.html')
+        
+        # Coba dari folder gift-scam
+        alt_path = os.path.join(base_dir, 'gift-scam', 'index.html')
+        if os.path.exists(alt_path):
+            return send_from_directory(os.path.join(base_dir, 'gift-scam'), 'index.html')
+        
+        return "Gift Scam page not found", 404
+    except Exception as e:
+        logger.error(f"Error serving gift scam page: {e}")
+        return f"Error: {str(e)}", 500
+
+# Route untuk CSS dan JS Gift Scam
+@app.route('/gift-scam/css/<path:filename>')
+def serve_gift_scam_css(filename):
+    """Serve CSS files for Gift Scam"""
+    css_path = os.path.join(base_dir, 'css', filename)
+    if os.path.exists(css_path):
+        return send_from_directory(os.path.join(base_dir, 'css'), filename)
+    return send_from_directory(base_dir, filename)
+
+@app.route('/gift-scam/js/<path:filename>')
+def serve_gift_scam_js(filename):
+    """Serve JS files for Gift Scam"""
+    js_path = os.path.join(base_dir, 'js', filename)
+    if os.path.exists(js_path):
+        return send_from_directory(os.path.join(base_dir, 'js'), filename)
+    return send_from_directory(base_dir, filename)
 
 # ==================== WINEDASH ROUTES ====================
 @app.route('/winedash/gift-scammer')
 def serve_gift_scanned():
     """Halaman Gift Scammer Winedash"""
-    return send_from_directory(os.path.join(base_dir, 'html'), 'gift_scanned.html')
+    html_path = os.path.join(base_dir, 'html', 'gift_scanned.html')
+    if os.path.exists(html_path):
+        return send_from_directory(os.path.join(base_dir, 'html'), 'gift_scanned.html')
+    return "Gift Scammer page not found", 404
 
 @app.route('/winedash/market-auctions')
 def serve_winedash_market_auctions():
@@ -999,6 +1069,7 @@ if __name__ == '__main__':
     if user_bp: print("   - user_bp (/api/user)")
     if image_bp: print("   - image_bp (/api/images)")
     if frag_bp: print("   - frag_bp (/api/fragment)")
+    if gift_scanned_bp: print("   - gift_scanned_bp (/gift-scam)")
     if jaseb_api_bp: print("   - jaseb_api_bp (/api/jaseb)")
     print("="*60)
     print("\n📋 Static Website Routes:")
@@ -1010,6 +1081,7 @@ if __name__ == '__main__':
     print("   GET  /web=<endpoint>")
     print("   GET  /fragment/login")
     print("   GET  /fragment/dashboard")
+    print("   GET  /gift-scam")
     print("="*60)
     
     app.run(host='0.0.0.0', port=PORT, debug=False)
