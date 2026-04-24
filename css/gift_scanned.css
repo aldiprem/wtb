@@ -1578,20 +1578,21 @@ body {
 /* ===== SCROLL TO TOP BUTTON - Glassmorphism 3D ===== */
 .scroll-to-top-btn {
     position: fixed;
-    bottom: 100px;  /* Jarak dari bawah */
-    left: 16px;     /* Rata kiri */
-    width: 48px;
-    height: 48px;
-    background: rgba(255, 255, 255, 0.3);
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
-    border-radius: 50%;  /* Lingkaran */
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    bottom: 120px;       /* Jarak dari bawah - lumayan jauh */
+    right: 16px;         /* Rata kanan, dekat sisi kanan */
+    left: auto;          /* Reset left */
+    width: 52px;         /* Lebih besar */
+    height: 52px;        /* Lebih besar */
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
     box-shadow: 
-        0 8px 32px rgba(0, 0, 0, 0.1),
-        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        0 8px 32px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6),
         inset 0 -1px 0 rgba(255, 255, 255, 0.1),
-        inset 0 0 20px 10px rgba(255, 255, 255, 1);
+        inset 0 0 25px 8px rgba(255, 255, 255, 0.4);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -1599,71 +1600,75 @@ body {
     z-index: 999;
     opacity: 0;
     visibility: hidden;
-    transform: translateY(20px);
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform: translateY(30px) scale(0.8);
+    transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     overflow: hidden;
 }
 
-/* Garis horizontal atas */
+/* Garis highlight horizontal atas - GLASS EFFECT */
 .scroll-to-top-btn::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
+    top: 2px;
+    left: 15%;
+    right: 15%;
     height: 1px;
     background: linear-gradient(
         90deg,
-        transparent,
-        rgba(255, 255, 255, 0.8),
-        transparent
+        transparent 0%,
+        rgba(255, 255, 255, 0.9) 30%,
+        rgba(255, 255, 255, 0.9) 70%,
+        transparent 100%
     );
+    border-radius: 1px;
 }
 
-/* Garis vertikal kiri */
+/* Garis highlight vertikal kiri - GLASS EFFECT */
 .scroll-to-top-btn::after {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
+    top: 15%;
+    left: 2px;
+    bottom: 15%;
     width: 1px;
-    height: 100%;
     background: linear-gradient(
         180deg,
-        rgba(255, 255, 255, 0.8),
-        transparent,
-        rgba(255, 255, 255, 0.3)
+        rgba(255, 255, 255, 0.7) 0%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.2) 100%
     );
+    border-radius: 1px;
 }
 
-/* Icon */
+/* Icon panah */
 .scroll-to-top-btn i {
-    font-size: 18px;
-    color: rgba(255, 255, 255, 0.9);
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    font-size: 22px;
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
     position: relative;
-    z-index: 1;
-    transition: transform 0.2s ease;
+    z-index: 2;
+    transition: transform 0.25s ease;
 }
 
 /* Hover effect */
 .scroll-to-top-btn:hover {
     background: rgba(255, 255, 255, 0.4);
+    border-color: rgba(255, 255, 255, 0.6);
     box-shadow: 
-        0 12px 40px rgba(0, 0, 0, 0.15),
-        inset 0 1px 0 rgba(255, 255, 255, 0.6),
-        inset 0 -1px 0 rgba(255, 255, 255, 0.2),
-        inset 0 0 30px 12px rgba(255, 255, 255, 1);
-    transform: translateY(-2px) scale(1.05);
+        0 12px 40px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.7),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.15),
+        inset 0 0 35px 12px rgba(255, 255, 255, 0.6);
+    transform: translateY(-3px) scale(1.08);
 }
 
 .scroll-to-top-btn:hover i {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
 }
 
-/* Active/Click effect */
+/* Active/Click */
 .scroll-to-top-btn:active {
-    transform: scale(0.95);
+    transform: scale(0.9);
     transition: transform 0.1s ease;
 }
 
@@ -1671,33 +1676,33 @@ body {
 .scroll-to-top-btn.visible {
     opacity: 1;
     visibility: visible;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
 }
 
-/* Responsive - tablet */
+/* Tablet */
 @media (max-width: 768px) {
     .scroll-to-top-btn {
+        bottom: 100px;
+        right: 12px;
+        width: 48px;
+        height: 48px;
+    }
+    
+    .scroll-to-top-btn i {
+        font-size: 20px;
+    }
+}
+
+/* Mobile kecil */
+@media (max-width: 480px) {
+    .scroll-to-top-btn {
         bottom: 90px;
-        left: 12px;
+        right: 10px;
         width: 44px;
         height: 44px;
     }
     
     .scroll-to-top-btn i {
-        font-size: 16px;
-    }
-}
-
-/* Responsive - mobile kecil */
-@media (max-width: 480px) {
-    .scroll-to-top-btn {
-        bottom: 85px;
-        left: 10px;
-        width: 40px;
-        height: 40px;
-    }
-    
-    .scroll-to-top-btn i {
-        font-size: 14px;
+        font-size: 18px;
     }
 }
