@@ -174,8 +174,10 @@ function collectAllNamesFromGifts() {
 function renderFilterChips() {
     if (!elements.filterList) return;
     
+    // ✅ Ambil dari state.allNames (sudah di-load dari API /api/names)
     const names = state.allNames.length > 0 ? state.allNames : collectAllNamesFromGifts();
     
+    // Hitung count dari state.gifts (yang sudah di-load di halaman)
     const nameCounts = {};
     state.gifts.forEach(g => {
         nameCounts[g.name] = (nameCounts[g.name] || 0) + 1;
@@ -184,7 +186,7 @@ function renderFilterChips() {
     let html = '';
     names.forEach(name => {
         const isSelected = state.selectedFilterName === name;
-        const count = nameCounts[name] || 0;
+        const count = nameCounts[name] || '?';
         html += `
             <div class="filter-list-item ${isSelected ? 'selected' : ''}" 
                  data-name="${escapeHtml(name)}"
@@ -197,6 +199,10 @@ function renderFilterChips() {
             </div>
         `;
     });
+    
+    if (names.length === 0) {
+        html = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Memuat data...</div>';
+    }
     
     elements.filterList.innerHTML = html;
 }
@@ -279,62 +285,62 @@ function setupInfiniteScroll() {
 
 // ==================== LOAD GIFTS (Initial) ====================
 async function loadGifts() {
-  if (state.isLoading) return;
-  state.isLoading = true;
-  state.currentPage = 1;
-  state.allLoaded = false;
-  state.gifts = [];
-  showLoading(true);
-  hideAllStates();
+    if (state.isLoading) return;
+    state.isLoading = true;
+    state.currentPage = 1;
+    state.allLoaded = false;
+    state.gifts = [];
+    showLoading(true);
+    hideAllStates();
 
-  try {
-    const params = new URLSearchParams({
-      page: 1,
-      limit: state.limit,
-      search: state.searchQuery
-    });
+    try {
+        let url;
+        let searchQuery = state.searchQuery;
+        
+        // ✅ Handle msgid: prefix
+        if (searchQuery.startsWith('msgid:')) {
+            const messageId = searchQuery.replace('msgid:', '');
+            url = `/gift-scam/api/by-message/${messageId}`;
+        } else {
+            const params = new URLSearchParams({
+                page: 1,
+                limit: state.limit,
+                search: searchQuery
+            });
+            url = `/gift-scam/api/list?${params}`;
+        }
+        
+        console.log(`📡 ${url}`);
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
 
-    const url = `/gift-scam/api/list?${params}`;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
+        if (data.success) {
+            let items = data.data || [];
+            
+            if (state.filterName && !searchQuery.startsWith('msgid:')) {
+                items = items.filter(g => g.name === state.filterName);
+            }
 
-    if (data.success) {
-      let filteredGifts = data.data;
-      if (state.filterName) {
-        filteredGifts = data.data.filter(g => g.name === state.filterName);
-      }
+            state.gifts = items;
+            state.allLoaded = true; // Untuk search by msgid, load semua
 
-      state.gifts = filteredGifts;
-      state.currentPage = 1;
-
-      // Cek apakah sudah semua data terload
-      if (state.filterName) {
-        state.allLoaded = true; // Untuk filter, load semua sekaligus
-      } else if (data.data.length < state.limit || filteredGifts.length >= data.total) {
-        state.allLoaded = true;
-      }
-
-      if (filteredGifts.length === 0) {
-        showEmpty();
-      } else {
-        renderGifts(filteredGifts);
-        updateTotalCount(data.total);
-        // Sembunyikan pagination, gunakan infinite scroll
-        if (elements.pagination) elements.pagination.style.display = 'none';
-      }
-
-      state.allNames = collectAllNamesFromGifts();
-    } else {
-      showError(data.error || 'Gagal memuat data');
+            if (items.length === 0) {
+                showEmpty();
+            } else {
+                renderGifts(items);
+                updateTotalCount(items.length);
+                if (elements.pagination) elements.pagination.style.display = 'none';
+            }
+        } else {
+            showError(data.error || 'Gagal memuat data');
+        }
+    } catch (error) {
+        showError(`Gagal terhubung. ${error.message}`);
+    } finally {
+        state.isLoading = false;
+        showLoading(false);
     }
-  } catch (error) {
-    console.error('❌ Error:', error);
-    showError(`Gagal terhubung. ${error.message}`);
-  } finally {
-    state.isLoading = false;
-    showLoading(false);
-  }
 }
 
 // ==================== LOAD MORE (Infinite Scroll) ====================
@@ -522,15 +528,14 @@ function createGiftCard(gift, index) {
 }
 
 function showDetailModal(gift) {
-  if (!elements.modalTitle || !elements.modalBody) return;
+    if (!elements.modalTitle || !elements.modalBody) return;
 
-  elements.modalTitle.textContent = `🎁 ${gift.name}`;
-  const msgLink = `https://t.me/listgiftkotor/${gift.message_id}`;
+    elements.modalTitle.textContent = `🎁 ${gift.name}`;
+    const msgLink = `https://t.me/listgiftkotor/${gift.message_id}`;
 
-  // Format rarity menjadi persentase
-  const formatRarity = (val) => val ? `${(val / 10).toFixed(1)}%` : '-';
+    const formatRarity = (val) => val ? `${(val / 10).toFixed(1)}%` : '-';
 
-  elements.modalBody.innerHTML = `
+    elements.modalBody.innerHTML = `
         <div class="detail-lottie-wrapper">
             <lottie-player src="${escapeHtml(gift.lottie_url)}" background="transparent" speed="1"
                 style="width:200px;height:200px;margin:0 auto;" loop ${state.lottiePlaying ? 'autoplay' : ''}>
@@ -614,19 +619,20 @@ function showDetailModal(gift) {
             </a>
         </div>
 
-        ${gift.text ? `
-            <div class="slug-scanner-section">
-                <div class="slug-scanner-header">
-                    <span class="slug-scanner-title">🔍 NFT Slugs dalam pesan:</span>
-                    <button class="slug-scan-btn" onclick="handleModalScan(event)" data-text="${escapeHtml(gift.text).replace(/"/g, '&quot;')}">
-                        <i class="fas fa-search"></i> Scan
-                    </button>
-                </div>
-                <div class="modal-scanner-result">
-                    <div class="slug-scanner-empty">Klik Scan untuk mencari slug</div>
-                </div>
+        <!-- ✅ AUTO-LOAD: Semua slug dari message_id yang sama -->
+        <div class="same-message-section" id="sameMessageSection">
+            <div class="same-message-header">
+                <span class="same-message-title">
+                    <i class="fas fa-list"></i> Semua Gift dari Msg.ID ${gift.message_id}
+                </span>
+                <span class="same-message-loading" id="sameMsgLoading">
+                    <i class="fas fa-spinner fa-spin"></i> Memuat...
+                </span>
             </div>
+            <div class="same-message-slugs" id="sameMsgSlugs"></div>
+        </div>
 
+        ${gift.text ? `
             <div class="detail-text-preview" style="margin-top:12px;">
                 <strong>📄 Text Content:</strong>
                 ${escapeHtml(gift.text)}
@@ -634,7 +640,67 @@ function showDetailModal(gift) {
         ` : ''}
     `;
 
-  openModal();
+    openModal();
+
+    loadSameMessageSlugs(gift.message_id);
+}
+
+async function loadSameMessageSlugs(messageId) {
+    const container = document.getElementById('sameMsgSlugs');
+    const loadingEl = document.getElementById('sameMsgLoading');
+    
+    if (!container || !loadingEl) return;
+    
+    try {
+        // Fetch semua gift dari database yang punya message_id sama
+        const response = await fetch(`/gift-scam/api/by-message/${messageId}`);
+        const data = await response.json();
+        
+        if (data.success && data.data.length > 0) {
+            loadingEl.style.display = 'none';
+            
+            const scrollDiv = document.createElement('div');
+            scrollDiv.className = 'same-message-scroll';
+            
+            data.data.forEach(gift => {
+                const miniCard = document.createElement('div');
+                miniCard.className = 'same-message-card';
+                miniCard.title = `${gift.slug}\nKlik untuk detail`;
+                miniCard.innerHTML = `
+                    <div class="same-message-lottie">
+                        <lottie-player src="${escapeHtml(gift.lottie_url)}" background="transparent" speed="1"
+                            style="width:50px;height:50px;margin:0 auto;" loop ${state.lottiePlaying ? 'autoplay' : ''}>
+                        </lottie-player>
+                    </div>
+                    <div class="same-message-name">${escapeHtml(gift.name)}</div>
+                    <div class="same-message-number">#${gift.number || ''}</div>
+                `;
+                
+                miniCard.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    loadGiftDetail(gift.slug);
+                });
+                
+                scrollDiv.appendChild(miniCard);
+            });
+            
+            container.innerHTML = '';
+            container.appendChild(scrollDiv);
+            
+            // Update count
+            const header = document.querySelector('.same-message-title');
+            if (header) {
+                header.innerHTML = `<i class="fas fa-list"></i> Semua Gift dari Msg.ID ${messageId} (${data.data.length})`;
+            }
+        } else {
+            loadingEl.innerHTML = '<i class="fas fa-info-circle"></i> Tidak ada gift lain';
+        }
+    } catch (error) {
+        console.error('Error loading same message slugs:', error);
+        if (loadingEl) {
+            loadingEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Gagal memuat';
+        }
+    }
 }
 
 function handleModalScan(event) {
@@ -690,14 +756,28 @@ function showEmpty() {
 
 // ==================== EVENT HANDLERS ====================
 function handleSearch() {
-  const query = elements.searchInput?.value.trim() || '';
-  state.searchQuery = query;
-  state.currentPage = 1;
-  state.allLoaded = false;
-  state.gifts = [];
-  if (elements.clearBtn) elements.clearBtn.style.display = query ? 'inline-flex' : 'none';
-  loadGifts();
-  scrollToTop();
+    const query = elements.searchInput?.value.trim() || '';
+    state.searchQuery = query;
+    state.currentPage = 1;
+    state.allLoaded = false;
+    state.gifts = [];
+
+    const msgIdMatch = query.match(/(?:listgiftkotor\/|t\.me\/listgiftkotor\/)(\d+)/);
+    
+    if (msgIdMatch) {
+        // Extract message ID
+        const messageId = msgIdMatch[1];
+        // Set search ke message_id khusus
+        state.searchQuery = `msgid:${messageId}`;
+        // Update input visual
+        if (elements.searchInput) {
+            elements.searchInput.value = `Msg.ID: ${messageId}`;
+        }
+    }
+    
+    if (elements.clearBtn) elements.clearBtn.style.display = query ? 'inline-flex' : 'none';
+    loadGifts();
+    scrollToTop();
 }
 
 function handleClearSearch() {
