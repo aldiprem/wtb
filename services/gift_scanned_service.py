@@ -271,3 +271,32 @@ def api_get_stats():
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@gift_scanned_bp.route('/api/names')
+def api_get_unique_names():
+    """API: Mendapatkan semua unique names untuk filter"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'success': False, 'error': 'Database tidak ditemukan'}), 500
+        
+        cur = conn.cursor()
+        cur.execute("SELECT slug FROM gift_scanned")
+        slugs = cur.fetchall()
+        conn.close()
+        
+        unique_names = set()
+        for row in slugs:
+            parts = row['slug'].rsplit('-', 1)
+            if len(parts) == 2 and parts[1].isdigit():
+                unique_names.add(parts[0])
+            else:
+                unique_names.add(row['slug'])
+        
+        return jsonify({
+            'success': True,
+            'names': sorted(list(unique_names))
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
