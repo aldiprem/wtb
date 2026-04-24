@@ -6,14 +6,16 @@
 const state = {
     currentPage: 1,
     totalPages: 1,
-    limit: 20,
+    limit: 30,
+    allLoaded: false,
     searchQuery: '',
-    filterName: '',        // Filter by gift name (without ID)
+    filterName: '',
     gifts: [],
-    allNames: [],          // All unique names for filter
-    selectedFilterName: '', // Currently selected filter
-    lottiePlaying: false,  // Default: Stop
-    isLoading: false
+    allNames: [],
+    selectedFilterName: '',
+    lottiePlaying: false,
+    isLoading: false,
+    isLoadingMore: false
 };
 
 // ==================== DOM ELEMENTS ====================
@@ -78,25 +80,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ==================== EVENT LISTENERS ====================
 function setupEventListeners() {
-    elements.searchBtn?.addEventListener('click', handleSearch);
-    elements.searchInput?.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSearch(); });
-    elements.searchInput?.addEventListener('input', () => {
-        if (elements.clearBtn) elements.clearBtn.style.display = elements.searchInput.value ? 'inline-flex' : 'none';
-    });
-    elements.clearBtn?.addEventListener('click', handleClearSearch);
-    
-    // Filter
-    elements.filterBtn?.addEventListener('click', toggleFilterPanel);
-    elements.filterClose?.addEventListener('click', () => { elements.filterPanel.style.display = 'none'; });
-    elements.filterApply?.addEventListener('click', applyFilter);
-    elements.filterReset?.addEventListener('click', resetFilter);
-    
-    // Toggle Play/Stop
-    elements.togglePlayBtn?.addEventListener('click', toggleLottiePlay);
-    
-    // Pagination
-    elements.prevBtn?.addEventListener('click', () => { if (state.currentPage > 1) { state.currentPage--; loadGifts(); scrollToTop(); } });
-    elements.nextBtn?.addEventListener('click', () => { if (state.currentPage < state.totalPages) { state.currentPage++; loadGifts(); scrollToTop(); } });
+  elements.searchBtn?.addEventListener('click', handleSearch);
+  elements.searchInput?.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSearch(); });
+  elements.searchInput?.addEventListener('input', () => {
+    if (elements.clearBtn) elements.clearBtn.style.display = elements.searchInput.value ? 'inline-flex' : 'none';
+  });
+  elements.clearBtn?.addEventListener('click', handleClearSearch);
+
+  // Filter
+  elements.filterBtn?.addEventListener('click', toggleFilterPanel);
+  elements.filterClose?.addEventListener('click', () => { elements.filterPanel.style.display = 'none'; });
+  elements.filterApply?.addEventListener('click', applyFilter);
+  elements.filterReset?.addEventListener('click', resetFilter);
+
+  // Toggle Play/Stop
+  elements.togglePlayBtn?.addEventListener('click', toggleLottiePlay);
+
+  // ✅ Infinite Scroll - ganti pagination
+  setupInfiniteScroll();
 }
 
 function setupModalListeners() {
@@ -111,38 +112,32 @@ function closeModal() { if (elements.detailModal) { elements.detailModal.style.d
 
 // ==================== TOGGLE LOTTIE PLAY/STOP ====================
 function toggleLottiePlay() {
-    state.lottiePlaying = !state.lottiePlaying;
-    const btn = elements.togglePlayBtn;
-    
+  state.lottiePlaying = !state.lottiePlaying;
+  const btn = elements.togglePlayBtn;
+
+  if (state.lottiePlaying) {
+    btn.classList.add('playing');
+    btn.querySelector('.stat-icon-inline').className = 'fas fa-play stat-icon-inline';
+    btn.querySelector('.stat-value').textContent = 'Play';
+    btn.title = 'Play Lottie';
+  } else {
+    btn.classList.remove('playing');
+    btn.querySelector('.stat-icon-inline').className = 'fas fa-pause stat-icon-inline';
+    btn.querySelector('.stat-value').textContent = 'Stop';
+    btn.title = 'Stop Lottie';
+  }
+
+  // Update semua lottie players - STOP = hapus autoplay + reset ke frame 0
+  document.querySelectorAll('lottie-player').forEach(player => {
     if (state.lottiePlaying) {
-        btn.classList.add('playing');
-        btn.querySelector('.stat-icon-inline').className = 'fas fa-play stat-icon-inline';
-        btn.querySelector('.stat-value').textContent = 'Play';
-        btn.title = 'Play Lottie';
+      player.setAttribute('autoplay', '');
+      player.play?.();
     } else {
-        btn.classList.remove('playing');
-        btn.querySelector('.stat-icon-inline').className = 'fas fa-pause stat-icon-inline';
-        btn.querySelector('.stat-value').textContent = 'Stop';
-        btn.title = 'Stop Lottie';
+      player.removeAttribute('autoplay');
+      player.stop?.(); // Stop animasi
+      player.seek?.(0); // Kembali ke frame awal (tampilan awal)
     }
-    
-    // Update all lottie players
-    document.querySelectorAll('lottie-player').forEach(player => {
-        if (state.lottiePlaying) {
-            player.play?.();
-        } else {
-            player.pause?.();
-        }
-    });
-    
-    // Also update mini lotties in modal
-    document.querySelectorAll('.slug-mini-card lottie-player').forEach(player => {
-        if (state.lottiePlaying) {
-            player.play?.();
-        } else {
-            player.pause?.();
-        }
-    });
+  });
 }
 
 // ==================== FILTER FUNCTIONS ====================
@@ -205,21 +200,27 @@ function selectFilterChip(name) {
 }
 
 function applyFilter() {
-    state.filterName = state.selectedFilterName;
-    state.currentPage = 1;
-    elements.filterPanel.style.display = 'none';
-    loadGifts();
-    showToast(`Filter: ${state.filterName || 'Semua'}`, 'info');
+  state.filterName = state.selectedFilterName;
+  state.currentPage = 1;
+  state.allLoaded = false;
+  state.gifts = [];
+  elements.filterPanel.style.display = 'none';
+  loadGifts();
+  scrollToTop();
+  showToast(`Filter: ${state.filterName || 'Semua'}`, 'info');
 }
 
 function resetFilter() {
-    state.selectedFilterName = '';
-    state.filterName = '';
-    state.currentPage = 1;
-    renderFilterChips();
-    elements.filterPanel.style.display = 'none';
-    loadGifts();
-    showToast('Filter direset', 'info');
+  state.selectedFilterName = '';
+  state.filterName = '';
+  state.currentPage = 1;
+  state.allLoaded = false;
+  state.gifts = [];
+  renderFilterChips();
+  elements.filterPanel.style.display = 'none';
+  loadGifts();
+  scrollToTop();
+  showToast('Filter direset', 'info');
 }
 
 // ==================== API CALLS ====================
@@ -236,57 +237,150 @@ async function loadStats() {
     } catch (error) { console.error('Stats error:', error); }
 }
 
-async function loadGifts() {
-    if (state.isLoading) return;
-    state.isLoading = true;
-    showLoading(true);
-    hideAllStates();
+function setupInfiniteScroll() {
+  // Gunakan Intersection Observer untuk mendeteksi scroll ke bawah
+  const sentinel = document.createElement('div');
+  sentinel.id = 'scrollSentinel';
+  sentinel.style.height = '1px';
+  sentinel.style.width = '100%';
 
-    try {
-        const params = new URLSearchParams({
-            page: state.currentPage,
-            limit: state.limit,
-            search: state.searchQuery
-        });
-        
-        const url = `/gift-scam/api/list?${params}`;
-        console.log(`📡 ${url}`);
-        
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            let filteredGifts = data.data;
-            
-            // Apply name filter client-side
-            if (state.filterName) {
-                filteredGifts = data.data.filter(g => g.name === state.filterName);
-            }
-            
-            state.gifts = filteredGifts;
-            state.totalPages = Math.max(1, Math.ceil(filteredGifts.length / state.limit));
-            
-            if (filteredGifts.length === 0) {
-                showEmpty();
-            } else {
-                renderGifts(filteredGifts);
-                updatePaginationFromData(filteredGifts.length, data.total);
-            }
-            
-            // Update all names for filter
-            state.allNames = collectAllNamesFromGifts();
-        } else {
-            showError(data.error || 'Gagal memuat data');
-        }
-    } catch (error) {
-        console.error('❌ Error:', error);
-        showError(`Gagal terhubung. ${error.message}`);
-    } finally {
-        state.isLoading = false;
-        showLoading(false);
+  // Tambahkan sentinel setelah giftGrid
+  if (elements.giftGrid && elements.giftGrid.parentNode) {
+    elements.giftGrid.parentNode.insertBefore(sentinel, elements.giftGrid.nextSibling);
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting && !state.isLoadingMore && !state.allLoaded) {
+        loadMoreGifts();
+      }
+    });
+  }, {
+    rootMargin: '200px' // Load sebelum benar-benar mencapai bawah
+  });
+
+  observer.observe(sentinel);
+}
+
+// ==================== LOAD GIFTS (Initial) ====================
+async function loadGifts() {
+  if (state.isLoading) return;
+  state.isLoading = true;
+  state.currentPage = 1;
+  state.allLoaded = false;
+  state.gifts = [];
+  showLoading(true);
+  hideAllStates();
+
+  try {
+    const params = new URLSearchParams({
+      page: 1,
+      limit: state.limit,
+      search: state.searchQuery
+    });
+
+    const url = `/gift-scam/api/list?${params}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+
+    if (data.success) {
+      let filteredGifts = data.data;
+      if (state.filterName) {
+        filteredGifts = data.data.filter(g => g.name === state.filterName);
+      }
+
+      state.gifts = filteredGifts;
+      state.currentPage = 1;
+
+      // Cek apakah sudah semua data terload
+      if (state.filterName) {
+        state.allLoaded = true; // Untuk filter, load semua sekaligus
+      } else if (data.data.length < state.limit || filteredGifts.length >= data.total) {
+        state.allLoaded = true;
+      }
+
+      if (filteredGifts.length === 0) {
+        showEmpty();
+      } else {
+        renderGifts(filteredGifts);
+        updateTotalCount(data.total);
+        // Sembunyikan pagination, gunakan infinite scroll
+        if (elements.pagination) elements.pagination.style.display = 'none';
+      }
+
+      state.allNames = collectAllNamesFromGifts();
+    } else {
+      showError(data.error || 'Gagal memuat data');
     }
+  } catch (error) {
+    console.error('❌ Error:', error);
+    showError(`Gagal terhubung. ${error.message}`);
+  } finally {
+    state.isLoading = false;
+    showLoading(false);
+  }
+}
+
+// ==================== LOAD MORE (Infinite Scroll) ====================
+async function loadMoreGifts() {
+  if (state.isLoadingMore || state.allLoaded) return;
+  state.isLoadingMore = true;
+
+  const nextPage = state.currentPage + 1;
+
+  try {
+    const params = new URLSearchParams({
+      page: nextPage,
+      limit: state.limit,
+      search: state.searchQuery
+    });
+
+    const url = `/gift-scam/api/list?${params}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+
+    if (data.success && data.data.length > 0) {
+      let newGifts = data.data;
+      if (state.filterName) {
+        newGifts = data.data.filter(g => g.name === state.filterName);
+      }
+
+      if (newGifts.length > 0) {
+        state.gifts = [...state.gifts, ...newGifts];
+        state.currentPage = nextPage;
+        appendGifts(newGifts);
+      }
+
+      // Cek apakah sudah semua
+      if (data.data.length < state.limit || !data.has_next) {
+        state.allLoaded = true;
+      }
+    } else {
+      state.allLoaded = true;
+    }
+
+    updateTotalCount(data.total);
+  } catch (error) {
+    console.error('❌ Error load more:', error);
+  } finally {
+    state.isLoadingMore = false;
+  }
+}
+
+function appendGifts(newGifts) {
+  if (!elements.giftGrid) return;
+  const startIndex = state.gifts.length - newGifts.length;
+
+  newGifts.forEach((gift, i) => {
+    const card = createGiftCard(gift, startIndex + i);
+    elements.giftGrid.appendChild(card);
+  });
+}
+
+function updateTotalCount(total) {
+  if (elements.totalItems) elements.totalItems.textContent = total;
 }
 
 async function loadGiftDetail(slug) {
@@ -353,16 +447,15 @@ function scanSlugsInText(text, container) {
     container.appendChild(scrollContainer);
 }
 
-// ==================== RENDER ====================
+// ==================== RENDER GIFTS (Initial - Replace all) ====================
 function renderGifts(gifts) {
-    if (!elements.giftGrid) return;
-    elements.giftGrid.style.display = 'grid';
-    elements.giftGrid.innerHTML = '';
-    gifts.forEach((gift, index) => {
-        const card = createGiftCard(gift, index);
-        elements.giftGrid.appendChild(card);
-    });
-    animateCards();
+  if (!elements.giftGrid) return;
+  elements.giftGrid.style.display = 'grid';
+  elements.giftGrid.innerHTML = '';
+  gifts.forEach((gift, index) => {
+    const card = createGiftCard(gift, index);
+    elements.giftGrid.appendChild(card);
+  });
 }
 
 function createGiftCard(gift, index) {
@@ -387,18 +480,18 @@ function createGiftCard(gift, index) {
 }
 
 function showDetailModal(gift) {
-    if (!elements.modalTitle || !elements.modalBody) return;
-    
-    elements.modalTitle.textContent = `🎁 ${gift.name}`;
-    const msgLink = `https://t.me/listgiftkotor/${gift.message_id}`;
-    
-    elements.modalBody.innerHTML = `
+  if (!elements.modalTitle || !elements.modalBody) return;
+
+  elements.modalTitle.textContent = `🎁 ${gift.name}`;
+  const msgLink = `https://t.me/listgiftkotor/${gift.message_id}`;
+
+  elements.modalBody.innerHTML = `
         <div class="detail-lottie-wrapper">
             <lottie-player src="${escapeHtml(gift.lottie_url)}" background="transparent" speed="1"
                 style="width:200px;height:200px;margin:0 auto;" loop ${state.lottiePlaying ? 'autoplay' : ''}>
             </lottie-player>
         </div>
-        
+
         <div class="detail-info-card">
             <div class="detail-info-row">
                 <div class="detail-info-icon"><i class="fas fa-tag"></i></div>
@@ -424,47 +517,61 @@ function showDetailModal(gift) {
                 </div>
             </div>
         </div>
-        
+
         <!-- Visit Message Button -->
         <div style="text-align:center;">
             <a href="${msgLink}" target="_blank" rel="noopener" class="visit-message-btn">
                 <i class="fas fa-external-link-alt"></i> Visit Message
             </a>
         </div>
-        
+
         <!-- Slug Scanner Section -->
         ${gift.text ? `
             <div class="slug-scanner-section">
                 <div class="slug-scanner-header">
                     <span class="slug-scanner-title">🔍 NFT Slugs dalam pesan:</span>
-                    <button class="slug-scan-btn" id="slugScanBtn">
+                    <button class="slug-scan-btn" id="modal-scan-btn">
                         <i class="fas fa-search"></i> Scan
                     </button>
                 </div>
-                <div id="slugScannerResult">
+                <div id="modal-scanner-result">
                     <div class="slug-scanner-empty">Klik Scan untuk mencari slug</div>
                 </div>
             </div>
-            
+
             <div class="detail-text-preview" style="margin-top:12px;">
                 <strong>📄 Text Content:</strong>
                 ${escapeHtml(gift.text)}
             </div>
         ` : ''}
     `;
-    
-    // Add scan button event
-    setTimeout(() => {
-        const scanBtn = document.getElementById('slugScanBtn');
-        const resultDiv = document.getElementById('slugScannerResult');
-        if (scanBtn && resultDiv && gift.text) {
-            scanBtn.addEventListener('click', () => {
-                scanSlugsInText(gift.text, resultDiv);
-            });
-        }
-    }, 100);
-    
-    openModal();
+
+  openModal();
+
+  // ✅ PERBAIKAN: Gunakan querySelector langsung, event listener setelah modal terbuka
+  const scanBtn = document.getElementById('modal-scan-btn');
+  const resultDiv = document.getElementById('modal-scanner-result');
+
+  if (scanBtn && resultDiv && gift.text) {
+    // Hapus event listener lama dengan clone node
+    const newScanBtn = scanBtn.cloneNode(true);
+    scanBtn.parentNode.replaceChild(newScanBtn, scanBtn);
+
+    newScanBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      // Panggil fungsi scan
+      if (gift.text) {
+        scanSlugsInText(gift.text, resultDiv);
+        newScanBtn.innerHTML = '<i class="fas fa-check"></i> Scanned';
+        newScanBtn.style.background = 'rgba(16, 185, 129, 0.3)';
+        setTimeout(() => {
+          newScanBtn.innerHTML = '<i class="fas fa-search"></i> Scan';
+          newScanBtn.style.background = '';
+        }, 2000);
+      }
+    });
+  }
 }
 
 function updatePaginationFromData(filteredCount, totalCount) {
@@ -499,19 +606,24 @@ function showEmpty() {
 
 // ==================== EVENT HANDLERS ====================
 function handleSearch() {
-    const query = elements.searchInput?.value.trim() || '';
-    state.searchQuery = query;
-    state.currentPage = 1;
-    if (elements.clearBtn) elements.clearBtn.style.display = query ? 'inline-flex' : 'none';
-    loadGifts();
+  const query = elements.searchInput?.value.trim() || '';
+  state.searchQuery = query;
+  state.currentPage = 1;
+  state.allLoaded = false;
+  state.gifts = [];
+  if (elements.clearBtn) elements.clearBtn.style.display = query ? 'inline-flex' : 'none';
+  loadGifts();
+  scrollToTop();
 }
 
 function handleClearSearch() {
-    if (elements.searchInput) elements.searchInput.value = '';
-    state.searchQuery = '';
-    state.currentPage = 1;
-    if (elements.clearBtn) elements.clearBtn.style.display = 'none';
-    loadGifts();
+  if (elements.searchInput) elements.searchInput.value = '';
+  state.searchQuery = '';
+  state.currentPage = 1;
+  state.allLoaded = false;
+  state.gifts = [];
+  if (elements.clearBtn) elements.clearBtn.style.display = 'none';
+  loadGifts();
 }
 
 // ==================== UTILS ====================
