@@ -456,7 +456,6 @@ async function loadStats() {
         if (data.success && data.stats) {
             animateValue(elements.totalGifts, 0, data.stats.total, 1000);
             animateValue(elements.uniqueGifts, 0, data.stats.unique, 1000);
-            if (elements.headerCount) elements.headerCount.textContent = `${data.stats.total} gifts`;
         }
     } catch (error) { console.error('Stats error:', error); }
 }
