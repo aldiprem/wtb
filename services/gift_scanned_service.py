@@ -58,12 +58,9 @@ def api_get_gifts():
         search = request.args.get('search', '', type=str).strip()
         filter_name = request.args.get('filter_name', '', type=str).strip()
         
-        if page < 1:
-            page = 1
-        if limit < 1:
-            limit = 50
-        if limit > 200:
-            limit = 200
+        if page < 1: page = 1
+        if limit < 1: limit = 50
+        if limit > 200: limit = 200
         
         conn = get_db_connection()
         if not conn:
@@ -85,16 +82,23 @@ def api_get_gifts():
                 'data': [], 'total': 0, 'page': page, 'total_pages': 0
             }), 404
         
+        # ✅ Cek kolom yang ada di database
+        cur.execute("PRAGMA table_info(gift_scanned)")
+        existing_cols = {col[1] for col in cur.fetchall()}
+        
         # Build query
         where_clauses = []
         params = []
         
         if search:
-            where_clauses.append("(slug LIKE ? OR text LIKE ? OR model LIKE ?)")
-            params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
+            where_clauses.append("(slug LIKE ? OR text LIKE ?)")
+            params.extend([f'%{search}%', f'%{search}%'])
+            # Tambah model search jika kolom ada
+            if 'model' in existing_cols:
+                where_clauses[-1] = "(slug LIKE ? OR text LIKE ? OR model LIKE ?)"
+                params.append(f'%{search}%')
         
         if filter_name:
-            # Filter by gift name (parse slug)
             where_clauses.append("slug LIKE ?")
             params.append(f'{filter_name}-%')
         
@@ -110,16 +114,25 @@ def api_get_gifts():
         
         offset = (page - 1) * limit
         
-        # Ambil data dengan semua field
+        # ✅ Build SELECT columns berdasarkan kolom yang ada
+        select_cols = ['slug', 'message_id', 'text', 'rowid']
+        
+        optional_cols = ['sender_id', 'model', 'model_rarity', 
+                        'background', 'background_rarity', 
+                        'symbol', 'symbol_rarity',
+                        'original_details', 
+                        'availability_issued', 'availability_total',
+                        'lottie_url', 'fragment_url']
+        
+        for col in optional_cols:
+            if col in existing_cols:
+                select_cols.append(col)
+        
+        select_sql = ', '.join(select_cols)
+        
+        # Ambil data
         cur.execute(f"""
-            SELECT id, slug, message_id, sender_id, text,
-                   model, model_rarity,
-                   background, background_rarity,
-                   symbol, symbol_rarity,
-                   original_details,
-                   availability_issued, availability_total,
-                   lottie_url, fragment_url,
-                   scanned_at
+            SELECT {select_sql}
             FROM gift_scanned 
             {where_sql}
             ORDER BY slug 
@@ -133,7 +146,6 @@ def api_get_gifts():
         for row in rows:
             slug = row['slug']
             
-            # Parse nama dan nomor
             parts = slug.rsplit('-', 1)
             if len(parts) == 2 and parts[1].isdigit():
                 gift_name = parts[0]
@@ -142,30 +154,31 @@ def api_get_gifts():
                 gift_name = slug
                 gift_number = ''
             
-            # URL
-            lottie_url = row['lottie_url'] or f"https://nft.fragment.com/gift/{slug}.lottie.json"
-            fragment_url = row['fragment_url'] or f"https://nft.fragment.com/gift/{slug}"
+            # URL - cek dari db atau generate
+            lottie_url = row['lottie_url'] if ('lottie_url' in row.keys() and row['lottie_url']) else f"https://nft.fragment.com/gift/{slug}.lottie.json"
+            fragment_url = row['fragment_url'] if ('fragment_url' in row.keys() and row['fragment_url']) else f"https://nft.fragment.com/gift/{slug}"
             
+            # Gunakan .get() untuk optional columns
             gift_list.append({
-                'id': row['id'],
+                'id': row['rowid'],
                 'slug': slug,
                 'name': gift_name,
                 'number': gift_number,
                 'message_id': row['message_id'],
-                'sender_id': row['sender_id'],
+                'sender_id': row['sender_id'] if 'sender_id' in row.keys() else None,
                 'text': row['text'] or '',
-                'model': row['model'] or '',
-                'model_rarity': row['model_rarity'],
-                'background': row['background'] or '',
-                'background_rarity': row['background_rarity'],
-                'symbol': row['symbol'] or '',
-                'symbol_rarity': row['symbol_rarity'],
-                'original_details': row['original_details'] or '',
-                'availability_issued': row['availability_issued'],
-                'availability_total': row['availability_total'],
+                'model': row['model'] if 'model' in row.keys() and row['model'] else '',
+                'model_rarity': row['model_rarity'] if 'model_rarity' in row.keys() else 0,
+                'background': row['background'] if 'background' in row.keys() and row['background'] else '',
+                'background_rarity': row['background_rarity'] if 'background_rarity' in row.keys() else 0,
+                'symbol': row['symbol'] if 'symbol' in row.keys() and row['symbol'] else '',
+                'symbol_rarity': row['symbol_rarity'] if 'symbol_rarity' in row.keys() else 0,
+                'original_details': row['original_details'] if 'original_details' in row.keys() and row['original_details'] else '',
+                'availability_issued': row['availability_issued'] if 'availability_issued' in row.keys() else 0,
+                'availability_total': row['availability_total'] if 'availability_total' in row.keys() else 0,
                 'lottie_url': lottie_url,
                 'fragment_url': fragment_url,
-                'scanned_at': row['scanned_at']
+                'scanned_at': None
             })
         
         conn.close()
@@ -198,19 +211,27 @@ def api_get_gift_detail(slug):
             return jsonify({'success': False, 'error': 'Database tidak ditemukan'}), 500
         
         cur = conn.cursor()
-        cur.execute("""
-            SELECT id, slug, message_id, sender_id, text,
-                   model, model_rarity,
-                   background, background_rarity,
-                   symbol, symbol_rarity,
-                   original_details,
-                   availability_issued, availability_total,
-                   lottie_url, fragment_url,
-                   scanned_at
-            FROM gift_scanned 
-            WHERE slug = ?
-        """, (slug,))
         
+        # ✅ Cek kolom yang ada
+        cur.execute("PRAGMA table_info(gift_scanned)")
+        existing_cols = {col[1] for col in cur.fetchall()}
+        
+        # Build SELECT
+        select_cols = ['slug', 'message_id', 'text', 'rowid']
+        optional_cols = ['sender_id', 'model', 'model_rarity', 
+                        'background', 'background_rarity', 
+                        'symbol', 'symbol_rarity',
+                        'original_details', 
+                        'availability_issued', 'availability_total',
+                        'lottie_url', 'fragment_url']
+        
+        for col in optional_cols:
+            if col in existing_cols:
+                select_cols.append(col)
+        
+        select_sql = ', '.join(select_cols)
+        
+        cur.execute(f"SELECT {select_sql} FROM gift_scanned WHERE slug = ?", (slug,))
         row = cur.fetchone()
         conn.close()
         
@@ -223,23 +244,23 @@ def api_get_gift_detail(slug):
         return jsonify({
             'success': True,
             'data': {
-                'id': row['id'],
+                'id': row['rowid'],
                 'slug': row['slug'],
                 'name': gift_name,
                 'message_id': row['message_id'],
-                'sender_id': row['sender_id'],
+                'sender_id': row['sender_id'] if 'sender_id' in row.keys() else None,
                 'text': row['text'] or '',
-                'model': row['model'] or '',
-                'model_rarity': row['model_rarity'],
-                'background': row['background'] or '',
-                'background_rarity': row['background_rarity'],
-                'symbol': row['symbol'] or '',
-                'symbol_rarity': row['symbol_rarity'],
-                'original_details': row['original_details'] or '',
-                'availability_issued': row['availability_issued'],
-                'availability_total': row['availability_total'],
-                'lottie_url': row['lottie_url'] or f"https://nft.fragment.com/gift/{slug}.lottie.json",
-                'fragment_url': row['fragment_url'] or f"https://nft.fragment.com/gift/{slug}"
+                'model': row['model'] if 'model' in row.keys() and row['model'] else '',
+                'model_rarity': row['model_rarity'] if 'model_rarity' in row.keys() else 0,
+                'background': row['background'] if 'background' in row.keys() and row['background'] else '',
+                'background_rarity': row['background_rarity'] if 'background_rarity' in row.keys() else 0,
+                'symbol': row['symbol'] if 'symbol' in row.keys() and row['symbol'] else '',
+                'symbol_rarity': row['symbol_rarity'] if 'symbol_rarity' in row.keys() else 0,
+                'original_details': row['original_details'] if 'original_details' in row.keys() and row['original_details'] else '',
+                'availability_issued': row['availability_issued'] if 'availability_issued' in row.keys() else 0,
+                'availability_total': row['availability_total'] if 'availability_total' in row.keys() else 0,
+                'lottie_url': row['lottie_url'] if ('lottie_url' in row.keys() and row['lottie_url']) else f"https://nft.fragment.com/gift/{slug}.lottie.json",
+                'fragment_url': row['fragment_url'] if ('fragment_url' in row.keys() and row['fragment_url']) else f"https://nft.fragment.com/gift/{slug}"
             }
         })
         
