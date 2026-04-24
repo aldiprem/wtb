@@ -422,7 +422,7 @@ function setupInfiniteScroll() {
 }
 
 // ==================== LOAD GIFTS (Initial) ====================
-aasync function loadGifts() {
+async function loadGifts() {
     if (state.isLoading) return;
     state.isLoading = true;
     state.currentPage = 1;
