@@ -15,10 +15,10 @@ gift_scanned_bp = Blueprint('gift_scanned', __name__)
 # Path database - SESUAIKAN DENGAN LOKASI DATABASE ANDA
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATABASE_PATHS = [
-    '/root/wtb/gift.db/gift.db',  # Path dari mkdir gift.db
-    os.path.join('/root/wtb/gift.db', 'gift.db'),
+    '/root/gift.db/gift.db',
+    os.path.join('/root/gift.db', 'gift.db'),
     os.path.join(BASE_DIR, 'gift.db', 'gift.db'),
-    os.path.join('/root/wtb', 'gift.db'),
+    os.path.join('/root', 'gift.db'),
     os.path.join(BASE_DIR, 'gift.db'),
 ]
 
