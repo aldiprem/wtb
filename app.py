@@ -464,8 +464,18 @@ if jaseb_api_bp:
 
 # ==================== ROUTE UNTUK JASEB DASHBOARD ====================
 
-@app.route('/jaseb')
-@app.route('/jaseb/')
+@app.route('/jaseb/panel')
+def serve_jaseb_panel():
+    try:
+        panel_path = os.path.join(JASEB_DIR, 'html', 'panel.html')
+        if os.path.exists(panel_path):
+            return send_from_directory(os.path.join(JASEB_DIR, 'html'), 'panel.html')
+        else:
+            return f"Dashboard not found at {panel_path}", 404
+    except Exception as e:
+        logger.error(f"Error serving jaseb dashboard: {e}")
+        return f"Error: {str(e)}", 500
+
 @app.route('/jaseb/dashboard')
 def serve_jaseb_dashboard():
     """Halaman utama Jaseb UserBot Manager"""
