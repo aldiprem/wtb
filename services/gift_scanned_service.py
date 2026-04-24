@@ -308,29 +308,48 @@ def api_get_stats():
 
 @gift_scanned_bp.route('/api/names')
 def api_get_unique_names():
-    """API: Mendapatkan semua unique names untuk filter"""
+    """API: Mendapatkan semua unique names dengan total count dari database"""
     try:
         conn = get_db_connection()
         if not conn:
             return jsonify({'success': False, 'error': 'Database tidak ditemukan'}), 500
         
         cur = conn.cursor()
-        cur.execute("SELECT slug FROM gift_scanned")
-        slugs = cur.fetchall()
-        conn.close()
         
-        unique_names = set()
-        for row in slugs:
-            parts = row['slug'].rsplit('-', 1)
-            if len(parts) == 2 and parts[1].isdigit():
-                unique_names.add(parts[0])
-            else:
-                unique_names.add(row['slug'])
+        # ✅ Cek apakah tabel gift_name_counts ada
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='gift_name_counts'")
         
-        return jsonify({
-            'success': True,
-            'names': sorted(list(unique_names))
-        })
+        if cur.fetchone():
+            # Gunakan tabel khusus
+            cur.execute("SELECT name, total_count FROM gift_name_counts ORDER BY name")
+            rows = cur.fetchall()
+            conn.close()
+            
+            names = [{'name': row['name'], 'count': row['total_count']} for row in rows]
+            
+            return jsonify({
+                'success': True,
+                'names': [n['name'] for n in names],
+                'name_counts': {n['name']: n['count'] for n in names}
+            })
+        else:
+            cur.execute("SELECT slug FROM gift_scanned")
+            slugs = cur.fetchall()
+            conn.close()
+            
+            name_counts = {}
+            for row in slugs:
+                parts = row['slug'].rsplit('-', 1)
+                name = parts[0] if len(parts) == 2 and parts[1].isdigit() else row['slug']
+                name_counts[name] = name_counts.get(name, 0) + 1
+            
+            sorted_names = sorted(name_counts.keys())
+            
+            return jsonify({
+                'success': True,
+                'names': sorted_names,
+                'name_counts': name_counts
+            })
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

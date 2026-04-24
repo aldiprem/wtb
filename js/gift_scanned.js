@@ -112,32 +112,34 @@ function closeModal() { if (elements.detailModal) { elements.detailModal.style.d
 
 // ==================== TOGGLE LOTTIE PLAY/STOP ====================
 function toggleLottiePlay() {
-  state.lottiePlaying = !state.lottiePlaying;
-  const btn = elements.togglePlayBtn;
+    state.lottiePlaying = !state.lottiePlaying;
+    const btn = elements.togglePlayBtn;
 
-  if (state.lottiePlaying) {
-    btn.classList.add('playing');
-    btn.querySelector('.stat-icon-inline').className = 'fas fa-play stat-icon-inline';
-    btn.querySelector('.stat-value').textContent = 'Play';
-    btn.title = 'Play Lottie';
-  } else {
-    btn.classList.remove('playing');
-    btn.querySelector('.stat-icon-inline').className = 'fas fa-pause stat-icon-inline';
-    btn.querySelector('.stat-value').textContent = 'Stop';
-    btn.title = 'Stop Lottie';
-  }
-
-  // Update semua lottie players - STOP = hapus autoplay + reset ke frame 0
-  document.querySelectorAll('lottie-player').forEach(player => {
     if (state.lottiePlaying) {
-      player.setAttribute('autoplay', '');
-      player.play?.();
+        // ✅ Sekarang PLAYING -> tombol jadi "Stop"
+        btn.classList.add('playing');
+        btn.querySelector('.stat-icon-inline').className = 'fas fa-pause stat-icon-inline';
+        btn.querySelector('.stat-value').textContent = 'Stop';
+        btn.title = 'Stop Lottie';
     } else {
-      player.removeAttribute('autoplay');
-      player.stop?.(); // Stop animasi
-      player.seek?.(0); // Kembali ke frame awal (tampilan awal)
+        // ✅ Sekarang STOP -> tombol jadi "Play"
+        btn.classList.remove('playing');
+        btn.querySelector('.stat-icon-inline').className = 'fas fa-play stat-icon-inline';
+        btn.querySelector('.stat-value').textContent = 'Play';
+        btn.title = 'Play Lottie';
     }
-  });
+
+    // Update semua lottie players
+    document.querySelectorAll('lottie-player').forEach(player => {
+        if (state.lottiePlaying) {
+            player.setAttribute('autoplay', '');
+            player.play?.();
+        } else {
+            player.removeAttribute('autoplay');
+            player.stop?.();
+            player.seek?.(0);
+        }
+    });
 }
 
 // ==================== FILTER FUNCTIONS ====================
@@ -157,11 +159,12 @@ async function loadAllNames() {
         const data = await response.json();
         if (data.success && data.names) {
             state.allNames = data.names;
+            state.nameCounts = data.name_counts || {};
         }
     } catch (e) {
         console.error('Error loading names:', e);
-        // Fallback
         state.allNames = collectAllNamesFromGifts();
+        state.nameCounts = {};
     }
 }
 
@@ -174,19 +177,13 @@ function collectAllNamesFromGifts() {
 function renderFilterChips() {
     if (!elements.filterList) return;
     
-    // ✅ Ambil dari state.allNames (sudah di-load dari API /api/names)
     const names = state.allNames.length > 0 ? state.allNames : collectAllNamesFromGifts();
-    
-    // Hitung count dari state.gifts (yang sudah di-load di halaman)
-    const nameCounts = {};
-    state.gifts.forEach(g => {
-        nameCounts[g.name] = (nameCounts[g.name] || 0) + 1;
-    });
     
     let html = '';
     names.forEach(name => {
         const isSelected = state.selectedFilterName === name;
-        const count = nameCounts[name] || '?';
+        // ✅ Ambil count dari state.nameCounts (dari database)
+        const count = (state.nameCounts && state.nameCounts[name]) ? state.nameCounts[name] : (countGiftsByName(name) || '?');
         html += `
             <div class="filter-list-item ${isSelected ? 'selected' : ''}" 
                  data-name="${escapeHtml(name)}"
@@ -199,10 +196,6 @@ function renderFilterChips() {
             </div>
         `;
     });
-    
-    if (names.length === 0) {
-        html = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Memuat data...</div>';
-    }
     
     elements.filterList.innerHTML = html;
 }
@@ -512,7 +505,7 @@ function createGiftCard(gift, index) {
         <div class="card-lottie-wrapper">
             <div class="card-lottie-border">
                 <lottie-player src="${escapeHtml(gift.lottie_url)}" background="transparent" speed="1"
-                    style="width:100%;height:100%;" loop ${state.lottiePlaying ? 'autoplay' : ''} mode="normal">
+                    style="width:100%;height:100%;" loop mode="normal">
                 </lottie-player>
             </div>
         </div>
