@@ -462,6 +462,11 @@ def serve_jaseb_dashboard():
 
 # ==================== ROUTE UNTUK STATIC FILES JASEB ====================
 
+@app.route('/jaseb/<path:filename>')
+def serve_jaseb_path(filename):
+    """Serve CSS files for Jaseb"""
+    return send_from_directory(os.path.join(JASEB_DIR), filename)
+
 @app.route('/jaseb/css/<path:filename>')
 def serve_jaseb_css(filename):
     """Serve CSS files for Jaseb"""
