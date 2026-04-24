@@ -76,6 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     setupModalListeners();
     setupLottieObserver();
+    setupScrollToTopButton();
     loadStats();
     loadAllNames();
     loadGifts();
@@ -483,6 +484,53 @@ function setupInfiniteScroll() {
   });
 
   observer.observe(sentinel);
+}
+
+// ==================== SCROLL TO TOP BUTTON ====================
+function setupScrollToTopButton() {
+    const scrollBtn = document.getElementById('scrollToTopBtn');
+    if (!scrollBtn) return;
+    
+    // Fungsi untuk mengecek apakah tombol harus ditampilkan
+    function checkScrollPosition() {
+        // Dapatkan tinggi satu baris card (perkiraan)
+        const giftCards = document.querySelectorAll('.gift-card');
+        
+        if (giftCards.length === 0) {
+            scrollBtn.classList.remove('visible');
+            return;
+        }
+        
+        // Ambil card pertama dan kedua (satu baris = 2 card)
+        const firstCard = giftCards[0];
+        const cardBottom = firstCard.getBoundingClientRect().bottom;
+        
+        // Jika card pertama sudah melewati atas layar (scroll melewati 1 baris)
+        if (cardBottom < 0) {
+            scrollBtn.classList.add('visible');
+        } else {
+            scrollBtn.classList.remove('visible');
+        }
+    }
+    
+    // Event listener scroll
+    window.addEventListener('scroll', checkScrollPosition, { passive: true });
+    
+    // Event listener klik
+    scrollBtn.addEventListener('click', () => {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+        
+        // Haptic feedback (opsional)
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+        }
+    });
+    
+    // Cek posisi awal
+    checkScrollPosition();
 }
 
 // ==================== LOAD GIFTS (Initial) ====================
