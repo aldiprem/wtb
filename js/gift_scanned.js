@@ -153,40 +153,38 @@ function toggleFilterPanel() {
 
 async function loadAllNames() {
     try {
-        const response = await fetch('/gift-scam/api/stats');
+        const response = await fetch('/gift-scam/api/names');
         const data = await response.json();
-        if (data.success) {
-            // Fetch all names from first API call
-            const listResponse = await fetch('/gift-scam/api/list?limit=1');
-            const listData = await listResponse.json();
-            if (listData.success && listData.total > 0) {
-                // Get unique names from the gifts we have
-                const names = new Set();
-                state.gifts.forEach(g => names.add(g.name));
-                state.allNames = Array.from(names).sort();
-            }
+        if (data.success && data.names) {
+            state.allNames = data.names;
         }
     } catch (e) {
         console.error('Error loading names:', e);
+        // Fallback
+        state.allNames = collectAllNamesFromGifts();
     }
 }
 
 function collectAllNamesFromGifts() {
     const names = new Set();
     state.gifts.forEach(g => names.add(g.name));
-    // Also collect from all loaded data
     return Array.from(names).sort();
 }
 
 function renderFilterChips() {
     if (!elements.filterList) return;
     
-    const names = collectAllNamesFromGifts();
-    state.allNames = names;
+    const names = state.allNames.length > 0 ? state.allNames : collectAllNamesFromGifts();
+    
+    const nameCounts = {};
+    state.gifts.forEach(g => {
+        nameCounts[g.name] = (nameCounts[g.name] || 0) + 1;
+    });
     
     let html = '';
     names.forEach(name => {
         const isSelected = state.selectedFilterName === name;
+        const count = nameCounts[name] || 0;
         html += `
             <div class="filter-list-item ${isSelected ? 'selected' : ''}" 
                  data-name="${escapeHtml(name)}"
@@ -195,7 +193,7 @@ function renderFilterChips() {
                     ${isSelected ? '<i class="fas fa-check"></i>' : ''}
                 </div>
                 <span class="filter-item-name">${escapeHtml(name)}</span>
-                <span class="filter-item-count">${countGiftsByName(name)}</span>
+                <span class="filter-item-count">${count}</span>
             </div>
         `;
     });
@@ -387,13 +385,12 @@ async function loadMoreGifts() {
 }
 
 function appendGifts(newGifts) {
-  if (!elements.giftGrid) return;
-  const startIndex = state.gifts.length - newGifts.length;
-
-  newGifts.forEach((gift, i) => {
-    const card = createGiftCard(gift, startIndex + i);
-    elements.giftGrid.appendChild(card);
-  });
+    if (!elements.giftGrid) return;
+    
+    newGifts.forEach((gift, i) => {
+        const card = createGiftCard(gift, state.gifts.length - newGifts.length + i);
+        elements.giftGrid.appendChild(card);
+    });
 }
 
 function updateTotalCount(total) {
@@ -504,7 +501,6 @@ function renderGifts(gifts) {
 function createGiftCard(gift, index) {
     const card = document.createElement('div');
     card.className = 'gift-card';
-    card.style.animationDelay = `${index * 0.03}s`;
     
     card.innerHTML = `
         <div class="card-lottie-wrapper">
@@ -564,23 +560,21 @@ function showDetailModal(gift) {
             </div>
         </div>
 
-        <!-- Visit Message Button -->
         <div style="text-align:center;">
             <a href="${msgLink}" target="_blank" rel="noopener" class="visit-message-btn">
                 <i class="fas fa-external-link-alt"></i> Visit Message
             </a>
         </div>
 
-        <!-- Slug Scanner Section -->
         ${gift.text ? `
             <div class="slug-scanner-section">
                 <div class="slug-scanner-header">
                     <span class="slug-scanner-title">🔍 NFT Slugs dalam pesan:</span>
-                    <button class="slug-scan-btn" id="modal-scan-btn">
+                    <button class="slug-scan-btn" onclick="handleModalScan(event)" data-text="${escapeHtml(gift.text).replace(/"/g, '&quot;')}">
                         <i class="fas fa-search"></i> Scan
                     </button>
                 </div>
-                <div id="modal-scanner-result">
+                <div class="modal-scanner-result">
                     <div class="slug-scanner-empty">Klik Scan untuk mencari slug</div>
                 </div>
             </div>
@@ -593,31 +587,27 @@ function showDetailModal(gift) {
     `;
 
   openModal();
+}
 
-  // ✅ PERBAIKAN: Gunakan querySelector langsung, event listener setelah modal terbuka
-  const scanBtn = document.getElementById('modal-scan-btn');
-  const resultDiv = document.getElementById('modal-scanner-result');
-
-  if (scanBtn && resultDiv && gift.text) {
-    // Hapus event listener lama dengan clone node
-    const newScanBtn = scanBtn.cloneNode(true);
-    scanBtn.parentNode.replaceChild(newScanBtn, scanBtn);
-
-    newScanBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      // Panggil fungsi scan
-      if (gift.text) {
-        scanSlugsInText(gift.text, resultDiv);
-        newScanBtn.innerHTML = '<i class="fas fa-check"></i> Scanned';
-        newScanBtn.style.background = 'rgba(16, 185, 129, 0.3)';
+function handleModalScan(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const btn = event.currentTarget;
+    const text = btn.getAttribute('data-text');
+    const resultDiv = btn.parentElement.parentElement.querySelector('.modal-scanner-result');
+    
+    if (text && resultDiv) {
+        scanSlugsInText(text, resultDiv);
+        
+        // Update button state
+        btn.innerHTML = '<i class="fas fa-check"></i> Scanned';
+        btn.style.background = 'rgba(16, 185, 129, 0.3)';
         setTimeout(() => {
-          newScanBtn.innerHTML = '<i class="fas fa-search"></i> Scan';
-          newScanBtn.style.background = '';
+            btn.innerHTML = '<i class="fas fa-search"></i> Scan';
+            btn.style.background = '';
         }, 2000);
-      }
-    });
-  }
+    }
 }
 
 function updatePaginationFromData(filteredCount, totalCount) {
