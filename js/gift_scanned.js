@@ -74,8 +74,9 @@ document.addEventListener('DOMContentLoaded', () => {
     showLoading(true);
     setupEventListeners();
     setupModalListeners();
+    setupLottieObserver();
     loadStats();
-    loadAllNames();  // Load names for filter
+    loadAllNames();
     loadGifts();
 });
 
@@ -177,28 +178,31 @@ function toggleLottiePlay() {
     const btn = elements.togglePlayBtn;
 
     if (state.lottiePlaying) {
-        // ✅ Sekarang PLAYING -> tombol jadi "Stop"
         btn.classList.add('playing');
         btn.querySelector('.stat-icon-inline').className = 'fas fa-pause stat-icon-inline';
         btn.querySelector('.stat-value').textContent = 'Stop';
         btn.title = 'Stop Lottie';
     } else {
-        // ✅ Sekarang STOP -> tombol jadi "Play"
         btn.classList.remove('playing');
         btn.querySelector('.stat-icon-inline').className = 'fas fa-play stat-icon-inline';
         btn.querySelector('.stat-value').textContent = 'Play';
         btn.title = 'Play Lottie';
     }
 
-    // Update semua lottie players
+    // ✅ Update hanya lottie yang TERLIHAT di viewport
     document.querySelectorAll('lottie-player').forEach(player => {
-        if (state.lottiePlaying) {
-            player.setAttribute('autoplay', '');
-            player.play?.();
-        } else {
-            player.removeAttribute('autoplay');
-            player.stop?.();
-            player.seek?.(0);
+        const rect = player.getBoundingClientRect();
+        const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
+        
+        if (isVisible) {
+            if (state.lottiePlaying) {
+                player.setAttribute('autoplay', '');
+                player.play?.();
+            } else {
+                player.removeAttribute('autoplay');
+                player.stop?.();
+                player.seek?.(0);
+            }
         }
     });
 }
@@ -418,7 +422,7 @@ function setupInfiniteScroll() {
 }
 
 // ==================== LOAD GIFTS (Initial) ====================
-async function loadGifts() {
+aasync function loadGifts() {
     if (state.isLoading) return;
     state.isLoading = true;
     state.currentPage = 1;
@@ -440,8 +444,8 @@ async function loadGifts() {
         } else {
             const params = new URLSearchParams({
                 page: 1,
-                limit: 300, // Load banyak untuk filter client-side
-                search: searchQuery
+                limit: 300,
+                search: searchQuery  // ✅ Kirim slug/search apa adanya
             });
             url = `/gift-scam/api/list?${params}`;
         }
@@ -905,6 +909,11 @@ function handleSearch() {
     state.currentPage = 1;
     state.allLoaded = false;
     state.gifts = [];
+
+    if (!query) {
+        showToast('Masukkan kata kunci pencarian', 'warning');
+        return;
+    }
     
     if (state.searchMode === 'msgid') {
         // Search by Message ID
@@ -914,9 +923,7 @@ function handleSearch() {
             return;
         }
         state.searchQuery = `msgid:${msgId}`;
-        if (elements.searchInput) {
-            elements.searchInput.value = `Msg.ID: ${msgId}`;
-        }
+        // ✅ JANGAN ubah input user
     } else if (state.searchMode === 'userid') {
         // Search by User ID
         const userId = parseInt(query);
@@ -925,22 +932,32 @@ function handleSearch() {
             return;
         }
         state.searchQuery = `userid:${userId}`;
-        if (elements.searchInput) {
-            elements.searchInput.value = `User.ID: ${userId}`;
-        }
+        // ✅ JANGAN ubah input user
     } else {
         // Search by Gift (slug/link)
-        state.searchQuery = query;
+        // ✅ Normalize slug dari link
+        let searchQuery = query;
+        
+        // Deteksi link t.me/nft/ atau t.me/listgiftkotor/
+        const nftMatch = query.match(/(?:t\.me\/nft\/|t\.me\/c\/\d+\/)([A-Za-z0-9_-]+)/);
+        if (nftMatch) {
+            searchQuery = nftMatch[1]; // Ambil slug saja
+        }
         
         // Deteksi link message ID
         const msgIdMatch = query.match(/(?:listgiftkotor\/|t\.me\/listgiftkotor\/)(\d+)/);
         if (msgIdMatch) {
             state.searchMode = 'msgid';
             state.searchQuery = `msgid:${msgIdMatch[1]}`;
-            if (elements.searchInput) {
-                elements.searchInput.value = `Msg.ID: ${msgIdMatch[1]}`;
-            }
+            // ✅ JANGAN ubah input user
+            if (elements.clearBtn) elements.clearBtn.style.display = 'inline-flex';
+            loadGifts();
+            scrollToTop();
+            return;
         }
+        
+        state.searchQuery = searchQuery;
+        // ✅ JANGAN ubah input user
     }
     
     if (elements.clearBtn) elements.clearBtn.style.display = query ? 'inline-flex' : 'none';
@@ -949,13 +966,69 @@ function handleSearch() {
 }
 
 function handleClearSearch() {
-  if (elements.searchInput) elements.searchInput.value = '';
-  state.searchQuery = '';
-  state.currentPage = 1;
-  state.allLoaded = false;
-  state.gifts = [];
-  if (elements.clearBtn) elements.clearBtn.style.display = 'none';
-  loadGifts();
+    if (elements.searchInput) elements.searchInput.value = '';
+    state.searchQuery = '';
+    state.currentPage = 1;
+    state.allLoaded = false;
+    state.gifts = [];
+    state.searchMode = 'gift';
+    if (elements.clearBtn) elements.clearBtn.style.display = 'none';
+    loadGifts();
+}
+
+// ==================== LOTTIE INTERSECTION OBSERVER ====================
+function setupLottieObserver() {
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const player = entry.target;
+            if (entry.isIntersecting) {
+                // Terlihat di layar -> play (jika mode play aktif)
+                if (state.lottiePlaying) {
+                    player.setAttribute('autoplay', '');
+                    player.play?.();
+                } else {
+                    // Mode stop, tapi tetap di frame 0
+                    player.removeAttribute('autoplay');
+                    player.stop?.();
+                    player.seek?.(0);
+                }
+            } else {
+                // Tidak terlihat -> pause/stop
+                player.removeAttribute('autoplay');
+                player.stop?.();
+                player.seek?.(0);
+            }
+        });
+    }, {
+        rootMargin: '100px', // Mulai animasi 100px sebelum masuk viewport
+        threshold: 0.1
+    });
+
+    // Observe semua lottie player yang ada dan yang baru ditambahkan
+    const observeAll = () => {
+        document.querySelectorAll('lottie-player').forEach(player => {
+            if (!player.dataset.observed) {
+                observer.observe(player);
+                player.dataset.observed = 'true';
+            }
+        });
+    };
+
+    // Observe existing
+    observeAll();
+
+    // Observe new (MutationObserver untuk card yang ditambahkan via infinite scroll)
+    const mutationObserver = new MutationObserver(() => {
+        observeAll();
+    });
+
+    const gridEl = document.getElementById('giftGrid');
+    if (gridEl) {
+        mutationObserver.observe(gridEl, {
+            childList: true,
+            subtree: true
+        });
+    }
 }
 
 // ==================== UTILS ====================
