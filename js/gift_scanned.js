@@ -12,6 +12,7 @@ const state = {
     filterName: '',
     selectedFilterNames: [],
     gifts: [],
+    allGifts: [],
     allNames: [],
     nameCounts: {},
     lottiePlaying: false,
@@ -246,9 +247,9 @@ function renderFilterChips() {
     
     let html = '';
     names.forEach(name => {
-        const isSelected = state.selectedFilterName === name;
-        // ✅ Ambil count dari state.nameCounts (dari database)
-        const count = (state.nameCounts && state.nameCounts[name]) ? state.nameCounts[name] : (countGiftsByName(name) || '?');
+        const isSelected = state.selectedFilterNames.includes(name);
+        // ✅ Hitung count dari allGifts (semua data)
+        const count = state.allGifts.filter(g => g.name === name).length;
         html += `
             <div class="filter-list-item ${isSelected ? 'selected' : ''}" 
                  data-name="${escapeHtml(name)}"
@@ -346,13 +347,14 @@ function renderFilterChips() {
 }
 
 function applyFilter() {
-    // ✅ Simpan array selected names
     state.filterName = state.selectedFilterNames.join(',');
     state.currentPage = 1;
     state.allLoaded = false;
     state.gifts = [];
     elements.filterPanel.style.display = 'none';
-    loadGifts();
+    
+    filterAndRenderGifts();
+    
     scrollToTop();
     
     const filterText = state.selectedFilterNames.length > 0 
@@ -377,7 +379,10 @@ function resetFilter() {
     
     renderFilterChips();
     elements.filterPanel.style.display = 'none';
-    loadGifts();
+    
+    state.filterName = '';
+    filterAndRenderGifts();
+    
     scrollToTop();
     showToast('Filter direset', 'info');
 }
@@ -428,6 +433,7 @@ async function loadGifts() {
     state.currentPage = 1;
     state.allLoaded = false;
     state.gifts = [];
+    state.allGifts = [];  // ✅ Reset juga
     showLoading(true);
     hideAllStates();
 
@@ -444,8 +450,8 @@ async function loadGifts() {
         } else {
             const params = new URLSearchParams({
                 page: 1,
-                limit: 300,
-                search: searchQuery  // ✅ Kirim slug/search apa adanya
+                limit: 5000,
+                search: searchQuery
             });
             url = `/gift-scam/api/list?${params}`;
         }
@@ -458,24 +464,12 @@ async function loadGifts() {
         if (data.success) {
             let items = data.data || [];
             
-            // ✅ Filter by multiple names
-            if (state.filterName && !searchQuery.startsWith('msgid:') && !searchQuery.startsWith('userid:')) {
-                const filterNames = state.filterName.split(',').filter(Boolean);
-                if (filterNames.length > 0) {
-                    items = items.filter(g => filterNames.includes(g.name));
-                }
-            }
-
-            state.gifts = items;
-            state.allLoaded = true;
-
-            if (items.length === 0) {
-                showEmpty();
-            } else {
-                renderGifts(items);
-                updateTotalCount(items.length);
-                if (elements.pagination) elements.pagination.style.display = 'none';
-            }
+            // ✅ Simpan SEMUA data ke allGifts
+            state.allGifts = items;
+            
+            // ✅ Terapkan filter untuk tampilan
+            filterAndRenderGifts();
+            
         } else {
             showError(data.error || 'Gagal memuat data');
         }
@@ -485,6 +479,42 @@ async function loadGifts() {
         state.isLoading = false;
         showLoading(false);
     }
+}
+
+function filterAndRenderGifts() {
+    let items = [...state.allGifts];
+    
+    // ✅ Filter by multiple names
+    if (state.filterName) {
+        const filterNames = state.filterName.split(',').filter(Boolean);
+        if (filterNames.length > 0) {
+            items = items.filter(g => filterNames.includes(g.name));
+        }
+    }
+    
+    // ✅ Filter by search query (jika mode gift)
+    if (state.searchQuery && !state.searchQuery.startsWith('msgid:') && !state.searchQuery.startsWith('userid:')) {
+        const query = state.searchQuery.toLowerCase();
+        items = items.filter(g => 
+            g.slug.toLowerCase().includes(query) || 
+            g.name.toLowerCase().includes(query) ||
+            (g.text && g.text.toLowerCase().includes(query))
+        );
+    }
+    
+    state.gifts = items;
+    state.allLoaded = true;
+    
+    if (items.length === 0) {
+        showEmpty();
+    } else {
+        renderGifts(items);
+        updateTotalCount(items.length);
+        if (elements.pagination) elements.pagination.style.display = 'none';
+    }
+    
+    // Update names untuk filter chips
+    state.allNames = collectAllNamesFromGifts();
 }
 
 // ==================== LOAD MORE (Infinite Scroll) ====================
@@ -972,7 +1002,10 @@ function handleClearSearch() {
     state.allLoaded = false;
     state.gifts = [];
     state.searchMode = 'gift';
+    state.filterName = state.selectedFilterNames.join(',');
     if (elements.clearBtn) elements.clearBtn.style.display = 'none';
+    
+    // ✅ Load ulang semua data
     loadGifts();
 }
 
