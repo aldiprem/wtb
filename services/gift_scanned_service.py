@@ -488,3 +488,147 @@ def api_get_gifts_by_user(user_id):
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@gift_scanned_bp.route('/api/filter')
+def api_get_gifts_by_filter():
+    """API: Mendapatkan gift berdasarkan multiple filter names"""
+    try:
+        filter_names = request.args.get('names', '', type=str).strip()
+        
+        if not filter_names:
+            return jsonify({
+                'success': False,
+                'error': 'Parameter names diperlukan',
+                'data': [], 'total': 0
+            }), 400
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({
+                'success': False,
+                'error': 'Database tidak ditemukan',
+                'data': [], 'total': 0
+            }), 500
+        
+        cur = conn.cursor()
+        
+        # Cek tabel
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='gift_scanned'")
+        if not cur.fetchone():
+            conn.close()
+            return jsonify({
+                'success': False,
+                'error': 'Tabel gift_scanned belum ada',
+                'data': [], 'total': 0
+            }), 404
+        
+        # Cek kolom yang ada
+        cur.execute("PRAGMA table_info(gift_scanned)")
+        existing_cols = {col[1] for col in cur.fetchall()}
+        
+        # Build SELECT columns
+        select_cols = ['slug', 'message_id', 'text', 'rowid']
+        optional_cols = ['sender_id', 'model', 'model_rarity', 
+                        'background', 'background_rarity', 
+                        'symbol', 'symbol_rarity',
+                        'original_details', 
+                        'availability_issued', 'availability_total',
+                        'lottie_url', 'fragment_url']
+        
+        for col in optional_cols:
+            if col in existing_cols:
+                select_cols.append(col)
+        
+        select_sql = ', '.join(select_cols)
+        
+        # ✅ Parse filter names (comma separated)
+        names_list = [n.strip() for n in filter_names.split(',') if n.strip()]
+        
+        if not names_list:
+            conn.close()
+            return jsonify({
+                'success': False,
+                'error': 'Tidak ada nama filter valid',
+                'data': [], 'total': 0
+            }), 400
+        
+        # ✅ Build WHERE clause untuk multiple names
+        # Mencocokkan slug yang dimulai dengan nama filter
+        like_clauses = []
+        params = []
+        for name in names_list:
+            like_clauses.append("slug LIKE ?")
+            params.append(f'{name}-%')
+        
+        where_sql = "WHERE " + " OR ".join(like_clauses)
+        
+        # Count total
+        cur.execute(f"SELECT COUNT(*) as total FROM gift_scanned {where_sql}", params)
+        total = cur.fetchone()['total']
+        
+        # Ambil semua data
+        cur.execute(f"""
+            SELECT {select_sql}
+            FROM gift_scanned 
+            {where_sql}
+            ORDER BY slug
+        """, params)
+        
+        rows = cur.fetchall()
+        
+        # Format data
+        gift_list = []
+        for row in rows:
+            slug = row['slug']
+            
+            parts = slug.rsplit('-', 1)
+            if len(parts) == 2 and parts[1].isdigit():
+                gift_name = parts[0]
+                gift_number = parts[1]
+            else:
+                gift_name = slug
+                gift_number = ''
+            
+            lottie_url = row['lottie_url'] if ('lottie_url' in row.keys() and row['lottie_url']) else f"https://nft.fragment.com/gift/{slug}.lottie.json"
+            fragment_url = row['fragment_url'] if ('fragment_url' in row.keys() and row['fragment_url']) else f"https://nft.fragment.com/gift/{slug}"
+            
+            gift_list.append({
+                'id': row['rowid'],
+                'slug': slug,
+                'name': gift_name,
+                'number': gift_number,
+                'message_id': row['message_id'],
+                'sender_id': row['sender_id'] if 'sender_id' in row.keys() else None,
+                'text': row['text'] or '',
+                'model': row['model'] if 'model' in row.keys() and row['model'] else '',
+                'model_rarity': row['model_rarity'] if 'model_rarity' in row.keys() else 0,
+                'background': row['background'] if 'background' in row.keys() and row['background'] else '',
+                'background_rarity': row['background_rarity'] if 'background_rarity' in row.keys() else 0,
+                'symbol': row['symbol'] if 'symbol' in row.keys() and row['symbol'] else '',
+                'symbol_rarity': row['symbol_rarity'] if 'symbol_rarity' in row.keys() else 0,
+                'original_details': row['original_details'] if 'original_details' in row.keys() and row['original_details'] else '',
+                'availability_issued': row['availability_issued'] if 'availability_issued' in row.keys() else 0,
+                'availability_total': row['availability_total'] if 'availability_total' in row.keys() else 0,
+                'lottie_url': lottie_url,
+                'fragment_url': fragment_url,
+                'scanned_at': None
+            })
+        
+        conn.close()
+        
+        logger.info(f"✅ Filter: {len(names_list)} names, found {len(gift_list)} gifts")
+        
+        return jsonify({
+            'success': True,
+            'data': gift_list,
+            'total': total,
+            'filter_names': names_list
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Error di api_get_gifts_by_filter: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'data': [], 'total': 0
+        }), 500

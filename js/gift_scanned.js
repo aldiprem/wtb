@@ -243,13 +243,17 @@ function collectAllNamesFromGifts() {
 function renderFilterChips() {
     if (!elements.filterList) return;
     
+    // ✅ Gunakan state.allNames dari API /api/names (seluruh database)
     const names = state.allNames.length > 0 ? state.allNames : collectAllNamesFromGifts();
     
     let html = '';
     names.forEach(name => {
         const isSelected = state.selectedFilterNames.includes(name);
-        // ✅ Hitung count dari allGifts (semua data)
-        const count = state.allGifts.filter(g => g.name === name).length;
+        // ✅ Count dari nameCounts (dari database) atau hitung dari allGifts
+        const count = (state.nameCounts && state.nameCounts[name]) 
+            ? state.nameCounts[name] 
+            : state.allGifts.filter(g => g.name === name).length || '?';
+        
         html += `
             <div class="filter-list-item ${isSelected ? 'selected' : ''}" 
                  data-name="${escapeHtml(name)}"
@@ -262,6 +266,10 @@ function renderFilterChips() {
             </div>
         `;
     });
+    
+    if (names.length === 0) {
+        html = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Memuat data...</div>';
+    }
     
     elements.filterList.innerHTML = html;
 }
@@ -353,7 +361,14 @@ function applyFilter() {
     state.gifts = [];
     elements.filterPanel.style.display = 'none';
     
-    filterAndRenderGifts();
+    // ✅ Jika ada filter names, fetch dari server
+    if (state.selectedFilterNames.length > 0) {
+        loadFilteredGifts();
+    } else {
+        // Tidak ada filter, tampilkan semua dari allGifts
+        state.filterName = '';
+        filterAndRenderGifts();
+    }
     
     scrollToTop();
     
@@ -361,6 +376,44 @@ function applyFilter() {
         ? `${state.selectedFilterNames.length} gift terpilih` 
         : 'Semua';
     showToast(`Filter: ${filterText}`, 'info');
+}
+
+async function loadFilteredGifts() {
+    if (state.isLoading) return;
+    state.isLoading = true;
+    state.gifts = [];
+    showLoading(true);
+    hideAllStates();
+
+    try {
+        const filterNames = state.selectedFilterNames.join(',');
+        const url = `/gift-scam/api/filter?names=${encodeURIComponent(filterNames)}`;
+        
+        console.log(`📡 Filter: ${url}`);
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+
+        if (data.success) {
+            state.gifts = data.data;
+            state.allLoaded = true;
+
+            if (data.data.length === 0) {
+                showEmpty();
+            } else {
+                renderGifts(data.data);
+                updateTotalCount(data.data.length);
+                if (elements.pagination) elements.pagination.style.display = 'none';
+            }
+        } else {
+            showError(data.error || 'Gagal memuat data filter');
+        }
+    } catch (error) {
+        showError(`Gagal terhubung. ${error.message}`);
+    } finally {
+        state.isLoading = false;
+        showLoading(false);
+    }
 }
 
 function resetFilter() {
@@ -380,8 +433,15 @@ function resetFilter() {
     renderFilterChips();
     elements.filterPanel.style.display = 'none';
     
+    // ✅ Kembali ke data awal (allGifts)
     state.filterName = '';
-    filterAndRenderGifts();
+    
+    // Jika allGifts kosong, reload
+    if (state.allGifts.length === 0) {
+        loadGifts();
+    } else {
+        filterAndRenderGifts();
+    }
     
     scrollToTop();
     showToast('Filter direset', 'info');
@@ -484,14 +544,6 @@ async function loadGifts() {
 function filterAndRenderGifts() {
     let items = [...state.allGifts];
     
-    // ✅ Filter by multiple names
-    if (state.filterName) {
-        const filterNames = state.filterName.split(',').filter(Boolean);
-        if (filterNames.length > 0) {
-            items = items.filter(g => filterNames.includes(g.name));
-        }
-    }
-    
     // ✅ Filter by search query (jika mode gift)
     if (state.searchQuery && !state.searchQuery.startsWith('msgid:') && !state.searchQuery.startsWith('userid:')) {
         const query = state.searchQuery.toLowerCase();
@@ -512,9 +564,6 @@ function filterAndRenderGifts() {
         updateTotalCount(items.length);
         if (elements.pagination) elements.pagination.style.display = 'none';
     }
-    
-    // Update names untuk filter chips
-    state.allNames = collectAllNamesFromGifts();
 }
 
 // ==================== LOAD MORE (Infinite Scroll) ====================
