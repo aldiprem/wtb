@@ -483,7 +483,7 @@ if market_bp:
     app.register_blueprint(market_bp)
     print("✅ Registered market_bp")
 if gift_scanned_bp:
-    app.register_blueprint(gift_scanned_bp, url_prefix='/gift-scam')
+    app.register_blueprint(gift_scanned_bp)
     print("✅ Registered gift_scanned_bp at /gift-scam")
 if panel_bp:
     app.register_blueprint(panel_bp)
