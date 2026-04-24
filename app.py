@@ -13,13 +13,35 @@ import logging
 import requests
 import sys
 
-# Menambahkan direktori root ke path
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, ROOT_DIR)
+# ==================== INTEGRASI JASEB USERBOT MANAGER ====================
 
 JASEB_DIR = '/root/jaseb'
 if JASEB_DIR not in sys.path:
     sys.path.insert(0, JASEB_DIR)
+
+try:
+    from services.data_service import jaseb_api_bp
+    print("✅ Jaseb API blueprint imported successfully")
+except ImportError as e1:
+    print(f"❌ First import attempt failed: {e1}")
+    try:
+        # Coba dengan menambahkan path secara eksplisit
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "data_service", 
+            os.path.join(JASEB_DIR, "services", "data_service.py")
+        )
+        data_service = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(data_service)
+        jaseb_api_bp = data_service.jaseb_api_bp
+        print("✅ Jaseb API blueprint imported via spec")
+    except Exception as e2:
+        print(f"❌ Second import attempt failed: {e2}")
+        jaseb_api_bp = None
+
+# Menambahkan direktori root ke path
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, ROOT_DIR)
 
 # Import semua blueprint dari folder services
 from services.website_service import website_bp
@@ -47,7 +69,6 @@ from winedash.services.admin_service import admin_bp
 from winedash.services.market_service import market_bp
 from services.source_code_service import get_winedash_source_logic
 from services.gift_scanned_service import gift_scanned_bp
-from services.data_service import jaseb_api_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -259,7 +280,6 @@ app.register_blueprint(debug_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(market_bp)
 app.register_blueprint(gift_scanned_bp, url_prefix='/gift-scam')
-app.register_blueprint(jaseb_api_bp)
 
 # ==================== ROUTE UNTUK JASEB DASHBOARD ====================
 
