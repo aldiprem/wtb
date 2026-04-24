@@ -527,6 +527,9 @@ function showDetailModal(gift) {
   elements.modalTitle.textContent = `🎁 ${gift.name}`;
   const msgLink = `https://t.me/listgiftkotor/${gift.message_id}`;
 
+  // Format rarity menjadi persentase
+  const formatRarity = (val) => val ? `${(val / 10).toFixed(1)}%` : '-';
+
   elements.modalBody.innerHTML = `
         <div class="detail-lottie-wrapper">
             <lottie-player src="${escapeHtml(gift.lottie_url)}" background="transparent" speed="1"
@@ -549,6 +552,51 @@ function showDetailModal(gift) {
                     <div class="detail-info-value">${gift.message_id}</div>
                 </div>
             </div>
+            ${gift.sender_id ? `
+            <div class="detail-info-row">
+                <div class="detail-info-icon"><i class="fas fa-user"></i></div>
+                <div class="detail-info-content">
+                    <div class="detail-info-label">Sender ID</div>
+                    <div class="detail-info-value">${gift.sender_id}</div>
+                </div>
+            </div>
+            ` : ''}
+            ${gift.model ? `
+            <div class="detail-info-row">
+                <div class="detail-info-icon"><i class="fas fa-cube"></i></div>
+                <div class="detail-info-content">
+                    <div class="detail-info-label">Model</div>
+                    <div class="detail-info-value">${escapeHtml(gift.model)} (${formatRarity(gift.model_rarity)})</div>
+                </div>
+            </div>
+            ` : ''}
+            ${gift.background ? `
+            <div class="detail-info-row">
+                <div class="detail-info-icon"><i class="fas fa-image"></i></div>
+                <div class="detail-info-content">
+                    <div class="detail-info-label">Background</div>
+                    <div class="detail-info-value">${escapeHtml(gift.background)} (${formatRarity(gift.background_rarity)})</div>
+                </div>
+            </div>
+            ` : ''}
+            ${gift.symbol ? `
+            <div class="detail-info-row">
+                <div class="detail-info-icon"><i class="fas fa-star"></i></div>
+                <div class="detail-info-content">
+                    <div class="detail-info-label">Symbol</div>
+                    <div class="detail-info-value">${escapeHtml(gift.symbol)} (${formatRarity(gift.symbol_rarity)})</div>
+                </div>
+            </div>
+            ` : ''}
+            ${gift.availability_total ? `
+            <div class="detail-info-row">
+                <div class="detail-info-icon"><i class="fas fa-chart-bar"></i></div>
+                <div class="detail-info-content">
+                    <div class="detail-info-label">Availability</div>
+                    <div class="detail-info-value">${gift.availability_issued} / ${gift.availability_total}</div>
+                </div>
+            </div>
+            ` : ''}
             <div class="detail-info-row">
                 <div class="detail-info-icon"><i class="fas fa-link"></i></div>
                 <div class="detail-info-content">

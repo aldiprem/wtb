@@ -51,20 +51,13 @@ def get_db_connection():
 
 @gift_scanned_bp.route('/api/list')
 def api_get_gifts():
-    """
-    API: Mendapatkan semua data gift dengan pagination
-    Query params:
-      - page: halaman (default: 1)
-      - limit: jumlah per halaman (default: 50)
-      - search: kata kunci pencarian (optional)
-    """
+    """API: Mendapatkan semua data gift dengan pagination dan filter"""
     try:
-        # Parameter
         page = request.args.get('page', 1, type=int)
         limit = request.args.get('limit', 50, type=int)
         search = request.args.get('search', '', type=str).strip()
+        filter_name = request.args.get('filter_name', '', type=str).strip()
         
-        # Validasi
         if page < 1:
             page = 1
         if limit < 1:
@@ -76,64 +69,62 @@ def api_get_gifts():
         if not conn:
             return jsonify({
                 'success': False,
-                'error': 'Database tidak ditemukan. Pastikan sudah menjalankan /scan',
-                'data': [],
-                'total': 0,
-                'page': page,
-                'total_pages': 0
+                'error': 'Database tidak ditemukan',
+                'data': [], 'total': 0, 'page': page, 'total_pages': 0
             }), 500
         
         cur = conn.cursor()
         
-        # Cek apakah tabel ada
+        # Cek tabel
         cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='gift_scanned'")
         if not cur.fetchone():
             conn.close()
             return jsonify({
                 'success': False,
-                'error': 'Tabel gift_scanned belum ada. Jalankan /scan terlebih dahulu',
-                'data': [],
-                'total': 0,
-                'page': page,
-                'total_pages': 0
+                'error': 'Tabel gift_scanned belum ada',
+                'data': [], 'total': 0, 'page': page, 'total_pages': 0
             }), 404
         
-        # Hitung total data
-        if search:
-            cur.execute(
-                "SELECT COUNT(*) as total FROM gift_scanned WHERE slug LIKE ? OR text LIKE ?",
-                (f'%{search}%', f'%{search}%')
-            )
-        else:
-            cur.execute("SELECT COUNT(*) as total FROM gift_scanned")
+        # Build query
+        where_clauses = []
+        params = []
         
+        if search:
+            where_clauses.append("(slug LIKE ? OR text LIKE ? OR model LIKE ?)")
+            params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
+        
+        if filter_name:
+            # Filter by gift name (parse slug)
+            where_clauses.append("slug LIKE ?")
+            params.append(f'{filter_name}-%')
+        
+        where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+        
+        # Count total
+        cur.execute(f"SELECT COUNT(*) as total FROM gift_scanned {where_sql}", params)
         total = cur.fetchone()['total']
         total_pages = max(1, (total + limit - 1) // limit)
         
-        # Validasi halaman
         if page > total_pages:
             page = total_pages
         
         offset = (page - 1) * limit
         
-        # Ambil data
-        if search:
-            cur.execute(
-                """SELECT slug, message_id, text, rowid 
-                   FROM gift_scanned 
-                   WHERE slug LIKE ? OR text LIKE ?
-                   ORDER BY slug 
-                   LIMIT ? OFFSET ?""",
-                (f'%{search}%', f'%{search}%', limit, offset)
-            )
-        else:
-            cur.execute(
-                """SELECT slug, message_id, text, rowid 
-                   FROM gift_scanned 
-                   ORDER BY slug 
-                   LIMIT ? OFFSET ?""",
-                (limit, offset)
-            )
+        # Ambil data dengan semua field
+        cur.execute(f"""
+            SELECT id, slug, message_id, sender_id, text,
+                   model, model_rarity,
+                   background, background_rarity,
+                   symbol, symbol_rarity,
+                   original_details,
+                   availability_issued, availability_total,
+                   lottie_url, fragment_url,
+                   scanned_at
+            FROM gift_scanned 
+            {where_sql}
+            ORDER BY slug 
+            LIMIT ? OFFSET ?
+        """, params + [limit, offset])
         
         rows = cur.fetchall()
         
@@ -142,7 +133,7 @@ def api_get_gifts():
         for row in rows:
             slug = row['slug']
             
-            # Parse nama dan nomor dari slug (format: Nama-Nomor)
+            # Parse nama dan nomor
             parts = slug.rsplit('-', 1)
             if len(parts) == 2 and parts[1].isdigit():
                 gift_name = parts[0]
@@ -151,24 +142,30 @@ def api_get_gifts():
                 gift_name = slug
                 gift_number = ''
             
-            # URL Lottie dan Fragment
-            lottie_url = f"https://nft.fragment.com/gift/{slug}.lottie.json"
-            fragment_url = f"https://nft.fragment.com/gift/{slug}"
-            
-            # Text preview
-            text = row['text'] if row['text'] else ''
-            text_preview = text[:150] + '...' if len(text) > 150 else text
+            # URL
+            lottie_url = row['lottie_url'] or f"https://nft.fragment.com/gift/{slug}.lottie.json"
+            fragment_url = row['fragment_url'] or f"https://nft.fragment.com/gift/{slug}"
             
             gift_list.append({
-                'id': row['rowid'],
+                'id': row['id'],
                 'slug': slug,
                 'name': gift_name,
                 'number': gift_number,
                 'message_id': row['message_id'],
-                'text': text,
-                'text_preview': text_preview,
+                'sender_id': row['sender_id'],
+                'text': row['text'] or '',
+                'model': row['model'] or '',
+                'model_rarity': row['model_rarity'],
+                'background': row['background'] or '',
+                'background_rarity': row['background_rarity'],
+                'symbol': row['symbol'] or '',
+                'symbol_rarity': row['symbol_rarity'],
+                'original_details': row['original_details'] or '',
+                'availability_issued': row['availability_issued'],
+                'availability_total': row['availability_total'],
                 'lottie_url': lottie_url,
-                'fragment_url': fragment_url
+                'fragment_url': fragment_url,
+                'scanned_at': row['scanned_at']
             })
         
         conn.close()
@@ -189,25 +186,31 @@ def api_get_gifts():
         return jsonify({
             'success': False,
             'error': str(e),
-            'data': [],
-            'total': 0,
-            'page': 1,
-            'total_pages': 0
+            'data': [], 'total': 0, 'page': 1, 'total_pages': 0
         }), 500
 
 @gift_scanned_bp.route('/api/detail/<slug>')
 def api_get_gift_detail(slug):
-    """API: Mendapatkan detail satu gift berdasarkan slug"""
+    """API: Mendapatkan detail lengkap satu gift"""
     try:
         conn = get_db_connection()
         if not conn:
             return jsonify({'success': False, 'error': 'Database tidak ditemukan'}), 500
         
         cur = conn.cursor()
-        cur.execute(
-            "SELECT slug, message_id, text, rowid FROM gift_scanned WHERE slug = ?",
-            (slug,)
-        )
+        cur.execute("""
+            SELECT id, slug, message_id, sender_id, text,
+                   model, model_rarity,
+                   background, background_rarity,
+                   symbol, symbol_rarity,
+                   original_details,
+                   availability_issued, availability_total,
+                   lottie_url, fragment_url,
+                   scanned_at
+            FROM gift_scanned 
+            WHERE slug = ?
+        """, (slug,))
+        
         row = cur.fetchone()
         conn.close()
         
@@ -220,13 +223,23 @@ def api_get_gift_detail(slug):
         return jsonify({
             'success': True,
             'data': {
-                'id': row['rowid'],
+                'id': row['id'],
                 'slug': row['slug'],
                 'name': gift_name,
                 'message_id': row['message_id'],
-                'text': row['text'],
-                'lottie_url': f"https://nft.fragment.com/gift/{row['slug']}.lottie.json",
-                'fragment_url': f"https://nft.fragment.com/gift/{row['slug']}"
+                'sender_id': row['sender_id'],
+                'text': row['text'] or '',
+                'model': row['model'] or '',
+                'model_rarity': row['model_rarity'],
+                'background': row['background'] or '',
+                'background_rarity': row['background_rarity'],
+                'symbol': row['symbol'] or '',
+                'symbol_rarity': row['symbol_rarity'],
+                'original_details': row['original_details'] or '',
+                'availability_issued': row['availability_issued'],
+                'availability_total': row['availability_total'],
+                'lottie_url': row['lottie_url'] or f"https://nft.fragment.com/gift/{slug}.lottie.json",
+                'fragment_url': row['fragment_url'] or f"https://nft.fragment.com/gift/{slug}"
             }
         })
         
