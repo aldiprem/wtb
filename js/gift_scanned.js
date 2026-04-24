@@ -1,225 +1,247 @@
 /**
- * Gift Scanned Gallery - Main JavaScript
- * Fixed Version
+ * Gift Scanned Gallery - Complete Rewrite
  */
 
-// ==================== STATE MANAGEMENT ====================
+// ==================== STATE ====================
 const state = {
     currentPage: 1,
     totalPages: 1,
     limit: 20,
     searchQuery: '',
+    filterName: '',        // Filter by gift name (without ID)
     gifts: [],
+    allNames: [],          // All unique names for filter
+    selectedFilterName: '', // Currently selected filter
+    lottiePlaying: false,  // Default: Stop
     isLoading: false
 };
 
 // ==================== DOM ELEMENTS ====================
 const elements = {
-    // Loading
     loadingOverlay: document.getElementById('loadingOverlay'),
-    
-    // Toast
     toastContainer: document.getElementById('toastContainer'),
-    
-    // Header
     headerCount: document.getElementById('headerCount'),
-    
-    // Stats
     totalGifts: document.getElementById('totalGifts'),
     uniqueGifts: document.getElementById('uniqueGifts'),
-    
-    // Search
     searchInput: document.getElementById('searchInput'),
     searchBtn: document.getElementById('searchBtn'),
     clearBtn: document.getElementById('clearBtn'),
-    
-    // States
+    filterBtn: document.getElementById('filterBtn'),
+    filterPanel: document.getElementById('filterPanel'),
+    filterList: document.getElementById('filterList'),
+    filterClose: document.getElementById('filterClose'),
+    filterApply: document.getElementById('filterApply'),
+    filterReset: document.getElementById('filterReset'),
+    togglePlayBtn: document.getElementById('togglePlayBtn'),
     errorState: document.getElementById('errorState'),
     errorMessage: document.getElementById('errorMessage'),
     emptyState: document.getElementById('emptyState'),
-    
-    // Grid
     giftGrid: document.getElementById('giftGrid'),
-    
-    // Pagination
     pagination: document.getElementById('pagination'),
     prevBtn: document.getElementById('prevBtn'),
     nextBtn: document.getElementById('nextBtn'),
     currentPage: document.getElementById('currentPage'),
     totalPages: document.getElementById('totalPages'),
     totalItems: document.getElementById('totalItems'),
-    
-    // Modal
     detailModal: document.getElementById('detailModal'),
     modalClose: document.getElementById('modalClose'),
     modalTitle: document.getElementById('modalTitle'),
     modalBody: document.getElementById('modalBody')
 };
 
-// ==================== TOAST FUNCTIONS ====================
+// ==================== TOAST ====================
 function showToast(message, type = 'info', duration = 3000) {
     if (!elements.toastContainer) return;
-    
-    const icons = {
-        success: 'fa-check-circle',
-        error: 'fa-exclamation-circle',
-        warning: 'fa-exclamation-triangle',
-        info: 'fa-info-circle'
-    };
-    
+    const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${message}</span>`;
-    
     elements.toastContainer.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.style.animation = 'slideUp 0.3s ease reverse';
-        setTimeout(() => toast.remove(), 300);
-    }, duration);
+    setTimeout(() => { toast.style.animation = 'slideUp 0.3s ease reverse'; setTimeout(() => toast.remove(), 300); }, duration);
 }
 
-// ==================== LOADING FUNCTIONS ====================
+// ==================== LOADING ====================
 function showLoading(show = true) {
-    if (elements.loadingOverlay) {
-        elements.loadingOverlay.style.display = show ? 'flex' : 'none';
-    }
+    if (elements.loadingOverlay) elements.loadingOverlay.style.display = show ? 'flex' : 'none';
 }
 
-// ==================== INITIALIZATION ====================
+// ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🎁 Gift Scanned Gallery - Initializing...');
-    
-    // Show loading immediately
+    console.log('🎁 Gift Scanned Gallery v2');
     showLoading(true);
-    
-    // Setup event listeners
     setupEventListeners();
     setupModalListeners();
-    
-    // Load data
     loadStats();
+    loadAllNames();  // Load names for filter
     loadGifts();
 });
 
+// ==================== EVENT LISTENERS ====================
 function setupEventListeners() {
-    // Search button
-    if (elements.searchBtn) {
-        elements.searchBtn.addEventListener('click', handleSearch);
-    }
+    elements.searchBtn?.addEventListener('click', handleSearch);
+    elements.searchInput?.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSearch(); });
+    elements.searchInput?.addEventListener('input', () => {
+        if (elements.clearBtn) elements.clearBtn.style.display = elements.searchInput.value ? 'inline-flex' : 'none';
+    });
+    elements.clearBtn?.addEventListener('click', handleClearSearch);
     
-    // Search on Enter
-    if (elements.searchInput) {
-        elements.searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleSearch();
-        });
-        
-        // Show/hide clear button
-        elements.searchInput.addEventListener('input', () => {
-            if (elements.clearBtn) {
-                elements.clearBtn.style.display = elements.searchInput.value ? 'inline-flex' : 'none';
-            }
-        });
-    }
+    // Filter
+    elements.filterBtn?.addEventListener('click', toggleFilterPanel);
+    elements.filterClose?.addEventListener('click', () => { elements.filterPanel.style.display = 'none'; });
+    elements.filterApply?.addEventListener('click', applyFilter);
+    elements.filterReset?.addEventListener('click', resetFilter);
     
-    // Clear button
-    if (elements.clearBtn) {
-        elements.clearBtn.addEventListener('click', handleClearSearch);
-    }
+    // Toggle Play/Stop
+    elements.togglePlayBtn?.addEventListener('click', toggleLottiePlay);
     
     // Pagination
-    if (elements.prevBtn) {
-        elements.prevBtn.addEventListener('click', () => {
-            if (state.currentPage > 1) {
-                state.currentPage--;
-                loadGifts();
-                scrollToTop();
-            }
-        });
-    }
-    
-    if (elements.nextBtn) {
-        elements.nextBtn.addEventListener('click', () => {
-            if (state.currentPage < state.totalPages) {
-                state.currentPage++;
-                loadGifts();
-                scrollToTop();
-            }
-        });
-    }
+    elements.prevBtn?.addEventListener('click', () => { if (state.currentPage > 1) { state.currentPage--; loadGifts(); scrollToTop(); } });
+    elements.nextBtn?.addEventListener('click', () => { if (state.currentPage < state.totalPages) { state.currentPage++; loadGifts(); scrollToTop(); } });
 }
 
 function setupModalListeners() {
-    // Close modal
-    if (elements.modalClose) {
-        elements.modalClose.addEventListener('click', closeModal);
+    elements.modalClose?.addEventListener('click', closeModal);
+    elements.detailModal?.addEventListener('click', (e) => { if (e.target === elements.detailModal) closeModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && elements.detailModal?.style.display === 'flex') closeModal(); });
+}
+
+// ==================== MODAL ====================
+function openModal() { if (elements.detailModal) { elements.detailModal.style.display = 'flex'; document.body.style.overflow = 'hidden'; } }
+function closeModal() { if (elements.detailModal) { elements.detailModal.style.display = 'none'; document.body.style.overflow = ''; } }
+
+// ==================== TOGGLE LOTTIE PLAY/STOP ====================
+function toggleLottiePlay() {
+    state.lottiePlaying = !state.lottiePlaying;
+    const btn = elements.togglePlayBtn;
+    
+    if (state.lottiePlaying) {
+        btn.classList.add('playing');
+        btn.querySelector('.stat-icon-inline').className = 'fas fa-play stat-icon-inline';
+        btn.querySelector('.stat-value').textContent = 'Play';
+        btn.title = 'Play Lottie';
+    } else {
+        btn.classList.remove('playing');
+        btn.querySelector('.stat-icon-inline').className = 'fas fa-pause stat-icon-inline';
+        btn.querySelector('.stat-value').textContent = 'Stop';
+        btn.title = 'Stop Lottie';
     }
     
-    // Close on overlay click
-    if (elements.detailModal) {
-        elements.detailModal.addEventListener('click', (e) => {
-            if (e.target === elements.detailModal) {
-                closeModal();
-            }
-        });
-    }
+    // Update all lottie players
+    document.querySelectorAll('lottie-player').forEach(player => {
+        if (state.lottiePlaying) {
+            player.play?.();
+        } else {
+            player.pause?.();
+        }
+    });
     
-    // Close on Escape key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && elements.detailModal && elements.detailModal.style.display === 'flex') {
-            closeModal();
+    // Also update mini lotties in modal
+    document.querySelectorAll('.slug-mini-card lottie-player').forEach(player => {
+        if (state.lottiePlaying) {
+            player.play?.();
+        } else {
+            player.pause?.();
         }
     });
 }
 
-// ==================== MODAL FUNCTIONS ====================
-function openModal() {
-    if (elements.detailModal) {
-        elements.detailModal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+// ==================== FILTER FUNCTIONS ====================
+function toggleFilterPanel() {
+    const panel = elements.filterPanel;
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        renderFilterChips();
+    } else {
+        panel.style.display = 'none';
     }
 }
 
-function closeModal() {
-    if (elements.detailModal) {
-        elements.detailModal.style.display = 'none';
-        document.body.style.overflow = '';
+async function loadAllNames() {
+    try {
+        const response = await fetch('/gift-scam/api/stats');
+        const data = await response.json();
+        if (data.success) {
+            // Fetch all names from first API call
+            const listResponse = await fetch('/gift-scam/api/list?limit=1');
+            const listData = await listResponse.json();
+            if (listData.success && listData.total > 0) {
+                // Get unique names from the gifts we have
+                const names = new Set();
+                state.gifts.forEach(g => names.add(g.name));
+                state.allNames = Array.from(names).sort();
+            }
+        }
+    } catch (e) {
+        console.error('Error loading names:', e);
     }
+}
+
+function collectAllNamesFromGifts() {
+    const names = new Set();
+    state.gifts.forEach(g => names.add(g.name));
+    // Also collect from all loaded data
+    return Array.from(names).sort();
+}
+
+function renderFilterChips() {
+    if (!elements.filterList) return;
+    
+    // Collect names from current gifts
+    const names = collectAllNamesFromGifts();
+    state.allNames = names;
+    
+    elements.filterList.innerHTML = names.map(name => `
+        <div class="filter-chip ${state.selectedFilterName === name ? 'selected' : ''}" 
+             data-name="${escapeHtml(name)}"
+             onclick="selectFilterChip('${escapeHtml(name).replace(/'/g, "\\'")}')">
+            ${escapeHtml(name)}
+        </div>
+    `).join('');
+}
+
+function selectFilterChip(name) {
+    state.selectedFilterName = state.selectedFilterName === name ? '' : name;
+    renderFilterChips();
+}
+
+function applyFilter() {
+    state.filterName = state.selectedFilterName;
+    state.currentPage = 1;
+    elements.filterPanel.style.display = 'none';
+    loadGifts();
+    showToast(`Filter: ${state.filterName || 'Semua'}`, 'info');
+}
+
+function resetFilter() {
+    state.selectedFilterName = '';
+    state.filterName = '';
+    state.currentPage = 1;
+    renderFilterChips();
+    elements.filterPanel.style.display = 'none';
+    loadGifts();
+    showToast('Filter direset', 'info');
 }
 
 // ==================== API CALLS ====================
 async function loadStats() {
     try {
         const response = await fetch('/gift-scam/api/stats');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        
         if (data.success && data.stats) {
             animateValue(elements.totalGifts, 0, data.stats.total, 1000);
             animateValue(elements.uniqueGifts, 0, data.stats.unique, 1000);
-            
-            // Update header count
-            if (elements.headerCount) {
-                elements.headerCount.textContent = `${data.stats.total} gifts`;
-            }
+            if (elements.headerCount) elements.headerCount.textContent = `${data.stats.total} gifts`;
         }
-    } catch (error) {
-        console.error('Error loading stats:', error);
-        // Don't show error for stats, just log it
-    }
+    } catch (error) { console.error('Stats error:', error); }
 }
 
 async function loadGifts() {
     if (state.isLoading) return;
-    
     state.isLoading = true;
     showLoading(true);
     hideAllStates();
-    
+
     try {
         const params = new URLSearchParams({
             page: state.currentPage,
@@ -227,33 +249,40 @@ async function loadGifts() {
             search: state.searchQuery
         });
         
-        console.log(`📡 Fetching: /gift-scam/api/list?${params}`);
+        const url = `/gift-scam/api/list?${params}`;
+        console.log(`📡 ${url}`);
         
-        const response = await fetch(`/gift-scam/api/list?${params}`);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         
         const data = await response.json();
-        console.log('📦 Response:', data);
         
         if (data.success) {
-            state.gifts = data.data;
-            state.totalPages = data.total_pages;
+            let filteredGifts = data.data;
             
-            if (data.data.length === 0) {
+            // Apply name filter client-side
+            if (state.filterName) {
+                filteredGifts = data.data.filter(g => g.name === state.filterName);
+            }
+            
+            state.gifts = filteredGifts;
+            state.totalPages = Math.max(1, Math.ceil(filteredGifts.length / state.limit));
+            
+            if (filteredGifts.length === 0) {
                 showEmpty();
             } else {
-                renderGifts(data.data);
-                updatePagination(data);
+                renderGifts(filteredGifts);
+                updatePaginationFromData(filteredGifts.length, data.total);
             }
+            
+            // Update all names for filter
+            state.allNames = collectAllNamesFromGifts();
         } else {
             showError(data.error || 'Gagal memuat data');
         }
     } catch (error) {
-        console.error('❌ Error loading gifts:', error);
-        showError(`Gagal terhubung ke server. ${error.message}`);
+        console.error('❌ Error:', error);
+        showError(`Gagal terhubung. ${error.message}`);
     } finally {
         state.isLoading = false;
         showLoading(false);
@@ -263,63 +292,89 @@ async function loadGifts() {
 async function loadGiftDetail(slug) {
     try {
         showToast('Memuat detail...', 'info');
-        
         const response = await fetch(`/gift-scam/api/detail/${encodeURIComponent(slug)}`);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        
         if (data.success) {
             showDetailModal(data.data);
         } else {
             showToast(data.error || 'Gagal memuat detail', 'error');
         }
     } catch (error) {
-        console.error('Error loading detail:', error);
-        showToast('Gagal memuat detail gift', 'error');
+        showToast('Gagal memuat detail', 'error');
     }
 }
 
-// ==================== RENDER FUNCTIONS ====================
+// ==================== SLUG SCANNER ====================
+function extractSlugsFromText(text) {
+    if (!text) return [];
+    // Pattern untuk mencocokkan slug NFT di text
+    const pattern = /([A-Za-z][A-Za-z0-9]+-\d+)/g;
+    const matches = text.match(pattern) || [];
+    // Filter unique
+    return [...new Set(matches)];
+}
+
+function scanSlugsInText(text, container) {
+    const slugs = extractSlugsFromText(text);
+    
+    if (slugs.length === 0) {
+        container.innerHTML = '<div class="slug-scanner-empty">Tidak ada slug NFT ditemukan</div>';
+        return;
+    }
+    
+    const scrollContainer = document.createElement('div');
+    scrollContainer.className = 'slug-scroll-container';
+    
+    slugs.forEach(slug => {
+        const lottieUrl = `https://nft.fragment.com/gift/${slug}.lottie.json`;
+        const parts = slug.rsplit('-', 1);
+        const name = parts[0] || slug;
+        
+        const miniCard = document.createElement('div');
+        miniCard.className = 'slug-mini-card';
+        miniCard.title = `Klik untuk detail ${slug}`;
+        miniCard.innerHTML = `
+            <lottie-player src="${escapeHtml(lottieUrl)}" background="transparent" speed="1" 
+                style="width:60px;height:60px;margin:0 auto;" loop ${state.lottiePlaying ? 'autoplay' : ''}>
+            </lottie-player>
+            <div class="slug-mini-name">${escapeHtml(name)}</div>
+        `;
+        
+        miniCard.addEventListener('click', (e) => {
+            e.stopPropagation();
+            loadGiftDetail(slug);
+        });
+        
+        scrollContainer.appendChild(miniCard);
+    });
+    
+    container.innerHTML = '';
+    container.appendChild(scrollContainer);
+}
+
+// ==================== RENDER ====================
 function renderGifts(gifts) {
     if (!elements.giftGrid) return;
-    
     elements.giftGrid.style.display = 'grid';
     elements.giftGrid.innerHTML = '';
-    
     gifts.forEach((gift, index) => {
         const card = createGiftCard(gift, index);
         elements.giftGrid.appendChild(card);
     });
-    
-    // Trigger animation
     animateCards();
 }
 
 function createGiftCard(gift, index) {
     const card = document.createElement('div');
     card.className = 'gift-card';
-    card.style.animationDelay = `${index * 0.05}s`;
-    card.setAttribute('data-slug', gift.slug);
-    card.setAttribute('title', `Klik untuk detail ${gift.name}`);
+    card.style.animationDelay = `${index * 0.03}s`;
     
     card.innerHTML = `
-        <div class="card-badge">
-            <i class="fas fa-gift"></i> #${gift.id || '?'}
-        </div>
+        <div class="card-badge"><i class="fas fa-gift"></i> #${gift.id || '?'}</div>
         <div class="card-lottie-container">
-            <lottie-player
-                src="${escapeHtml(gift.lottie_url)}"
-                background="transparent"
-                speed="1"
-                style="width: 100%; height: 100%;"
-                loop
-                autoplay
-                mode="normal"
-            >
+            <lottie-player src="${escapeHtml(gift.lottie_url)}" background="transparent" speed="1"
+                style="width:100%;height:100%;" loop ${state.lottiePlaying ? 'autoplay' : ''} mode="normal">
             </lottie-player>
         </div>
         <h3 class="card-name">${escapeHtml(gift.name)}</h3>
@@ -327,12 +382,7 @@ function createGiftCard(gift, index) {
         ${gift.number ? `<span class="card-number">#${escapeHtml(gift.number)}</span>` : ''}
     `;
     
-    // Click event untuk detail
-    card.addEventListener('click', (e) => {
-        e.preventDefault();
-        loadGiftDetail(gift.slug);
-    });
-    
+    card.addEventListener('click', () => loadGiftDetail(gift.slug));
     return card;
 }
 
@@ -340,100 +390,96 @@ function showDetailModal(gift) {
     if (!elements.modalTitle || !elements.modalBody) return;
     
     elements.modalTitle.textContent = `🎁 ${gift.name}`;
+    const msgLink = `https://t.me/listgiftkotor/${gift.message_id}`;
     
     elements.modalBody.innerHTML = `
         <div class="detail-lottie-wrapper">
-            <lottie-player
-                src="${escapeHtml(gift.lottie_url)}"
-                background="transparent"
-                speed="1"
-                style="width: 200px; height: 200px; margin: 0 auto;"
-                loop
-                autoplay
-            >
+            <lottie-player src="${escapeHtml(gift.lottie_url)}" background="transparent" speed="1"
+                style="width:200px;height:200px;margin:0 auto;" loop ${state.lottiePlaying ? 'autoplay' : ''}>
             </lottie-player>
         </div>
         
         <div class="detail-info-card">
             <div class="detail-info-row">
-                <div class="detail-info-icon">
-                    <i class="fas fa-tag"></i>
-                </div>
+                <div class="detail-info-icon"><i class="fas fa-tag"></i></div>
                 <div class="detail-info-content">
                     <div class="detail-info-label">Slug</div>
                     <div class="detail-info-value">${escapeHtml(gift.slug)}</div>
                 </div>
             </div>
-            
             <div class="detail-info-row">
-                <div class="detail-info-icon">
-                    <i class="fas fa-hashtag"></i>
-                </div>
+                <div class="detail-info-icon"><i class="fas fa-hashtag"></i></div>
                 <div class="detail-info-content">
                     <div class="detail-info-label">Message ID</div>
                     <div class="detail-info-value">${gift.message_id}</div>
                 </div>
             </div>
-            
             <div class="detail-info-row">
-                <div class="detail-info-icon">
-                    <i class="fas fa-link"></i>
-                </div>
+                <div class="detail-info-icon"><i class="fas fa-link"></i></div>
                 <div class="detail-info-content">
                     <div class="detail-info-label">Fragment URL</div>
                     <div class="detail-info-value">
-                        <a href="${escapeHtml(gift.fragment_url)}" target="_blank" rel="noopener">
-                            ${escapeHtml(gift.fragment_url)}
-                        </a>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="detail-info-row">
-                <div class="detail-info-icon">
-                    <i class="fas fa-film"></i>
-                </div>
-                <div class="detail-info-content">
-                    <div class="detail-info-label">Lottie URL</div>
-                    <div class="detail-info-value">
-                        <a href="${escapeHtml(gift.lottie_url)}" target="_blank" rel="noopener">
-                            Download Lottie
-                        </a>
+                        <a href="${escapeHtml(gift.fragment_url)}" target="_blank" rel="noopener">Buka Fragment</a>
                     </div>
                 </div>
             </div>
         </div>
         
+        <!-- Visit Message Button -->
+        <div style="text-align:center;">
+            <a href="${msgLink}" target="_blank" rel="noopener" class="visit-message-btn">
+                <i class="fas fa-external-link-alt"></i> Visit Message
+            </a>
+        </div>
+        
+        <!-- Slug Scanner Section -->
         ${gift.text ? `
-            <div class="detail-text-preview">
+            <div class="slug-scanner-section">
+                <div class="slug-scanner-header">
+                    <span class="slug-scanner-title">🔍 NFT Slugs dalam pesan:</span>
+                    <button class="slug-scan-btn" id="slugScanBtn">
+                        <i class="fas fa-search"></i> Scan
+                    </button>
+                </div>
+                <div id="slugScannerResult">
+                    <div class="slug-scanner-empty">Klik Scan untuk mencari slug</div>
+                </div>
+            </div>
+            
+            <div class="detail-text-preview" style="margin-top:12px;">
                 <strong>📄 Text Content:</strong>
                 ${escapeHtml(gift.text)}
             </div>
         ` : ''}
     `;
     
+    // Add scan button event
+    setTimeout(() => {
+        const scanBtn = document.getElementById('slugScanBtn');
+        const resultDiv = document.getElementById('slugScannerResult');
+        if (scanBtn && resultDiv && gift.text) {
+            scanBtn.addEventListener('click', () => {
+                scanSlugsInText(gift.text, resultDiv);
+            });
+        }
+    }, 100);
+    
     openModal();
 }
 
-function updatePagination(data) {
+function updatePaginationFromData(filteredCount, totalCount) {
     if (!elements.pagination) return;
-    
-    elements.currentPage.textContent = data.page;
-    elements.totalPages.textContent = data.total_pages;
-    elements.totalItems.textContent = data.total;
-    
-    if (elements.prevBtn) elements.prevBtn.disabled = !data.has_prev;
-    if (elements.nextBtn) elements.nextBtn.disabled = !data.has_next;
-    
-    elements.pagination.style.display = data.total_pages > 1 ? 'block' : 'none';
+    elements.currentPage.textContent = state.currentPage;
+    elements.totalPages.textContent = state.totalPages;
+    elements.totalItems.textContent = state.filterName ? filteredCount : totalCount;
+    if (elements.prevBtn) elements.prevBtn.disabled = state.currentPage <= 1;
+    if (elements.nextBtn) elements.nextBtn.disabled = state.currentPage >= state.totalPages;
+    elements.pagination.style.display = state.totalPages > 1 ? 'block' : 'none';
 }
 
-// ==================== UI STATE MANAGEMENT ====================
+// ==================== UI STATE ====================
 function hideAllStates() {
-    if (elements.giftGrid) {
-        elements.giftGrid.style.display = 'none';
-        elements.giftGrid.innerHTML = '';
-    }
+    if (elements.giftGrid) { elements.giftGrid.style.display = 'none'; elements.giftGrid.innerHTML = ''; }
     if (elements.errorState) elements.errorState.style.display = 'none';
     if (elements.emptyState) elements.emptyState.style.display = 'none';
     if (elements.pagination) elements.pagination.style.display = 'none';
@@ -453,16 +499,10 @@ function showEmpty() {
 
 // ==================== EVENT HANDLERS ====================
 function handleSearch() {
-    if (!elements.searchInput) return;
-    
-    const query = elements.searchInput.value.trim();
+    const query = elements.searchInput?.value.trim() || '';
     state.searchQuery = query;
     state.currentPage = 1;
-    
-    if (elements.clearBtn) {
-        elements.clearBtn.style.display = query ? 'inline-flex' : 'none';
-    }
-    
+    if (elements.clearBtn) elements.clearBtn.style.display = query ? 'inline-flex' : 'none';
     loadGifts();
 }
 
@@ -471,11 +511,10 @@ function handleClearSearch() {
     state.searchQuery = '';
     state.currentPage = 1;
     if (elements.clearBtn) elements.clearBtn.style.display = 'none';
-    
     loadGifts();
 }
 
-// ==================== UTILITY FUNCTIONS ====================
+// ==================== UTILS ====================
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -484,71 +523,36 @@ function escapeHtml(text) {
 }
 
 function animateCards() {
-    const cards = document.querySelectorAll('.gift-card');
-    
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
-                observer.unobserve(entry.target);
-            }
-        });
-    }, { threshold: 0.1 });
-    
-    cards.forEach((card, index) => {
+    document.querySelectorAll('.gift-card').forEach((card, i) => {
         card.style.opacity = '0';
-        card.style.transform = 'translateY(30px)';
-        card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-        observer.observe(card);
+        card.style.transform = 'translateY(20px)';
+        card.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+        setTimeout(() => { card.style.opacity = '1'; card.style.transform = 'translateY(0)'; }, i * 30);
     });
 }
 
 function animateValue(element, start, end, duration) {
     if (!element) return;
-    
     const startTime = performance.now();
-    
-    function update(currentTime) {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        const value = Math.floor(progress * (end - start) + start);
-        
-        element.textContent = value;
-        
-        if (progress < 1) {
-            requestAnimationFrame(update);
-        }
+    function update(now) {
+        const progress = Math.min((now - startTime) / duration, 1);
+        element.textContent = Math.floor(progress * (end - start) + start);
+        if (progress < 1) requestAnimationFrame(update);
     }
-    
     requestAnimationFrame(update);
 }
 
-function scrollToTop() {
-    window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-    });
-}
+function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
-// ==================== ERROR HANDLING ====================
-// Handle Lottie player errors
-document.addEventListener('error', (event) => {
-    if (event.target.tagName === 'LOTTIE-PLAYER') {
-        console.warn('⚠️ Lottie failed to load:', event.target.src);
-        event.target.style.display = 'none';
-        
-        // Add fallback icon
-        const fallback = document.createElement('div');
-        fallback.style.cssText = 'font-size: 80px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;';
-        fallback.textContent = '🎁';
-        
-        if (event.target.parentElement) {
-            event.target.parentElement.appendChild(fallback);
-        }
+// Lottie error fallback
+document.addEventListener('error', (e) => {
+    if (e.target.tagName === 'LOTTIE-PLAYER') {
+        e.target.style.display = 'none';
+        const fb = document.createElement('div');
+        fb.style.cssText = 'font-size:60px;display:flex;align-items:center;justify-content:center;width:100%;height:100%;';
+        fb.textContent = '🎁';
+        e.target.parentElement?.appendChild(fb);
     }
 }, true);
 
-// Log initialization
-console.log('✅ Gift Scanned Gallery initialized!');
-console.log('📍 API Base:', window.location.origin + '/gift-scam');
+console.log('✅ Gift Scanned Gallery v2 Ready');
