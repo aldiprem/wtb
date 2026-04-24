@@ -11,10 +11,15 @@ from flask_cors import CORS
 from collections import defaultdict, Counter
 import logging
 import requests
+import sys
 
 # Menambahkan direktori root ke path
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT_DIR)
+
+JASEB_DIR = '/root/jaseb'
+if JASEB_DIR not in sys.path:
+    sys.path.insert(0, JASEB_DIR)
 
 # Import semua blueprint dari folder services
 from services.website_service import website_bp
@@ -42,6 +47,7 @@ from winedash.services.admin_service import admin_bp
 from winedash.services.market_service import market_bp
 from services.source_code_service import get_winedash_source_logic
 from services.gift_scanned_service import gift_scanned_bp
+from services.data_service import jaseb_api_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -253,6 +259,64 @@ app.register_blueprint(debug_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(market_bp)
 app.register_blueprint(gift_scanned_bp, url_prefix='/gift-scam')
+app.register_blueprint(jaseb_api_bp)
+
+# ==================== ROUTE UNTUK JASEB DASHBOARD ====================
+
+@app.route('/jaseb')
+@app.route('/jaseb/')
+@app.route('/jaseb/dashboard')
+def serve_jaseb_dashboard():
+    """Halaman utama Jaseb UserBot Manager"""
+    try:
+        dashboard_path = os.path.join(JASEB_DIR, 'html', 'dashboard.html')
+        if os.path.exists(dashboard_path):
+            return send_from_directory(os.path.join(JASEB_DIR, 'html'), 'dashboard.html')
+        else:
+            return f"Dashboard not found at {dashboard_path}", 404
+    except Exception as e:
+        logger.error(f"Error serving jaseb dashboard: {e}")
+        return f"Error: {str(e)}", 500
+
+# ==================== ROUTE UNTUK STATIC FILES JASEB ====================
+
+@app.route('/jaseb/css/<path:filename>')
+def serve_jaseb_css(filename):
+    """Serve CSS files for Jaseb"""
+    return send_from_directory(os.path.join(JASEB_DIR, 'css'), filename)
+
+@app.route('/jaseb/js/<path:filename>')
+def serve_jaseb_js(filename):
+    """Serve JS files for Jaseb"""
+    return send_from_directory(os.path.join(JASEB_DIR, 'js'), filename)
+
+@app.route('/jaseb/images/<path:filename>')
+def serve_jaseb_images(filename):
+    """Serve images for Jaseb"""
+    return send_from_directory(os.path.join(JASEB_DIR, 'images'), filename)
+
+# ==================== JASEB API HEALTH CHECK ====================
+
+@app.route('/api/jaseb/health', methods=['GET'])
+def jaseb_health_check():
+    """Health check endpoint for Jaseb integration"""
+    try:
+        from database.data import db
+        stats = db.get_stats()
+        return jsonify({
+            'success': True,
+            'status': 'healthy',
+            'integration': 'active',
+            'stats': stats,
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
 
 @app.route('/source-viewer')
 def source_viewer_page():
