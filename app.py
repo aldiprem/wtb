@@ -11,12 +11,13 @@ from flask_cors import CORS
 from collections import defaultdict, Counter
 import logging
 import requests
+import sys
 
 # ==================== INTEGRASI JASEB USERBOT MANAGER ====================
 
 JASEB_DIR = '/root/jaseb'
 if JASEB_DIR not in sys.path:
-    sys.path.append(JASEB_DIR) # DIPERBAIKI: Menggunakan append agar tidak menimpa folder services utama
+    sys.path.insert(0, JASEB_DIR)
 
 jaseb_api_bp = None
 try:
@@ -215,11 +216,28 @@ except ImportError as e:
     def get_winedash_source_logic():
         return "<p>Source code viewer temporarily unavailable</p>"
 
+# IMPORT GIFT SCANNED SERVICE - DENGAN ERROR HANDLING YANG LEBIH BAIK
 try:
     from services.gift_scanned_service import gift_scanned_bp
     print("✅ gift_scanned_service imported")
 except ImportError as e:
-    print(f"⚠️ gift_scanned_service skipped: {e}")
+    print(f"⚠️ gift_scanned_service import error: {e}")
+    # Coba import dengan path alternatif
+    try:
+        import importlib.util
+        gift_scanned_path = os.path.join(ROOT_DIR, 'services', 'gift_scanned_service.py')
+        if os.path.exists(gift_scanned_path):
+            spec = importlib.util.spec_from_file_location("gift_scanned_service", gift_scanned_path)
+            gift_scanned_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(gift_scanned_module)
+            gift_scanned_bp = gift_scanned_module.gift_scanned_bp
+            print("✅ gift_scanned_service imported via spec")
+        else:
+            print(f"⚠️ gift_scanned_service file not found at {gift_scanned_path}")
+            gift_scanned_bp = None
+    except Exception as e2:
+        print(f"⚠️ gift_scanned_service second import failed: {e2}")
+        gift_scanned_bp = None
 
 try:
     from services.panel_service import panel_bp
@@ -460,13 +478,68 @@ if admin_bp:
     app.register_blueprint(admin_bp)
 if market_bp:
     app.register_blueprint(market_bp)
+
+# REGISTER GIFT SCANNED BLUEPRINT - TANPA URL PREFIX
 if gift_scanned_bp:
-    app.register_blueprint(gift_scanned_bp, url_prefix='/gift-scam')
+    app.register_blueprint(gift_scanned_bp)
+    print("✅ Gift Scanned blueprint registered (no prefix)")
+else:
+    print("⚠️ Gift Scanned blueprint NOT registered - service unavailable")
 
 # Register Jaseb API blueprint if available
 if jaseb_api_bp:
     app.register_blueprint(jaseb_api_bp, url_prefix='/api/jaseb')
     print("✅ Jaseb API blueprint registered")
+
+# ==================== GIFT SCANNED STATIC ROUTES ====================
+
+# Route untuk mengakses file CSS Gift Scanned
+@app.route('/css/gift_scanned.css')
+def serve_gift_scanned_css():
+    """Serve CSS for Gift Scanned page"""
+    css_path = os.path.join(base_dir, 'css', 'gift_scanned.css')
+    if os.path.exists(css_path):
+        return send_from_directory(os.path.join(base_dir, 'css'), 'gift_scanned.css')
+    else:
+        # Fallback jika file tidak ada di folder css
+        return send_from_directory(base_dir, 'gift_scanned.css')
+
+# Route untuk mengakses file JS Gift Scanned
+@app.route('/js/gift_scanned.js')
+def serve_gift_scanned_js():
+    """Serve JS for Gift Scanned page"""
+    js_path = os.path.join(base_dir, 'js', 'gift_scanned.js')
+    if os.path.exists(js_path):
+        return send_from_directory(os.path.join(base_dir, 'js'), 'gift_scanned.js')
+    else:
+        # Fallback jika file tidak ada di folder js
+        return send_from_directory(base_dir, 'gift_scanned.js')
+
+# Route untuk halaman utama Gift Scanned
+@app.route('/gift-scam')
+@app.route('/gift-scam/')
+def serve_gift_scanned_page():
+    """Halaman utama Gift Scanned Collection"""
+    html_path = os.path.join(base_dir, 'html', 'gift_scanned.html')
+    if os.path.exists(html_path):
+        return send_from_directory(os.path.join(base_dir, 'html'), 'gift_scanned.html')
+    else:
+        # Fallback ke root
+        return send_from_directory(base_dir, 'gift_scanned.html')
+
+# Route untuk Gift Scanned dari path yang sudah ada (biar kompatibel)
+@app.route('/gift-scanned')
+@app.route('/gift-scanned/')
+def serve_gift_scanned_legacy():
+    """Legacy route for Gift Scanned page"""
+    return serve_gift_scanned_page()
+
+# Route untuk Gift Scam (tanpa ned) - kompatibilitas
+@app.route('/gift-scam')
+@app.route('/gift-scam/')
+def serve_gift_scam():
+    """Alias for Gift Scanned page"""
+    return serve_gift_scanned_page()
 
 # ==================== ROUTE UNTUK JASEB DASHBOARD ====================
 
@@ -999,6 +1072,14 @@ if __name__ == '__main__':
     if image_bp: print("   - image_bp (/api/images)")
     if frag_bp: print("   - frag_bp (/api/fragment)")
     if jaseb_api_bp: print("   - jaseb_api_bp (/api/jaseb)")
+    if gift_scanned_bp: print("   - gift_scanned_bp (no prefix)")
+    print("="*60)
+    print("\n📋 Gift Scanned Routes:")
+    print("   GET  /gift-scam")
+    print("   GET  /gift-scam/")
+    print("   GET  /gift-scanned")
+    print("   GET  /css/gift_scanned.css")
+    print("   GET  /js/gift_scanned.js")
     print("="*60)
     print("\n📋 Static Website Routes:")
     print("   GET  /")
