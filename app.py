@@ -1050,6 +1050,367 @@ def serve_image_files(filename):
     """Serve image files including .tgs"""
     return send_from_directory('image', filename)
 
+# ==================== GIFT SCANNED API ROUTES (DIRECT) ====================
+# Ini adalah fallback langsung jika blueprint gagal
+
+def get_gift_db_connection():
+    """Koneksi ke database gift.db"""
+    db_paths = [
+        '/root/gift.db/gift.db',
+        '/root/gift.db',
+        os.path.join(base_dir, 'gift.db', 'gift.db'),
+        os.path.join(base_dir, 'gift.db'),
+    ]
+    
+    for db_path in db_paths:
+        if os.path.exists(db_path) and os.path.isfile(db_path):
+            try:
+                conn = sqlite3.connect(db_path)
+                conn.row_factory = sqlite3.Row
+                print(f"✅ Gift DB connected: {db_path}")
+                return conn
+            except:
+                pass
+    print("❌ Gift DB not found!")
+    return None
+
+@app.route('/gift-scam/api/stats', methods=['GET'])
+def gift_scam_stats():
+    """API stats untuk gift scanned"""
+    conn = get_gift_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Database tidak ditemukan'}), 500
+    
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) as count FROM gift_scanned")
+        total = cur.fetchone()['count']
+        
+        # Hitung unique names
+        cur.execute("SELECT slug FROM gift_scanned")
+        slugs = cur.fetchall()
+        unique_names = set()
+        for row in slugs:
+            parts = row['slug'].rsplit('-', 1)
+            if len(parts) == 2 and parts[1].isdigit():
+                unique_names.add(parts[0])
+            else:
+                unique_names.add(row['slug'])
+        
+        conn.close()
+        return jsonify({
+            'success': True,
+            'stats': {
+                'total': total,
+                'unique': len(unique_names)
+            }
+        })
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/gift-scam/api/names', methods=['GET'])
+def gift_scam_names():
+    """API daftar unique names"""
+    conn = get_gift_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Database tidak ditemukan'}), 500
+    
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT slug FROM gift_scanned")
+        slugs = cur.fetchall()
+        conn.close()
+        
+        name_counts = {}
+        for row in slugs:
+            parts = row['slug'].rsplit('-', 1)
+            name = parts[0] if len(parts) == 2 and parts[1].isdigit() else row['slug']
+            name_counts[name] = name_counts.get(name, 0) + 1
+        
+        sorted_names = sorted(name_counts.keys())
+        
+        return jsonify({
+            'success': True,
+            'names': sorted_names,
+            'name_counts': name_counts
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/gift-scam/api/list', methods=['GET'])
+def gift_scam_list():
+    """API daftar gift dengan pagination"""
+    conn = get_gift_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Database tidak ditemukan', 'data': [], 'total': 0}), 500
+    
+    try:
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 50, type=int)
+        search = request.args.get('search', '', type=str).strip()
+        
+        if page < 1: page = 1
+        if limit > 5000: limit = 5000
+        
+        cur = conn.cursor()
+        
+        # Cek apakah tabel ada
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='gift_scanned'")
+        if not cur.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'error': 'Tabel tidak ditemukan', 'data': [], 'total': 0}), 404
+        
+        # Cek kolom yang ada
+        cur.execute("PRAGMA table_info(gift_scanned)")
+        existing_cols = [col[1] for col in cur.fetchall()]
+        
+        # Build query
+        if search:
+            cur.execute("""
+                SELECT COUNT(*) as total FROM gift_scanned 
+                WHERE slug LIKE ? OR text LIKE ?
+            """, (f'%{search}%', f'%{search}%'))
+        else:
+            cur.execute("SELECT COUNT(*) as total FROM gift_scanned")
+        
+        total = cur.fetchone()['total']
+        
+        offset = (page - 1) * limit
+        
+        if search:
+            cur.execute("""
+                SELECT slug, message_id, text, rowid FROM gift_scanned 
+                WHERE slug LIKE ? OR text LIKE ?
+                ORDER BY slug
+                LIMIT ? OFFSET ?
+            """, (f'%{search}%', f'%{search}%', limit, offset))
+        else:
+            cur.execute("""
+                SELECT slug, message_id, text, rowid FROM gift_scanned 
+                ORDER BY slug
+                LIMIT ? OFFSET ?
+            """, (limit, offset))
+        
+        rows = cur.fetchall()
+        conn.close()
+        
+        gift_list = []
+        for row in rows:
+            slug = row['slug']
+            parts = slug.rsplit('-', 1)
+            gift_name = parts[0] if len(parts) == 2 and parts[1].isdigit() else slug
+            gift_number = parts[1] if len(parts) == 2 and parts[1].isdigit() else ''
+            
+            lottie_url = f"https://nft.fragment.com/gift/{slug}.lottie.json"
+            fragment_url = f"https://nft.fragment.com/gift/{slug}"
+            
+            gift_list.append({
+                'id': row['rowid'],
+                'slug': slug,
+                'name': gift_name,
+                'number': gift_number,
+                'message_id': row['message_id'],
+                'text': row['text'] or '',
+                'lottie_url': lottie_url,
+                'fragment_url': fragment_url,
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': gift_list,
+            'total': total,
+            'page': page,
+            'total_pages': max(1, (total + limit - 1) // limit) if limit > 0 else 1,
+            'has_next': page * limit < total
+        })
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e), 'data': []}), 500
+
+@app.route('/gift-scam/api/detail/<slug>', methods=['GET'])
+def gift_scam_detail(slug):
+    """API detail gift"""
+    conn = get_gift_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Database tidak ditemukan'}), 500
+    
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT slug, message_id, text, rowid, sender_id 
+            FROM gift_scanned WHERE slug = ?
+        """, (slug,))
+        row = cur.fetchone()
+        conn.close()
+        
+        if not row:
+            return jsonify({'success': False, 'error': 'Gift tidak ditemukan'}), 404
+        
+        parts = row['slug'].rsplit('-', 1)
+        gift_name = parts[0] if len(parts) == 2 and parts[1].isdigit() else row['slug']
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'id': row['rowid'],
+                'slug': row['slug'],
+                'name': gift_name,
+                'message_id': row['message_id'],
+                'sender_id': row['sender_id'] if 'sender_id' in row.keys() else None,
+                'text': row['text'] or '',
+                'lottie_url': f"https://nft.fragment.com/gift/{slug}.lottie.json",
+                'fragment_url': f"https://nft.fragment.com/gift/{slug}"
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/gift-scam/api/by-message/<int:message_id>', methods=['GET'])
+def gift_scam_by_message(message_id):
+    """API gift berdasarkan message_id"""
+    conn = get_gift_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Database tidak ditemukan'}), 500
+    
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT slug, message_id, rowid FROM gift_scanned WHERE message_id = ?
+            ORDER BY slug
+        """, (message_id,))
+        rows = cur.fetchall()
+        conn.close()
+        
+        gift_list = []
+        for row in rows:
+            slug = row['slug']
+            parts = slug.rsplit('-', 1)
+            gift_name = parts[0] if len(parts) == 2 and parts[1].isdigit() else slug
+            gift_number = parts[1] if len(parts) == 2 and parts[1].isdigit() else ''
+            
+            gift_list.append({
+                'id': row['rowid'],
+                'slug': slug,
+                'name': gift_name,
+                'number': gift_number,
+                'message_id': row['message_id'],
+                'lottie_url': f"https://nft.fragment.com/gift/{slug}.lottie.json",
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': gift_list,
+            'total': len(gift_list)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/gift-scam/api/by-user/<int:user_id>', methods=['GET'])
+def gift_scam_by_user(user_id):
+    """API gift berdasarkan sender_id"""
+    conn = get_gift_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Database tidak ditemukan'}), 500
+    
+    try:
+        cur = conn.cursor()
+        # Cek apakah kolom sender_id ada
+        cur.execute("PRAGMA table_info(gift_scanned)")
+        cols = [col[1] for col in cur.fetchall()]
+        
+        if 'sender_id' not in cols:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Kolom sender_id tidak ada', 'data': []}), 404
+        
+        cur.execute("""
+            SELECT slug, message_id, rowid, sender_id FROM gift_scanned WHERE sender_id = ?
+            ORDER BY slug
+        """, (user_id,))
+        rows = cur.fetchall()
+        conn.close()
+        
+        gift_list = []
+        for row in rows:
+            slug = row['slug']
+            parts = slug.rsplit('-', 1)
+            gift_name = parts[0] if len(parts) == 2 and parts[1].isdigit() else slug
+            gift_number = parts[1] if len(parts) == 2 and parts[1].isdigit() else ''
+            
+            gift_list.append({
+                'id': row['rowid'],
+                'slug': slug,
+                'name': gift_name,
+                'number': gift_number,
+                'message_id': row['message_id'],
+                'sender_id': row['sender_id'],
+                'lottie_url': f"https://nft.fragment.com/gift/{slug}.lottie.json",
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': gift_list,
+            'total': len(gift_list)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/gift-scam/api/filter', methods=['GET'])
+def gift_scam_filter():
+    """API filter gift berdasarkan nama"""
+    filter_names = request.args.get('names', '', type=str).strip()
+    
+    if not filter_names:
+        return jsonify({'success': False, 'error': 'Parameter names diperlukan', 'data': []}), 400
+    
+    conn = get_gift_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Database tidak ditemukan', 'data': []}), 500
+    
+    try:
+        names_list = [n.strip() for n in filter_names.split(',') if n.strip()]
+        
+        # Build query untuk multiple names
+        like_conditions = ' OR '.join(['slug LIKE ?'] * len(names_list))
+        params = [f'{name}-%' for name in names_list]
+        
+        cur = conn.cursor()
+        cur.execute(f"""
+            SELECT slug, message_id, text, rowid FROM gift_scanned 
+            WHERE {like_conditions}
+            ORDER BY slug
+        """, params)
+        
+        rows = cur.fetchall()
+        conn.close()
+        
+        gift_list = []
+        for row in rows:
+            slug = row['slug']
+            parts = slug.rsplit('-', 1)
+            gift_name = parts[0] if len(parts) == 2 and parts[1].isdigit() else slug
+            gift_number = parts[1] if len(parts) == 2 and parts[1].isdigit() else ''
+            
+            gift_list.append({
+                'id': row['rowid'],
+                'slug': slug,
+                'name': gift_name,
+                'number': gift_number,
+                'message_id': row['message_id'],
+                'text': row['text'] or '',
+                'lottie_url': f"https://nft.fragment.com/gift/{slug}.lottie.json",
+                'fragment_url': f"https://nft.fragment.com/gift/{slug}"
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': gift_list,
+            'total': len(gift_list),
+            'filter_names': names_list
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e), 'data': []}), 500
+
 # ==================== MAIN ====================
 
 if __name__ == '__main__':
