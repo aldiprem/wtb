@@ -11,7 +11,7 @@ from flask_cors import CORS
 from collections import defaultdict, Counter
 import logging
 import requests
-import sqlite
+import sqlite3
 import sys
 
 # ==================== INTEGRASI JASEB USERBOT MANAGER ====================
