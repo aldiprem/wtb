@@ -49,12 +49,6 @@ def get_db_connection():
         logger.error(f"❌ Gagal koneksi database: {e}")
         return None
 
-@gift_scanned_bp.route('/')
-def serve_gift_scanned_page():
-    """Serve halaman gift scanned"""
-    html_dir = os.path.join(BASE_DIR, 'html')
-    return send_from_directory(html_dir, 'gift_scanned.html')
-
 @gift_scanned_bp.route('/api/list')
 def api_get_gifts():
     """
