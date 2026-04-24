@@ -179,6 +179,41 @@ kill_winedash_bot() {
     fi
 }
 
+# ==================== FUNGSI MEMATIKAN JASEB BOT ====================
+kill_jaseb_bot() {
+    echo -e "${YELLOW}🔍 Memeriksa Jaseb Bot...${NC}"
+    
+    if [ -f "/tmp/jaseb_bot.pid" ]; then
+        PID=$(cat /tmp/jaseb_bot.pid)
+        if kill -0 $PID 2>/dev/null; then
+            echo -e "${YELLOW}📡 Menghentikan Jaseb Bot (PID: $PID)...${NC}"
+            kill -15 $PID 2>/dev/null
+            sleep 2
+            if kill -0 $PID 2>/dev/null; then
+                kill -9 $PID 2>/dev/null
+            fi
+            echo -e "${GREEN}✅ Jaseb Bot dihentikan${NC}"
+        fi
+        rm -f /tmp/jaseb_bot.pid
+    fi
+    
+    PIDS=$(ps aux | grep "/root/jaseb/b.py" | grep -v grep | awk '{print $2}')
+    if [ -n "$PIDS" ]; then
+        for PID in $PIDS; do
+            echo -e "${YELLOW}📡 Menghentikan Jaseb Bot process (PID: $PID)...${NC}"
+            kill -15 $PID 2>/dev/null
+            sleep 1
+            kill -9 $PID 2>/dev/null
+        done
+        echo -e "${GREEN}✅ Jaseb Bot processes dihentikan${NC}"
+    fi
+    
+    if screen -list | grep -q "jaseb_bot"; then
+        screen -S jaseb_bot -X quit 2>/dev/null
+        echo -e "${GREEN}✅ Screen session jaseb_bot dihentikan${NC}"
+    fi
+}
+
 # ==================== FUNGSI MEMBERSIHKAN PID FILES ====================
 clean_pid_files() {
     for pid_file in flask_server.pid fragment_bot.pid giveaway_bot.pid winedash_bot.pid; do
@@ -198,6 +233,7 @@ kill_port_5050
 kill_fragment_bot
 kill_giveaway_bot
 kill_winedash_bot
+kill_jaseb_bot
 clean_pid_files
 
 # Tunggu sebentar agar proses benar-benar mati
@@ -345,6 +381,22 @@ else
     WINEDASH_PID="N/A"
 fi
 
+# ==================== JALANKAN JASEB BOT ====================
+echo -e "${BLUE}🤖 Menjalankan Jaseb Bot...${NC}"
+if [ -f "/root/jaseb/b.py" ]; then
+    pip3 install telethon python-dotenv > /dev/null 2>&1
+    
+    cd /root/jaseb
+    nohup python3 b.py > /root/wtb/logs/jaseb_bot.log 2>&1 &
+    JASEB_PID=$!
+    echo $JASEB_PID > /tmp/jaseb_bot.pid
+    cd /root/wtb
+    echo -e "${GREEN}✅ Jaseb Bot berjalan dengan PID: $JASEB_PID${NC}"
+else
+    echo -e "${YELLOW}⚠️  Jaseb Bot tidak ditemukan di /root/jaseb/b.py${NC}"
+    JASEB_PID="N/A"
+fi
+
 # ==================== OUTPUT STATUS ====================
 echo ""
 echo -e "${GREEN}========================================${NC}"
@@ -355,6 +407,7 @@ echo -e "🎮 Games Module   : Terintegrasi di Flask (blueprint)"
 echo -e "🤖 Fragment Bot   : PID $BOT_PID"
 echo -e "🎁 Giveaway Bot   : PID $GIVEAWAY_PID"
 echo -e "💎 Winedash Bot   : PID $WINEDASH_PID"
+echo -e "🤖 Jaseb Bot      : PID $JASEB_PID"
 echo -e ""
 echo -e "${YELLOW}🌐 Akses: https://companel.shop${NC}"
 echo -e "${YELLOW}🌐 Akses Games: https://companel.shop/games${NC}"

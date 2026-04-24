@@ -222,6 +222,13 @@ try:
 except ImportError as e:
     print(f"⚠️ gift_scanned_service skipped: {e}")
 
+try:
+    from services.panel_service import panel_bp
+    print("✅ panel_service imported")
+except ImportError as e:
+    print(f"⚠️ panel_service skipped: {e}")
+    panel_bp = None
+
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
 # Setup logging
