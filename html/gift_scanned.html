@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
+    <title>🎁 Gift Scammer</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/css/gift_scanned.css">
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Lottie Player -->
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memuat koleksi gift...</div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Main Container -->
+    <div class="gift-container">
+        
+        <!-- Header -->
+        <header class="gift-header">
+            <div class="header-icon">
+                <i class="fas fa-gift"></i>
+            </div>
+            <div class="header-title">
+                <h1>Gift Collection</h1>
+                <span class="gift-count-badge" id="headerCount">- gifts</span>
+            </div>
+        </header>
+
+        <!-- Stats Section -->
+        <div class="stats-section">
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-box"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="totalGifts">0</span>
+                        <span class="stat-label">Total Gift</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="uniqueGifts">0</span>
+                        <span class="stat-label">Unique Gift</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Section -->
+        <div class="search-section">
+            <div class="search-box">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" 
+                       id="searchInput" 
+                       class="search-input" 
+                       placeholder="Cari gift... (contoh: PlushPepe)"
+                       autocomplete="off">
+                <button id="searchBtn" class="search-btn">
+                    <i class="fas fa-search"></i>
+                </button>
+                <button id="clearBtn" class="search-btn clear-btn" style="display: none;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="error-section" style="display: none;">
+            <div class="error-card">
+                <div class="error-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h3>Gagal Memuat Data</h3>
+                <p id="errorMessage">Terjadi kesalahan saat mengambil data gift</p>
+                <button onclick="loadGifts()" class="retry-btn">
+                    <i class="fas fa-redo"></i>
+                    <span>Coba Lagi</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-section" style="display: none;">
+            <div class="empty-card">
+                <div class="empty-icon">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <h3>Belum Ada Gift</h3>
+                <p>Jalankan perintah <code>/scan</code> di bot Telegram untuk mengumpulkan gift</p>
+            </div>
+        </div>
+
+        <!-- Gift Grid -->
+        <div id="giftGrid" class="gift-grid"></div>
+
+        <!-- Pagination -->
+        <div id="pagination" class="pagination-section" style="display: none;">
+            <div class="pagination-controls">
+                <button id="prevBtn" class="page-btn" disabled>
+                    <i class="fas fa-chevron-left"></i>
+                    <span>Sebelumnya</span>
+                </button>
+                <div class="page-info">
+                    <span id="currentPage">1</span>
+                    <span class="page-divider">/</span>
+                    <span id="totalPages">1</span>
+                </div>
+                <button id="nextBtn" class="page-btn" disabled>
+                    <span>Selanjutnya</span>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            <div class="total-info">
+                Total: <span id="totalItems">0</span> gift
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="gift-footer">
+            <p>© 2024 Gift Collection • Powered by Telegram Bot</p>
+        </footer>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal-overlay" id="detailModal" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Detail Gift</h2>
+                <button class="modal-close" id="modalClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Diisi oleh JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/js/gift_scanned.js"></script>
+</body>
+</html>
