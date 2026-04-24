@@ -5,16 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="HandheldFriendly" content="true">
     <meta name="MobileOptimized" content="width">
-    <title>🎁 Gift Scammer</title>
+    <title>🎁 Gift Collection</title>
     
-    <!-- CSS -->
     <link rel="stylesheet" href="/css/gift_scanned.css">
-    
-    <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
-    <!-- Lottie Player -->
     <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
 </head>
 <body>
@@ -32,130 +27,106 @@
         
         <!-- Header -->
         <header class="gift-header">
-            <div class="header-icon">
-                <i class="fas fa-gift"></i>
-            </div>
+            <div class="header-icon"><i class="fas fa-gift"></i></div>
             <div class="header-title">
                 <h1>Gift Collection</h1>
                 <span class="gift-count-badge" id="headerCount">- gifts</span>
             </div>
         </header>
 
-        <!-- Stats Section -->
+        <!-- Stats Section - Sebaris -->
         <div class="stats-section">
-            <div class="stats-row">
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-box"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-value" id="totalGifts">0</span>
-                        <span class="stat-label">Total Gift</span>
-                    </div>
+            <div class="stats-row-inline">
+                <div class="stat-card-inline">
+                    <i class="fas fa-box stat-icon-inline"></i>
+                    <span class="stat-value" id="totalGifts">0</span>
+                    <span class="stat-label-inline">Total</span>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-star"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-value" id="uniqueGifts">0</span>
-                        <span class="stat-label">Unique Gift</span>
-                    </div>
+                <div class="stat-card-inline">
+                    <i class="fas fa-star stat-icon-inline"></i>
+                    <span class="stat-value" id="uniqueGifts">0</span>
+                    <span class="stat-label-inline">Unique</span>
+                </div>
+                <!-- Toggle Play/Stop -->
+                <div class="stat-card-inline toggle-card" id="togglePlayBtn" title="Stop Lottie">
+                    <i class="fas fa-pause stat-icon-inline"></i>
+                    <span class="stat-value" style="font-size:12px;">Stop</span>
+                    <span class="stat-label-inline">Animasi</span>
                 </div>
             </div>
         </div>
 
-        <!-- Search Section -->
-        <div class="search-section">
+        <!-- Search + Filter Section -->
+        <div class="search-filter-section">
             <div class="search-box">
                 <i class="fas fa-search search-icon"></i>
-                <input type="text" 
-                       id="searchInput" 
-                       class="search-input" 
-                       placeholder="Cari gift... (contoh: PlushPepe)"
-                       autocomplete="off">
-                <button id="searchBtn" class="search-btn">
-                    <i class="fas fa-search"></i>
-                </button>
-                <button id="clearBtn" class="search-btn clear-btn" style="display: none;">
-                    <i class="fas fa-times"></i>
-                </button>
+                <input type="text" id="searchInput" class="search-input" placeholder="Cari gift..." autocomplete="off">
+                <button id="searchBtn" class="search-btn"><i class="fas fa-search"></i></button>
+                <button id="clearBtn" class="search-btn clear-btn" style="display:none;"><i class="fas fa-times"></i></button>
+                <button id="filterBtn" class="search-btn filter-btn"><i class="fas fa-filter"></i></button>
+            </div>
+        </div>
+
+        <!-- Filter Panel (Hidden by default) -->
+        <div id="filterPanel" class="filter-panel" style="display:none;">
+            <div class="filter-header">
+                <h3><i class="fas fa-filter"></i> Filter by Name</h3>
+                <button id="filterClose" class="filter-close-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="filter-list" id="filterList"></div>
+            <div class="filter-actions">
+                <button id="filterApply" class="filter-action-btn apply-btn"><i class="fas fa-check"></i> Apply</button>
+                <button id="filterReset" class="filter-action-btn reset-btn"><i class="fas fa-undo"></i> Reset</button>
             </div>
         </div>
 
         <!-- Error State -->
-        <div id="errorState" class="error-section" style="display: none;">
+        <div id="errorState" class="error-section" style="display:none;">
             <div class="error-card">
-                <div class="error-icon">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
+                <div class="error-icon"><i class="fas fa-exclamation-triangle"></i></div>
                 <h3>Gagal Memuat Data</h3>
-                <p id="errorMessage">Terjadi kesalahan saat mengambil data gift</p>
-                <button onclick="loadGifts()" class="retry-btn">
-                    <i class="fas fa-redo"></i>
-                    <span>Coba Lagi</span>
-                </button>
+                <p id="errorMessage">Terjadi kesalahan</p>
+                <button onclick="loadGifts()" class="retry-btn"><i class="fas fa-redo"></i><span>Coba Lagi</span></button>
             </div>
         </div>
 
         <!-- Empty State -->
-        <div id="emptyState" class="empty-section" style="display: none;">
+        <div id="emptyState" class="empty-section" style="display:none;">
             <div class="empty-card">
-                <div class="empty-icon">
-                    <i class="fas fa-inbox"></i>
-                </div>
+                <div class="empty-icon"><i class="fas fa-inbox"></i></div>
                 <h3>Belum Ada Gift</h3>
-                <p>Jalankan perintah <code>/scan</code> di bot Telegram untuk mengumpulkan gift</p>
+                <p>Jalankan <code>/scan</code> di bot Telegram</p>
             </div>
         </div>
 
-        <!-- Gift Grid -->
+        <!-- Gift Grid - 2 per baris -->
         <div id="giftGrid" class="gift-grid"></div>
 
         <!-- Pagination -->
-        <div id="pagination" class="pagination-section" style="display: none;">
+        <div id="pagination" class="pagination-section" style="display:none;">
             <div class="pagination-controls">
-                <button id="prevBtn" class="page-btn" disabled>
-                    <i class="fas fa-chevron-left"></i>
-                    <span>Sebelumnya</span>
-                </button>
-                <div class="page-info">
-                    <span id="currentPage">1</span>
-                    <span class="page-divider">/</span>
-                    <span id="totalPages">1</span>
-                </div>
-                <button id="nextBtn" class="page-btn" disabled>
-                    <span>Selanjutnya</span>
-                    <i class="fas fa-chevron-right"></i>
-                </button>
+                <button id="prevBtn" class="page-btn" disabled><i class="fas fa-chevron-left"></i><span>Prev</span></button>
+                <div class="page-info"><span id="currentPage">1</span><span class="page-divider">/</span><span id="totalPages">1</span></div>
+                <button id="nextBtn" class="page-btn" disabled><span>Next</span><i class="fas fa-chevron-right"></i></button>
             </div>
-            <div class="total-info">
-                Total: <span id="totalItems">0</span> gift
-            </div>
+            <div class="total-info">Total: <span id="totalItems">0</span> gift</div>
         </div>
 
         <!-- Footer -->
-        <footer class="gift-footer">
-            <p>© 2024 Gift Collection • Powered by Telegram Bot</p>
-        </footer>
+        <footer class="gift-footer"><p>© 2024 Gift Collection</p></footer>
     </div>
 
     <!-- Detail Modal -->
-    <div class="modal-overlay" id="detailModal" style="display: none;">
+    <div class="modal-overlay" id="detailModal" style="display:none;">
         <div class="modal-container">
             <div class="modal-header">
                 <h2 class="modal-title" id="modalTitle">Detail Gift</h2>
-                <button class="modal-close" id="modalClose">
-                    <i class="fas fa-times"></i>
-                </button>
+                <button class="modal-close" id="modalClose"><i class="fas fa-times"></i></button>
             </div>
-            <div class="modal-body" id="modalBody">
-                <!-- Diisi oleh JavaScript -->
-            </div>
+            <div class="modal-body" id="modalBody"></div>
         </div>
     </div>
 
-    <!-- JavaScript -->
     <script src="/js/gift_scanned.js"></script>
 </body>
 </html>
