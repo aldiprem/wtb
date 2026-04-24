@@ -41,6 +41,7 @@ from winedash.services.debug_service import debug_bp
 from winedash.services.admin_service import admin_bp
 from winedash.services.market_service import market_bp
 from services.source_code_service import get_winedash_source_logic
+from services.gift_scanned_service import gift_scanned_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -251,6 +252,7 @@ app.register_blueprint(auctions_bp)
 app.register_blueprint(debug_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(market_bp)
+app.register_blueprint(gift_scanned_bp)
 
 @app.route('/source-viewer')
 def source_viewer_page():
@@ -271,6 +273,10 @@ def source_viewer_page():
         return f"Error: {str(e)}", 500
 
 # ==================== WINEDASH ROUTES ====================
+@app.route('/winedash/gift-scammer')
+def serve_gift_scanned():
+    """Halaman Gift Scammer Winedash"""
+    return send_from_directory(os.path.join(base_dir, 'html'), 'gift_scanned.html')
 
 @app.route('/winedash/market-auctions')
 def serve_winedash_market_auctions():
