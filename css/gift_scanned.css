@@ -1575,108 +1575,60 @@ body {
     color: var(--text-muted);
 }
 
-/* ===== SCROLL TO TOP BUTTON - Glassmorphism 3D ===== */
+/* ===== SCROLL TO TOP BUTTON - Glassmorphism 3D Fixed ===== */
 .scroll-to-top-btn {
     position: fixed;
-    bottom: 120px;       /* Jarak dari bawah - lumayan jauh */
-    right: 16px;         /* Rata kanan, dekat sisi kanan */
-    left: auto;          /* Reset left */
-    width: 52px;         /* Lebih besar */
-    height: 52px;        /* Lebih besar */
-    background: rgba(255, 255, 255, 0.25);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    bottom: 20px;       /* Tadi error di sini (kurang titik koma) */
+    right: 20px;
+    width: 50px;         
+    height: 50px;
+    background: var(--bg-card);
+    backdrop-filter: blur(5px) saturate(150%);
+    -webkit-backdrop-filter: blur(5px) saturate(150%);
     border-radius: 50%;
-    border: 1.5px solid rgba(255, 255, 255, 0.35);
-    box-shadow: 
-        0 8px 32px rgba(0, 0, 0, 0.25),
-        inset 0 1px 0 rgba(255, 255, 255, 0.6),
-        inset 0 -1px 0 rgba(255, 255, 255, 0.1),
-        inset 0 0 25px 8px rgba(255, 255, 255, 0.4);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 999;
+    z-index: 9999;
     opacity: 0;
     visibility: hidden;
-    transform: translateY(30px) scale(0.8);
-    transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    overflow: hidden;
+    transform: translateY(100px) scale(0.5); 
+    transition: all 0.4s cubic-bezier(0.03, -0.46, 1, 1.49);
 }
 
-/* Garis highlight horizontal atas - GLASS EFFECT */
-.scroll-to-top-btn::before {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: 15%;
-    right: 15%;
-    height: 1px;
-    background: linear-gradient(
-        90deg,
-        transparent 0%,
-        rgba(255, 255, 255, 0.9) 30%,
-        rgba(255, 255, 255, 0.9) 70%,
-        transparent 100%
-    );
-    border-radius: 1px;
-}
-
-/* Garis highlight vertikal kiri - GLASS EFFECT */
 .scroll-to-top-btn::after {
-    content: '';
+    content: "";
     position: absolute;
-    top: 15%;
-    left: 2px;
-    bottom: 15%;
-    width: 1px;
-    background: linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 0.7) 0%,
-        transparent 50%,
-        rgba(255, 255, 255, 0.2) 100%
-    );
-    border-radius: 1px;
+    inset: 0;
+    border-radius: 50%;
+    padding: 1.5px;
+    background: linear-gradient(160deg, 
+        rgba(255, 255, 255, 0.3) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 65%, 
+        rgba(255, 255, 255, 0.3) 100%);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
-/* Icon panah */
-.scroll-to-top-btn i {
-    font-size: 22px;
-    color: rgba(255, 255, 255, 0.95);
-    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-    position: relative;
-    z-index: 2;
-    transition: transform 0.25s ease;
-}
-
-/* Hover effect */
-.scroll-to-top-btn:hover {
-    background: rgba(255, 255, 255, 0.4);
-    border-color: rgba(255, 255, 255, 0.6);
-    box-shadow: 
-        0 12px 40px rgba(0, 0, 0, 0.35),
-        inset 0 1px 0 rgba(255, 255, 255, 0.7),
-        inset 0 -1px 0 rgba(255, 255, 255, 0.15),
-        inset 0 0 35px 12px rgba(255, 255, 255, 0.6);
-    transform: translateY(-3px) scale(1.08);
-}
-
-.scroll-to-top-btn:hover i {
-    transform: translateY(-3px);
-}
-
-/* Active/Click */
-.scroll-to-top-btn:active {
-    transform: scale(0.9);
-    transition: transform 0.1s ease;
-}
-
-/* Show state */
+/* State Aktif */
+.scroll-to-top-btn.active,
 .scroll-to-top-btn.visible {
     opacity: 1;
     visibility: visible;
     transform: translateY(0) scale(1);
+}
+
+/* Icon (Tambahkan ini agar icon panah terlihat) */
+.scroll-to-top-btn i {
+    color: white;
+    font-size: 20px;
+    position: relative;
+    z-index: 2;
 }
 
 /* Tablet */
@@ -1687,10 +1639,6 @@ body {
         width: 48px;
         height: 48px;
     }
-    
-    .scroll-to-top-btn i {
-        font-size: 20px;
-    }
 }
 
 /* Mobile kecil */
@@ -1700,9 +1648,5 @@ body {
         right: 10px;
         width: 44px;
         height: 44px;
-    }
-    
-    .scroll-to-top-btn i {
-        font-size: 18px;
     }
 }
