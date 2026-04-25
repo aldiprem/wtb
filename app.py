@@ -14,40 +14,6 @@ import requests
 import sqlite3
 import sys
 
-# ==================== INTEGRASI JASEB USERBOT MANAGER ====================
-
-JASEB_DIR = '/root/jaseb'
-if JASEB_DIR not in sys.path:
-    sys.path.insert(0, JASEB_DIR)
-
-jaseb_api_bp = None
-try:
-    from services.data_service import jaseb_api_bp
-    print("✅ Jaseb API blueprint imported successfully")
-except ImportError as e1:
-    print(f"⚠️ First import attempt failed: {e1}")
-    try:
-        # Coba dengan menambahkan path secara eksplisit
-        import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "data_service", 
-            os.path.join(JASEB_DIR, "services", "data_service.py")
-        )
-        data_service = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(data_service)
-        jaseb_api_bp = data_service.jaseb_api_bp
-        print("✅ Jaseb API blueprint imported via spec")
-    except Exception as e2:
-        print(f"⚠️ Second import attempt failed: {e2}")
-        jaseb_api_bp = None
-
-try:
-    from database.data import db as jaseb_db
-    print("✅ Jaseb database imported successfully in panel_service")
-except ImportError as e:
-    print(f"⚠️ Failed to import Jaseb database: {e}")
-    jaseb_db = None
-
 # Menambahkan direktori root ke path
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT_DIR)
@@ -248,10 +214,10 @@ except ImportError as e:
         gift_scanned_bp = None
 
 try:
-    from services.panel_service import panel_bp
-    print("✅ panel_service imported")
+    from services.jaseb.panel_service import panel_bp
+    print("✅ panel_service imported from services/jaseb/")
 except ImportError as e:
-    print(f"⚠️ panel_service skipped: {e}")
+    print(f"⚠️ panel_service import error: {e}")
     panel_bp = None
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -489,17 +455,11 @@ if market_bp:
 if panel_bp:
     app.register_blueprint(panel_bp)
 
-# REGISTER GIFT SCANNED BLUEPRINT - TANPA URL PREFIX
 if gift_scanned_bp:
     app.register_blueprint(gift_scanned_bp)
     print("✅ Gift Scanned blueprint registered (no prefix)")
 else:
     print("⚠️ Gift Scanned blueprint NOT registered - service unavailable")
-
-# Register Jaseb API blueprint if available
-if jaseb_api_bp:
-    app.register_blueprint(jaseb_api_bp, url_prefix='/api/jaseb')
-    print("✅ Jaseb API blueprint registered")
 
 # ==================== GIFT SCANNED STATIC ROUTES ====================
 
@@ -551,64 +511,216 @@ def serve_gift_scam():
     """Alias for Gift Scanned page"""
     return serve_gift_scanned_page()
 
-# ==================== ROUTE UNTUK JASEB DASHBOARD ====================
+# ==================== ROUTE UNTUK PANEL JASEB ====================
 
 @app.route('/jaseb/panel')
 def serve_jaseb_panel():
+    """Halaman utama panel Jaseb"""
     try:
-        panel_path = os.path.join(JASEB_DIR, 'html', 'panel.html')
+        # Cari file panel.html di ROOT_DIR/html
+        panel_path = os.path.join(ROOT_DIR, 'html', 'panel.html')
         if os.path.exists(panel_path):
-            return send_from_directory(os.path.join(JASEB_DIR, 'html'), 'panel.html')
-        else:
-            return f"Dashboard not found at {panel_path}", 404
+            return send_from_directory(os.path.join(ROOT_DIR, 'html'), 'panel.html')
+        
+        return f"Panel not found at {panel_path}", 404
     except Exception as e:
-        logger.error(f"Error serving jaseb dashboard: {e}")
+        logger.error(f"Error serving jaseb panel: {e}")
         return f"Error: {str(e)}", 500
 
-@app.route('/jaseb/dashboard')
-def serve_jaseb_dashboard():
-    """Halaman utama Jaseb UserBot Manager"""
-    try:
-        dashboard_path = os.path.join(JASEB_DIR, 'html', 'dashboard.html')
-        if os.path.exists(dashboard_path):
-            return send_from_directory(os.path.join(JASEB_DIR, 'html'), 'dashboard.html')
-        else:
-            return f"Dashboard not found at {dashboard_path}", 404
-    except Exception as e:
-        logger.error(f"Error serving jaseb dashboard: {e}")
-        return f"Error: {str(e)}", 500
-
-# ==================== ROUTE UNTUK STATIC FILES JASEB ====================
-
-@app.route('/jaseb/<path:filename>')
-def serve_jaseb_path(filename):
-    """Serve static files for Jaseb"""
-    return send_from_directory(os.path.join(JASEB_DIR), filename)
+# ==================== ROUTE UNTUK STATIC FILES PANEL ====================
 
 @app.route('/jaseb/css/<path:filename>')
 def serve_jaseb_css(filename):
-    """Serve CSS files for Jaseb"""
-    return send_from_directory(os.path.join(JASEB_DIR, 'css'), filename)
+    """Serve CSS files for Jaseb Panel"""
+    css_path = os.path.join(ROOT_DIR, 'css', filename)
+    if os.path.exists(css_path):
+        return send_from_directory(os.path.join(ROOT_DIR, 'css'), filename)
+    return f"CSS file not found: {filename}", 404
 
 @app.route('/jaseb/js/<path:filename>')
 def serve_jaseb_js(filename):
-    """Serve JS files for Jaseb"""
-    return send_from_directory(os.path.join(JASEB_DIR, 'js'), filename)
-
-@app.route('/jaseb/database/<path:filename>')
-def serve_jaseb_database(filename):
-    """Serve CSS files for Jaseb"""
-    return send_from_directory(os.path.join(JASEB_DIR, 'database'), filename)
-
-@app.route('/jaseb/services/<path:filename>')
-def serve_jaseb_services(filename):
-    """Serve CSS files for Jaseb"""
-    return send_from_directory(os.path.join(JASEB_DIR, 'services'), filename)
+    """Serve JS files for Jaseb Panel"""
+    js_path = os.path.join(ROOT_DIR, 'js', filename)
+    if os.path.exists(js_path):
+        return send_from_directory(os.path.join(ROOT_DIR, 'js'), filename)
+    return f"JS file not found: {filename}", 404
 
 @app.route('/jaseb/images/<path:filename>')
 def serve_jaseb_images(filename):
-    """Serve images for Jaseb"""
-    return send_from_directory(os.path.join(JASEB_DIR, 'images'), filename)
+    """Serve images for Jaseb Panel"""
+    images_path = os.path.join(ROOT_DIR, 'images', filename)
+    if os.path.exists(images_path):
+        return send_from_directory(os.path.join(ROOT_DIR, 'images'), filename)
+    return f"Image file not found: {filename}", 404
+
+# ==================== API ROUTE UNTUK PANEL JASEB ====================
+
+@app.route('/jaseb/api/panel/dashboard', methods=['GET'])
+def jaseb_panel_dashboard():
+    """API endpoint for Jaseb panel dashboard"""
+    try:
+        # Import panel_service
+        try:
+            from services.jaseb.panel_service import get_dashboard_data
+            return get_dashboard_data()
+        except ImportError:
+            # Fallback: ambil dari database langsung
+            import sqlite3
+            db_path = os.path.join(ROOT_DIR, 'jaseb.db')
+            
+            # Jika database Jaseb tidak ada di ROOT_DIR, coba di /root/jaseb/
+            if not os.path.exists(db_path):
+                db_path = '/root/jaseb/jaseb.db'
+            
+            if not os.path.exists(db_path):
+                return jsonify({'success': False, 'error': 'Database not found'}), 500
+            
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            # Get stats
+            cursor.execute("SELECT COUNT(*) as count FROM jaseb_users")
+            total_users = cursor.fetchone()['count'] if cursor.fetchone() else 0
+            
+            cursor.execute("SELECT COUNT(*) as count FROM jaseb_userbot_sessions WHERE is_active = 1")
+            active_sessions = cursor.fetchone()['count'] if cursor.fetchone() else 0
+            
+            cursor.execute("SELECT COUNT(*) as count FROM jaseb_userbot_groups WHERE is_active = 1")
+            total_groups = cursor.fetchone()['count'] if cursor.fetchone() else 0
+            
+            cursor.execute("SELECT COUNT(*) as count FROM jaseb_userbot_messages")
+            total_messages = cursor.fetchone()['count'] if cursor.fetchone() else 0
+            
+            cursor.execute("SELECT COUNT(*) as count FROM jaseb_userbot_sebar WHERE is_running = 1")
+            active_sebar = cursor.fetchone()['count'] if cursor.fetchone() else 0
+            
+            cursor.execute("SELECT COUNT(*) as count FROM jaseb_group_join_queue WHERE status = 'pending'")
+            pending_queue = cursor.fetchone()['count'] if cursor.fetchone() else 0
+            
+            conn.close()
+            
+            return jsonify({
+                'success': True,
+                'stats': {
+                    'total_users': total_users,
+                    'active_sessions': active_sessions,
+                    'total_groups': total_groups,
+                    'total_messages': total_messages,
+                    'active_sebar': active_sebar,
+                    'pending_queue': pending_queue
+                }
+            })
+    except Exception as e:
+        logger.error(f"Error in jaseb_panel_dashboard: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/jaseb/api/panel/logs', methods=['GET'])
+def jaseb_panel_logs():
+    """API endpoint for Jaseb panel logs"""
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        
+        try:
+            from services.jaseb.panel_service import get_logs_data
+            return get_logs_data(limit)
+        except ImportError:
+            import sqlite3
+            db_path = os.path.join(ROOT_DIR, 'jaseb.db')
+            
+            if not os.path.exists(db_path):
+                db_path = '/root/jaseb/jaseb.db'
+            
+            if not os.path.exists(db_path):
+                return jsonify({'success': False, 'error': 'Database not found'}), 500
+            
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                SELECT * FROM jaseb_activity_logs 
+                ORDER BY created_at DESC 
+                LIMIT ?
+            """, (limit,))
+            
+            logs = [dict(row) for row in cursor.fetchall()]
+            conn.close()
+            
+            return jsonify({'success': True, 'data': logs})
+    except Exception as e:
+        logger.error(f"Error in jaseb_panel_logs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/jaseb/api/panel/user/<int:user_id>/status', methods=['GET'])
+def jaseb_panel_user_status(user_id):
+    """API endpoint for user status"""
+    try:
+        import sqlite3
+        db_path = os.path.join(ROOT_DIR, 'jaseb.db')
+        if not os.path.exists(db_path):
+            db_path = '/root/jaseb/jaseb.db'
+        
+        if not os.path.exists(db_path):
+            return jsonify({'success': False, 'error': 'Database not found'}), 500
+        
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM jaseb_userbot_sessions WHERE user_id = ?", (user_id,))
+        session = cursor.fetchone()
+        session_active = session is not None and session['is_active'] == 1
+        
+        cursor.execute("SELECT is_running FROM jaseb_userbot_sebar WHERE user_id = ?", (user_id,))
+        sebar = cursor.fetchone()
+        is_running = sebar['is_running'] == 1 if sebar else False
+        
+        cursor.execute("SELECT mode_type FROM jaseb_userbot_mode WHERE user_id = ?", (user_id,))
+        mode = cursor.fetchone()
+        
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'session_active': session_active,
+            'phone_number': session['phone_number'] if session else None,
+            'is_running': is_running,
+            'mode': mode['mode_type'] if mode else 'send'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/jaseb/api/panel/user/<int:user_id>/groups', methods=['GET'])
+def jaseb_panel_user_groups(user_id):
+    """API endpoint for user groups"""
+    try:
+        import sqlite3
+        db_path = os.path.join(ROOT_DIR, 'jaseb.db')
+        if not os.path.exists(db_path):
+            db_path = '/root/jaseb/jaseb.db'
+        
+        if not os.path.exists(db_path):
+            return jsonify({'success': False, 'error': 'Database not found'}), 500
+        
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT * FROM jaseb_userbot_groups 
+            WHERE user_id = ? AND is_active = 1 
+            ORDER BY added_at DESC
+        """, (user_id,))
+        
+        groups = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        return jsonify({'success': True, 'groups': groups})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/source-viewer')
 def source_viewer_page():
