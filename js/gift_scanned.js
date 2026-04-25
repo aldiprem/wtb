@@ -85,6 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ==================== STATE GLOBAL ====================
 let scrollTimeout = null;
+let loadMoreTimeout = null;
 let isObserving = false;
 let loadMoreInProgress = false;
 let lottieObserver = null;
@@ -219,6 +220,7 @@ function toggleLottiePlay() {
     });
 }
 
+// ==================== SETUP INFINITE SCROLL (PERBAIKI) ====================
 function setupInfiniteScroll() {
     // Hapus sentinel lama jika ada
     const oldSentinel = document.getElementById('scrollSentinel');
@@ -227,24 +229,23 @@ function setupInfiniteScroll() {
     // Buat sentinel baru
     const sentinel = document.createElement('div');
     sentinel.id = 'scrollSentinel';
-    sentinel.style.height = '20px';
+    sentinel.style.height = '50px';
     sentinel.style.width = '100%';
-    sentinel.style.opacity = '0';
+    sentinel.style.visibility = 'hidden';
 
     // Tambahkan sentinel setelah giftGrid
     if (elements.giftGrid && elements.giftGrid.parentNode) {
         elements.giftGrid.insertAdjacentElement('afterend', sentinel);
     }
 
-    // Hapus observer lama jika ada
-    if (scrollObserver) {
-        scrollObserver.disconnect();
+    // Hapus observer lama
+    if (window.scrollObserver) {
+        window.scrollObserver.disconnect();
     }
 
-    scrollObserver = new IntersectionObserver((entries) => {
+    window.scrollObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting && !state.isLoadingMore && !state.allLoaded && !state.isLoading) {
-                // Debounce untuk mencegah multiple call
                 if (loadMoreTimeout) clearTimeout(loadMoreTimeout);
                 loadMoreTimeout = setTimeout(() => {
                     loadMoreGifts();
@@ -252,11 +253,68 @@ function setupInfiniteScroll() {
             }
         });
     }, {
-        rootMargin: '200px',
+        rootMargin: '300px',
         threshold: 0.1
     });
 
-    scrollObserver.observe(sentinel);
+    window.scrollObserver.observe(sentinel);
+}
+
+// ==================== LOAD MORE (PERBAIKI) ====================
+async function loadMoreGifts() {
+    if (loadMoreInProgress) return;
+    if (state.isLoadingMore) return;
+    if (state.allLoaded) return;
+    if (state.isLoading) return;
+    
+    // Cek apakah masih ada data
+    if (state.gifts.length >= state.totalGifts && state.totalGifts > 0) {
+        state.allLoaded = true;
+        return;
+    }
+    
+    loadMoreInProgress = true;
+    state.isLoadingMore = true;
+    
+    const nextPage = state.currentPage + 1;
+    
+    try {
+        const params = new URLSearchParams({
+            page: nextPage,
+            limit: state.limit,
+            search: state.searchQuery
+        });
+
+        const url = `/gift-scam/api/list?${params}`;
+        console.log(`📡 Load more page ${nextPage}: ${url}`);
+        
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+
+        if (data.success && data.data && data.data.length > 0) {
+            let newGifts = data.data;
+            
+            if (newGifts.length > 0) {
+                state.gifts = [...state.gifts, ...newGifts];
+                state.allGifts = [...state.allGifts, ...newGifts];
+                state.currentPage = nextPage;
+                state.totalGifts = data.total;
+                
+                appendGiftsBatch(newGifts);
+            }
+
+            state.allLoaded = !data.has_next || data.data.length < state.limit;
+        } else {
+            state.allLoaded = true;
+        }
+    } catch (error) {
+        console.error('❌ Error load more:', error);
+        showToast('Gagal memuat data tambahan', 'error');
+    } finally {
+        state.isLoadingMore = false;
+        loadMoreInProgress = false;
+    }
 }
 
 // ==================== FILTER FUNCTIONS ====================
@@ -454,37 +512,30 @@ function selectFilterChip(name) {
     renderFilterChips();
 }
 
-// ==================== APPLY FILTER (GIFT NAMES) ====================
+// ==================== APPLY FILTER (PERBAIKI - PAKAI API FILTER) ====================
 function applyFilter() {
     if (state.selectedFilterNames.length > 0) {
-        // Filter berdasarkan nama gift (slug prefix)
-        const filtered = state.allGifts.filter(g => 
-            state.selectedFilterNames.includes(g.name)
-        );
-        state.gifts = filtered;
-        state.allLoaded = true;
-        renderGifts(state.gifts);
-        updateTotalCount(state.gifts.length);
+        // Panggil API filter seperti kode sebelumnya
+        loadFilteredGifts();
     } else {
         // Reset ke semua data
-        state.gifts = [...state.allGifts];
-        renderGifts(state.gifts);
-        updateTotalCount(state.gifts.length);
+        resetFilter();
     }
     
     elements.filterPanel.style.display = 'none';
     scrollToTop();
-    
-    const filterText = state.selectedFilterNames.length > 0 
-        ? `${state.selectedFilterNames.length} gift terpilih` 
-        : 'Semua';
-    showToast(`Filter: ${filterText}`, 'info');
 }
 
+// ==================== LOAD FILTERED GIFTS (PERBAIKI) ====================
 async function loadFilteredGifts() {
     if (state.isLoading) return;
+    
     state.isLoading = true;
+    state.currentPage = 1;
+    state.allLoaded = false;
     state.gifts = [];
+    state.allGifts = [];
+    
     showLoading(true);
     hideAllStates();
 
@@ -492,26 +543,41 @@ async function loadFilteredGifts() {
         const filterNames = state.selectedFilterNames.join(',');
         const url = `/gift-scam/api/filter?names=${encodeURIComponent(filterNames)}`;
         
-        console.log(`📡 Filter: ${url}`);
-        const response = await fetch(url);
+        console.log(`📡 Filter URL: ${url}`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
 
         if (data.success) {
+            state.allGifts = data.data;
             state.gifts = data.data;
+            state.totalGifts = data.total || data.data.length;
             state.allLoaded = true;
-
+            
             if (data.data.length === 0) {
                 showEmpty();
             } else {
                 renderGifts(data.data);
                 updateTotalCount(data.data.length);
-                if (elements.pagination) elements.pagination.style.display = 'none';
             }
+            
+            if (elements.pagination) elements.pagination.style.display = 'none';
+            
+            const filterText = state.selectedFilterNames.length > 0 
+                ? `${state.selectedFilterNames.length} gift terpilih` 
+                : 'Semua';
+            showToast(`Filter: ${filterText}`, 'info');
         } else {
             showError(data.error || 'Gagal memuat data filter');
         }
     } catch (error) {
+        console.error('Filter error:', error);
         showError(`Gagal terhubung. ${error.message}`);
     } finally {
         state.isLoading = false;
@@ -519,12 +585,14 @@ async function loadFilteredGifts() {
     }
 }
 
+// ==================== RESET FILTER (PERBAIKI) ====================
 function resetFilter() {
     state.selectedFilterNames = [];
     state.filterName = '';
-    state.gifts = [...state.allGifts];
-    renderGifts(state.gifts);
-    updateTotalCount(state.gifts.length);
+    state.currentPage = 1;
+    state.allLoaded = false;
+    state.gifts = [];
+    state.allGifts = [];
     
     // Reset Select All button
     const selectAllBtn = document.getElementById('filterSelectAll');
@@ -535,6 +603,9 @@ function resetFilter() {
     
     renderFilterChips();
     elements.filterPanel.style.display = 'none';
+    
+    // Load ulang semua data
+    loadGifts(true);
     scrollToTop();
     showToast('Filter direset', 'info');
 }
@@ -629,13 +700,12 @@ function setupScrollToTopButton() {
     checkScrollPosition();
 }
 
-// ==================== LOAD GIFTS (DIPERBAIKI) ====================
+// ==================== LOAD GIFTS (PERBAIKI) ====================
 let loadRetryCount = 0;
 const MAX_RETRY = 2;
 let isLoadingInitial = false;
 
 async function loadGifts(reset = true) {
-    // Cegah reload berulang
     if (state.isLoading || isLoadingInitial) {
         console.log('Already loading, skip');
         return;
@@ -664,9 +734,11 @@ async function loadGifts(reset = true) {
             const userId = searchQuery.replace('userid:', '');
             url = `/gift-scam/api/by-user/${userId}`;
         } else {
+            // Untuk initial load, ambil semua data (limit besar)
+            // Infinite scroll akan handle sisanya
             const params = new URLSearchParams({
-                page: state.currentPage,
-                limit: state.limit,
+                page: 1,
+                limit: 50,  // Ambil 50 awal
                 search: searchQuery
             });
             url = `/gift-scam/api/list?${params}`;
@@ -686,27 +758,18 @@ async function loadGifts(reset = true) {
         if (data.success) {
             let items = data.data || [];
             
-            if (reset) {
-                state.allGifts = items;
-                state.gifts = items;
-                state.totalGifts = data.total || items.length;
-                state.currentPage = data.page || 1;
-                state.allLoaded = !data.has_next;
-            } else {
-                // Append mode untuk infinite scroll
-                state.gifts = [...state.gifts, ...items];
-                state.allGifts = [...state.allGifts, ...items];
-                state.currentPage = data.page || state.currentPage + 1;
-                state.allLoaded = !data.has_next;
-            }
+            state.allGifts = items;
+            state.gifts = items;
+            state.totalGifts = data.total || items.length;
+            state.currentPage = data.page || 1;
+            state.allLoaded = !data.has_next || items.length < (data.limit || 50);
             
             loadRetryCount = 0;
             
-            if (reset) {
-                renderGifts(state.gifts);
-                updateTotalCount(state.totalGifts);
+            if (items.length === 0) {
+                showEmpty();
             } else {
-                appendGiftsBatch(items);
+                renderGifts(items);
                 updateTotalCount(state.totalGifts);
             }
             
@@ -724,17 +787,11 @@ async function loadGifts(reset = true) {
             return;
         }
         
-        if (reset) {
-            showError(`Gagal terhubung. ${error.message}`);
-        } else {
-            showToast(`Gagal memuat lebih banyak: ${error.message}`, 'error');
-        }
+        showError(`Gagal terhubung. ${error.message}`);
     } finally {
-        if (reset) {
-            state.isLoading = false;
-            isLoadingInitial = false;
-            showLoading(false);
-        }
+        state.isLoading = false;
+        isLoadingInitial = false;
+        showLoading(false);
     }
 }
 
@@ -775,23 +832,26 @@ function filterAndRenderGifts() {
   }
 }
 
-// ==================== RENDER GIFTS (DIPERBAIKI DENGAN LAZY LOAD LOTTIE) ====================
+// ==================== RENDER GIFTS (PERBAIKI) ====================
 function renderGifts(gifts) {
     if (!elements.giftGrid) return;
     elements.giftGrid.style.display = 'grid';
     elements.giftGrid.innerHTML = '';
     
-    // Render batch pertama segera
-    const batch = gifts.slice(0, 20);
-    renderGiftsBatch(batch);
+    // Render semua gift sekaligus (tidak di-batch)
+    const fragment = document.createDocumentFragment();
     
-    // Sisanya render dengan delay
-    if (gifts.length > 20) {
-        setTimeout(() => {
-            const remaining = gifts.slice(20);
-            renderGiftsBatch(remaining);
-        }, 100);
-    }
+    gifts.forEach((gift, index) => {
+        const card = createGiftCard(gift, index);
+        fragment.appendChild(card);
+    });
+    
+    elements.giftGrid.appendChild(fragment);
+    
+    // Inisialisasi lottie setelah render
+    setTimeout(() => {
+        initLottiePlayers();
+    }, 100);
 }
 
 // ==================== RELOAD LOTTIE AFTER RENDER ====================
@@ -848,76 +908,6 @@ if (isTelegramWebView()) {
   document.body.classList.add('telegram-webview');
   // Kurangi batch size untuk Telegram
   window.TELEGRAM_MODE = true;
-}
-
-// ==================== LOAD MORE (Infinite Scroll) ====================
-async function loadMoreGifts() {
-    // Cegah multiple call bersamaan
-    if (loadMoreInProgress) return;
-    if (state.isLoadingMore) return;
-    if (state.allLoaded) return;
-    if (state.isLoading) return;
-    
-    // Cek apakah masih ada data
-    if (state.gifts.length >= state.totalGifts && state.totalGifts > 0) {
-        state.allLoaded = true;
-        return;
-    }
-    
-    loadMoreInProgress = true;
-    state.isLoadingMore = true;
-    
-    const nextPage = state.currentPage + 1;
-    
-    // Cek apakah sudah mencapai total
-    if (state.gifts.length >= state.totalGifts) {
-        state.allLoaded = true;
-        loadMoreInProgress = false;
-        state.isLoadingMore = false;
-        return;
-    }
-
-    try {
-        const params = new URLSearchParams({
-            page: nextPage,
-            limit: state.limit,
-            search: state.searchQuery
-        });
-
-        const url = `/gift-scam/api/list?${params}`;
-        console.log(`📡 Load more: ${url}`);
-        
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-
-        if (data.success && data.data && data.data.length > 0) {
-            let newGifts = data.data;
-            
-            if (newGifts.length > 0) {
-                // Gabungkan dengan existing
-                state.gifts = [...state.gifts, ...newGifts];
-                state.allGifts = [...state.allGifts, ...newGifts];
-                state.currentPage = nextPage;
-                
-                // Append ke DOM dengan batch rendering
-                appendGiftsBatch(newGifts);
-            }
-
-            // Cek apakah sudah semua
-            if (data.data.length < state.limit || !data.has_next) {
-                state.allLoaded = true;
-            }
-        } else {
-            state.allLoaded = true;
-        }
-    } catch (error) {
-        console.error('❌ Error load more:', error);
-        showToast('Gagal memuat data tambahan', 'error');
-    } finally {
-        state.isLoadingMore = false;
-        loadMoreInProgress = false;
-    }
 }
 
 function appendGiftsBatch(newGifts, batchSize = 5) {
