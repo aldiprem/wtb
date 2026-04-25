@@ -5,7 +5,7 @@
 // ==================== STATE ====================
 const state = {
     currentPage: 1,
-    limit: 30,
+    limit: 20,  // Ubah ke 20
     allLoaded: false,
     searchMode: 'gift',
     searchQuery: '',
@@ -13,8 +13,8 @@ const state = {
     selectedFilterNames: [],
     gifts: [],
     allGifts: [],
-    allNames: [],
-    nameCounts: {},
+    allSenders: [],
+    senderCounts: {},
     lottiePlaying: false,
     isLoading: false,
     isLoadingMore: false
@@ -69,17 +69,18 @@ function showLoading(show = true) {
     if (elements.loadingOverlay) elements.loadingOverlay.style.display = show ? 'flex' : 'none';
 }
 
-// ==================== INIT ====================
+// ==================== UPDATE INIT FUNCTION ====================
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🎁 Gift Scanned Gallery v2');
+    console.log('🎁 Gift Scanned Gallery v3');
     showLoading(true);
     setupEventListeners();
     setupModalListeners();
     setupLottieObserver();
     setupScrollToTopButton();
+    setupInfiniteScroll();
     loadStats();
-    loadAllNames();
-    loadGifts();
+    loadAllSenders();
+    loadGifts(true);
 });
 
 // ==================== STATE GLOBAL ====================
@@ -89,6 +90,7 @@ let loadMoreInProgress = false;
 let lottieObserver = null;
 let lottieMutationObserver = null;
 let scrollCheckTimeout = null;
+let scrollObserver = null;
 
 // ==================== EVENT LISTENERS ====================
 function setupEventListeners() {
@@ -218,43 +220,43 @@ function toggleLottiePlay() {
 }
 
 function setupInfiniteScroll() {
-  // Hapus sentinel lama jika ada
-  const oldSentinel = document.getElementById('scrollSentinel');
-  if (oldSentinel) oldSentinel.remove();
-  
-  // Buat sentinel baru
-  const sentinel = document.createElement('div');
-  sentinel.id = 'scrollSentinel';
-  sentinel.style.height = '50px';  // Lebih besar untuk deteksi lebih baik
-  sentinel.style.width = '100%';
-  sentinel.style.visibility = 'hidden';  // Tidak terlihat tapi tetap trigger
+    // Hapus sentinel lama jika ada
+    const oldSentinel = document.getElementById('scrollSentinel');
+    if (oldSentinel) oldSentinel.remove();
+    
+    // Buat sentinel baru
+    const sentinel = document.createElement('div');
+    sentinel.id = 'scrollSentinel';
+    sentinel.style.height = '20px';
+    sentinel.style.width = '100%';
+    sentinel.style.opacity = '0';
 
-  // Tambahkan sentinel setelah giftGrid
-  if (elements.giftGrid && elements.giftGrid.parentNode) {
-    elements.giftGrid.insertAdjacentElement('afterend', sentinel);
-  }
+    // Tambahkan sentinel setelah giftGrid
+    if (elements.giftGrid && elements.giftGrid.parentNode) {
+        elements.giftGrid.insertAdjacentElement('afterend', sentinel);
+    }
 
-  // Hapus observer lama jika ada
-  if (window.scrollObserver) {
-    window.scrollObserver.disconnect();
-  }
+    // Hapus observer lama jika ada
+    if (scrollObserver) {
+        scrollObserver.disconnect();
+    }
 
-  window.scrollObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting && !state.isLoadingMore && !state.allLoaded && !state.isLoading) {
-        // Debounce untuk mencegah multiple call
-        if (scrollTimeout) clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {
-          loadMoreGifts();
-        }, 300);
-      }
+    scrollObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && !state.isLoadingMore && !state.allLoaded && !state.isLoading) {
+                // Debounce untuk mencegah multiple call
+                if (loadMoreTimeout) clearTimeout(loadMoreTimeout);
+                loadMoreTimeout = setTimeout(() => {
+                    loadMoreGifts();
+                }, 300);
+            }
+        });
+    }, {
+        rootMargin: '200px',
+        threshold: 0.1
     });
-  }, {
-    rootMargin: '300px',
-    threshold: 0.1
-  });
 
-  window.scrollObserver.observe(sentinel);
+    scrollObserver.observe(sentinel);
 }
 
 // ==================== FILTER FUNCTIONS ====================
@@ -268,18 +270,19 @@ function toggleFilterPanel() {
     }
 }
 
-async function loadAllNames() {
+async function loadAllSenders() {
     try {
-        const response = await fetch('/gift-scam/api/names');
+        const response = await fetch('/gift-scam/api/senders');
         const data = await response.json();
-        if (data.success && data.names) {
-            state.allNames = data.names;
-            state.nameCounts = data.name_counts || {};
+        if (data.success && data.senders) {
+            state.allSenders = data.senders;
+            state.senderCounts = data.sender_counts || {};
+            console.log(`✅ Loaded ${state.allSenders.length} unique senders`);
         }
     } catch (e) {
-        console.error('Error loading names:', e);
-        state.allNames = collectAllNamesFromGifts();
-        state.nameCounts = {};
+        console.error('Error loading senders:', e);
+        state.allSenders = [];
+        state.senderCounts = {};
     }
 }
 
@@ -292,31 +295,31 @@ function collectAllNamesFromGifts() {
 function renderFilterChips() {
     if (!elements.filterList) return;
     
-    // ✅ Gunakan state.allNames dari API /api/names (seluruh database)
-    const names = state.allNames.length > 0 ? state.allNames : collectAllNamesFromGifts();
+    // Gunakan allSenders
+    const senders = state.allSenders.length > 0 ? state.allSenders : [];
     
     let html = '';
-    names.forEach(name => {
-        const isSelected = state.selectedFilterNames.includes(name);
-        // ✅ Count dari nameCounts (dari database) atau hitung dari allGifts
-        const count = (state.nameCounts && state.nameCounts[name]) 
-            ? state.nameCounts[name] 
-            : state.allGifts.filter(g => g.name === name).length || '?';
+    senders.forEach(senderId => {
+        const isSelected = state.selectedFilterNames.includes(senderId.toString());
+        const count = state.senderCounts[senderId] || 0;
+        
+        // Format display untuk sender ID (bisa ditampilkan sebagai ID atau username)
+        const displayName = `User ${senderId}`;
         
         html += `
             <div class="filter-list-item ${isSelected ? 'selected' : ''}" 
-                 data-name="${escapeHtml(name)}"
-                 onclick="selectFilterChip('${escapeHtml(name).replace(/'/g, "\\'")}')">
+                 data-name="${escapeHtml(senderId.toString())}"
+                 onclick="selectFilterChip('${escapeHtml(senderId.toString()).replace(/'/g, "\\'")}')">
                 <div class="filter-checkbox ${isSelected ? 'checked' : ''}">
                     ${isSelected ? '<i class="fas fa-check"></i>' : ''}
                 </div>
-                <span class="filter-item-name">${escapeHtml(name)}</span>
+                <span class="filter-item-name">${escapeHtml(displayName)}</span>
                 <span class="filter-item-count">${count}</span>
             </div>
         `;
     });
     
-    if (names.length === 0) {
+    if (senders.length === 0) {
         html = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Memuat data...</div>';
     }
     
@@ -338,16 +341,14 @@ function selectFilterChip(name) {
 
 function toggleSelectAll() {
     const selectAllBtn = document.getElementById('filterSelectAll');
-    const allNames = state.allNames.length > 0 ? state.allNames : collectAllNamesFromGifts();
+    const allSenders = state.allSenders;
     
-    if (state.selectedFilterNames.length === allNames.length) {
-        // Unselect all
+    if (state.selectedFilterNames.length === allSenders.length) {
         state.selectedFilterNames = [];
         selectAllBtn.classList.remove('all-selected');
         selectAllBtn.innerHTML = '<i class="fas fa-check-double"></i> Select All';
     } else {
-        // Select all
-        state.selectedFilterNames = [...allNames];
+        state.selectedFilterNames = allSenders.map(s => s.toString());
         selectAllBtn.classList.add('all-selected');
         selectAllBtn.innerHTML = '<i class="fas fa-times"></i> Unselect All';
     }
@@ -404,25 +405,26 @@ function renderFilterChips() {
 }
 
 function applyFilter() {
-    state.filterName = state.selectedFilterNames.join(',');
-    state.currentPage = 1;
-    state.allLoaded = false;
-    state.gifts = [];
-    elements.filterPanel.style.display = 'none';
-    
-    // ✅ Jika ada filter names, fetch dari server
     if (state.selectedFilterNames.length > 0) {
-        loadFilteredGifts();
+        const filtered = state.allGifts.filter(g => 
+            g.sender_id && state.selectedFilterNames.includes(g.sender_id.toString())
+        );
+        state.gifts = filtered;
+        state.allLoaded = true;
+        renderGifts(state.gifts);
+        updateTotalCount(state.gifts.length);
     } else {
-        // Tidak ada filter, tampilkan semua dari allGifts
-        state.filterName = '';
-        filterAndRenderGifts();
+        // Reset ke semua data
+        state.gifts = [...state.allGifts];
+        renderGifts(state.gifts);
+        updateTotalCount(state.gifts.length);
     }
     
+    elements.filterPanel.style.display = 'none';
     scrollToTop();
     
     const filterText = state.selectedFilterNames.length > 0 
-        ? `${state.selectedFilterNames.length} gift terpilih` 
+        ? `${state.selectedFilterNames.length} user terpilih` 
         : 'Semua';
     showToast(`Filter: ${filterText}`, 'info');
 }
@@ -468,9 +470,9 @@ async function loadFilteredGifts() {
 function resetFilter() {
     state.selectedFilterNames = [];
     state.filterName = '';
-    state.currentPage = 1;
-    state.allLoaded = false;
-    state.gifts = [];
+    state.gifts = [...state.allGifts];
+    renderGifts(state.gifts);
+    updateTotalCount(state.gifts.length);
     
     // Reset Select All button
     const selectAllBtn = document.getElementById('filterSelectAll');
@@ -481,17 +483,6 @@ function resetFilter() {
     
     renderFilterChips();
     elements.filterPanel.style.display = 'none';
-    
-    // ✅ Kembali ke data awal (allGifts)
-    state.filterName = '';
-    
-    // Jika allGifts kosong, reload
-    if (state.allGifts.length === 0) {
-        loadGifts();
-    } else {
-        filterAndRenderGifts();
-    }
-    
     scrollToTop();
     showToast('Filter direset', 'info');
 }
@@ -504,7 +495,14 @@ async function loadStats() {
         const data = await response.json();
         if (data.success && data.stats) {
             animateValue(elements.totalGifts, 0, data.stats.total, 1000);
-            animateValue(elements.uniqueGifts, 0, data.stats.unique, 1000);
+            // Tampilkan unique_senders (bukan unique names)
+            animateValue(elements.uniqueGifts, 0, data.stats.unique_senders || 0, 1000);
+            
+            // Update label "Unique" menjadi "User ID"
+            const uniqueLabel = document.querySelector('.stat-card-inline:last-child .stat-label-inline');
+            if (uniqueLabel && uniqueLabel.textContent === 'Unique') {
+                uniqueLabel.textContent = 'User ID';
+            }
         }
     } catch (error) { console.error('Stats error:', error); }
 }
@@ -582,80 +580,110 @@ function setupScrollToTopButton() {
 // ==================== LOAD GIFTS (DIPERBAIKI) ====================
 let loadRetryCount = 0;
 const MAX_RETRY = 2;
+let isLoadingInitial = false;
 
-async function loadGifts() {
-  // Cegah reload berulang
-  if (state.isLoading) {
-    console.log('Already loading, skip');
-    return;
-  }
-  
-  state.isLoading = true;
-  state.currentPage = 1;
-  state.allLoaded = false;
-  state.gifts = [];
-  state.allGifts = [];
-  
-  showLoading(true);
-  hideAllStates();
-
-  try {
-    let url;
-    let searchQuery = state.searchQuery;
-    
-    if (searchQuery.startsWith('msgid:')) {
-      const messageId = searchQuery.replace('msgid:', '');
-      url = `/gift-scam/api/by-message/${messageId}`;
-    } else if (searchQuery.startsWith('userid:')) {
-      const userId = searchQuery.replace('userid:', '');
-      url = `/gift-scam/api/by-user/${userId}`;
-    } else {
-      // Batasi limit untuk mobile
-      const limit = window.innerWidth < 768 ? 200 : 5000;
-      const params = new URLSearchParams({
-        page: 1,
-        limit: limit,
-        search: searchQuery
-      });
-      url = `/gift-scam/api/list?${params}`;
+async function loadGifts(reset = true) {
+    // Cegah reload berulang
+    if (state.isLoading || isLoadingInitial) {
+        console.log('Already loading, skip');
+        return;
     }
     
-    console.log(`📡 ${url}`);
-    
-    // Tambahkan timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-    
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
+    if (reset) {
+        state.isLoading = true;
+        isLoadingInitial = true;
+        state.currentPage = 1;
+        state.allLoaded = false;
+        state.gifts = [];
+        state.allGifts = [];
+        
+        showLoading(true);
+        hideAllStates();
+    }
 
-    if (data.success) {
-      let items = data.data || [];
-      state.allGifts = items;
-      loadRetryCount = 0; // Reset retry counter
-      filterAndRenderGifts();
-    } else {
-      throw new Error(data.error || 'Gagal memuat data');
+    try {
+        let url;
+        let searchQuery = state.searchQuery;
+        
+        if (searchQuery.startsWith('msgid:')) {
+            const messageId = searchQuery.replace('msgid:', '');
+            url = `/gift-scam/api/by-message/${messageId}`;
+        } else if (searchQuery.startsWith('userid:')) {
+            const userId = searchQuery.replace('userid:', '');
+            url = `/gift-scam/api/by-user/${userId}`;
+        } else {
+            const params = new URLSearchParams({
+                page: state.currentPage,
+                limit: state.limit,
+                search: searchQuery
+            });
+            url = `/gift-scam/api/list?${params}`;
+        }
+        
+        console.log(`📡 ${url}`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+
+        if (data.success) {
+            let items = data.data || [];
+            
+            if (reset) {
+                state.allGifts = items;
+                state.gifts = items;
+                state.totalGifts = data.total || items.length;
+                state.currentPage = data.page || 1;
+                state.allLoaded = !data.has_next;
+            } else {
+                // Append mode untuk infinite scroll
+                state.gifts = [...state.gifts, ...items];
+                state.allGifts = [...state.allGifts, ...items];
+                state.currentPage = data.page || state.currentPage + 1;
+                state.allLoaded = !data.has_next;
+            }
+            
+            loadRetryCount = 0;
+            
+            if (reset) {
+                renderGifts(state.gifts);
+                updateTotalCount(state.totalGifts);
+            } else {
+                appendGiftsBatch(items);
+                updateTotalCount(state.totalGifts);
+            }
+            
+            if (elements.pagination) elements.pagination.style.display = 'none';
+        } else {
+            throw new Error(data.error || 'Gagal memuat data');
+        }
+    } catch (error) {
+        console.error('Load error:', error);
+        
+        if (reset && loadRetryCount < MAX_RETRY && error.name !== 'AbortError') {
+            loadRetryCount++;
+            console.log(`Retry ${loadRetryCount}/${MAX_RETRY}...`);
+            setTimeout(() => loadGifts(true), 1000);
+            return;
+        }
+        
+        if (reset) {
+            showError(`Gagal terhubung. ${error.message}`);
+        } else {
+            showToast(`Gagal memuat lebih banyak: ${error.message}`, 'error');
+        }
+    } finally {
+        if (reset) {
+            state.isLoading = false;
+            isLoadingInitial = false;
+            showLoading(false);
+        }
     }
-  } catch (error) {
-    console.error('Load error:', error);
-    
-    // Retry logic untuk mobile
-    if (loadRetryCount < MAX_RETRY && error.name !== 'AbortError') {
-      loadRetryCount++;
-      console.log(`Retry ${loadRetryCount}/${MAX_RETRY}...`);
-      setTimeout(() => loadGifts(), 1000);
-      return;
-    }
-    
-    showError(`Gagal terhubung. ${error.message}`);
-  } finally {
-    state.isLoading = false;
-    showLoading(false);
-  }
 }
 
 // ==================== FILTER AND RENDER (DIPERBAIKI) ====================
@@ -695,37 +723,41 @@ function filterAndRenderGifts() {
   }
 }
 
-// Batch render awal
-function renderGiftsBatch(gifts, batchSize = 20) {
-  if (!elements.giftGrid) return;
-  elements.giftGrid.style.display = 'grid';
-  elements.giftGrid.innerHTML = '';
-  
-  let index = 0;
-  
-  function renderBatch() {
-    const batch = gifts.slice(index, index + batchSize);
+// ==================== RENDER GIFTS (DIPERBAIKI DENGAN LAZY LOAD LOTTIE) ====================
+function renderGifts(gifts) {
+    if (!elements.giftGrid) return;
+    elements.giftGrid.style.display = 'grid';
+    elements.giftGrid.innerHTML = '';
+    
+    // Render batch pertama segera
+    const batch = gifts.slice(0, 20);
+    renderGiftsBatch(batch);
+    
+    // Sisanya render dengan delay
+    if (gifts.length > 20) {
+        setTimeout(() => {
+            const remaining = gifts.slice(20);
+            renderGiftsBatch(remaining);
+        }, 100);
+    }
+}
+
+function renderGiftsBatch(gifts) {
+    if (!elements.giftGrid || !gifts.length) return;
+    
     const fragment = document.createDocumentFragment();
     
-    batch.forEach((gift, i) => {
-      const card = createGiftCard(gift, index + i);
-      fragment.appendChild(card);
+    gifts.forEach((gift, index) => {
+        const card = createGiftCard(gift, index);
+        fragment.appendChild(card);
     });
     
     elements.giftGrid.appendChild(fragment);
-    index += batchSize;
     
-    if (index < gifts.length) {
-      // Delay antar batch agar tidak freeze
-      setTimeout(renderBatch, 100);
-    } else if (state.allGiftsFull && state.allGiftsFull.length > gifts.length) {
-      // Sisa data akan di-load via infinite scroll
-      state.gifts = [...gifts];
-      state.allLoaded = false;
-    }
-  }
-  
-  renderBatch();
+    // Trigger lottie load setelah DOM update
+    setTimeout(() => {
+        initLottiePlayers();
+    }, 50);
 }
 
 // ==================== DETEKSI TELEGRAM WEBVIEW ====================
@@ -742,65 +774,72 @@ if (isTelegramWebView()) {
 
 // ==================== LOAD MORE (Infinite Scroll) ====================
 async function loadMoreGifts() {
-  // Cegah multiple call bersamaan
-  if (loadMoreInProgress) return;
-  if (state.isLoadingMore) return;
-  if (state.allLoaded) return;
-  if (state.isLoading) return;
-  
-  // Cek apakah masih ada data
-  if (state.gifts.length >= state.allGifts.length && state.allGifts.length > 0) {
-    state.allLoaded = true;
-    return;
-  }
-  
-  loadMoreInProgress = true;
-  state.isLoadingMore = true;
-
-  const nextPage = state.currentPage + 1;
-
-  try {
-    const params = new URLSearchParams({
-      page: nextPage,
-      limit: state.limit,
-      search: state.searchQuery
-    });
-
-    const url = `/gift-scam/api/list?${params}`;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-
-    if (data.success && data.data && data.data.length > 0) {
-      let newGifts = data.data;
-      
-      // Filter jika ada filter name
-      if (state.filterName) {
-        newGifts = data.data.filter(g => g.name === state.filterName);
-      }
-
-      if (newGifts.length > 0) {
-        // Gabungkan dengan existing
-        state.gifts = [...state.gifts, ...newGifts];
-        state.currentPage = nextPage;
-        
-        // Append ke DOM dengan batch rendering
-        appendGiftsBatch(newGifts);
-      }
-
-      // Cek apakah sudah semua
-      if (data.data.length < state.limit || !data.has_next) {
+    // Cegah multiple call bersamaan
+    if (loadMoreInProgress) return;
+    if (state.isLoadingMore) return;
+    if (state.allLoaded) return;
+    if (state.isLoading) return;
+    
+    // Cek apakah masih ada data
+    if (state.gifts.length >= state.totalGifts && state.totalGifts > 0) {
         state.allLoaded = true;
-      }
-    } else {
-      state.allLoaded = true;
+        return;
     }
-  } catch (error) {
-    console.error('❌ Error load more:', error);
-  } finally {
-    state.isLoadingMore = false;
-    loadMoreInProgress = false;
-  }
+    
+    loadMoreInProgress = true;
+    state.isLoadingMore = true;
+    
+    const nextPage = state.currentPage + 1;
+    
+    // Cek apakah sudah mencapai total
+    if (state.gifts.length >= state.totalGifts) {
+        state.allLoaded = true;
+        loadMoreInProgress = false;
+        state.isLoadingMore = false;
+        return;
+    }
+
+    try {
+        const params = new URLSearchParams({
+            page: nextPage,
+            limit: state.limit,
+            search: state.searchQuery
+        });
+
+        const url = `/gift-scam/api/list?${params}`;
+        console.log(`📡 Load more: ${url}`);
+        
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+
+        if (data.success && data.data && data.data.length > 0) {
+            let newGifts = data.data;
+            
+            if (newGifts.length > 0) {
+                // Gabungkan dengan existing
+                state.gifts = [...state.gifts, ...newGifts];
+                state.allGifts = [...state.allGifts, ...newGifts];
+                state.currentPage = nextPage;
+                
+                // Append ke DOM dengan batch rendering
+                appendGiftsBatch(newGifts);
+            }
+
+            // Cek apakah sudah semua
+            if (data.data.length < state.limit || !data.has_next) {
+                state.allLoaded = true;
+            }
+        } else {
+            state.allLoaded = true;
+        }
+    } catch (error) {
+        console.error('❌ Error load more:', error);
+        showToast('Gagal memuat data tambahan', 'error');
+    } finally {
+        state.isLoadingMore = false;
+        loadMoreInProgress = false;
+    }
 }
 
 function appendGiftsBatch(newGifts, batchSize = 5) {
@@ -932,31 +971,27 @@ function scanSlugsInText(text, container) {
     container.appendChild(wrapper);
 }
 
-// ==================== RENDER GIFTS (Initial - Replace all) ====================
-function renderGifts(gifts) {
-  if (!elements.giftGrid) return;
-  elements.giftGrid.style.display = 'grid';
-  elements.giftGrid.innerHTML = '';
-  gifts.forEach((gift, index) => {
-    const card = createGiftCard(gift, index);
-    elements.giftGrid.appendChild(card);
-  });
-}
-
+// ==================== CREATE GIFT CARD (DIPERBAIKI UNTUK LAZY LOAD) ====================
 function createGiftCard(gift, index) {
     const card = document.createElement('div');
     card.className = 'gift-card';
     const msgLink = `https://t.me/listgiftkotor/${gift.message_id}`;
     
-    // Gunakan data-src untuk lazy loading lottie
+    const lottieUrl = gift.lottie_url || `https://nft.fragment.com/gift/${gift.slug}.lottie.json`;
+    
     card.innerHTML = `
         <div class="card-lottie-wrapper">
             <div class="card-lottie-border">
                 <div class="lottie-placeholder" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.03);">
                     <i class="fas fa-gift" style="font-size:32px;color:var(--primary-color);opacity:0.5;"></i>
                 </div>
-                <lottie-player data-src="${escapeHtml(gift.lottie_url)}" background="transparent" speed="1"
-                    style="width:100%;height:100%;display:none;" loop mode="normal">
+                <lottie-player 
+                    data-src="${escapeHtml(lottieUrl)}" 
+                    background="transparent" 
+                    speed="1"
+                    style="width:100%;height:100%;display:none;" 
+                    loop 
+                    mode="normal">
                 </lottie-player>
             </div>
         </div>
@@ -965,13 +1000,14 @@ function createGiftCard(gift, index) {
                 <span class="card-name">${escapeHtml(gift.name)}</span>
                 ${gift.number ? `<span class="card-number">#${escapeHtml(gift.number)}</span>` : ''}
             </div>
+            ${gift.sender_id ? `<div class="card-sender" style="font-size:10px;color:var(--text-muted);">👤 ${escapeHtml(gift.sender_id)}</div>` : ''}
             <a href="${msgLink}" target="_blank" rel="noopener" class="card-visit-btn" onclick="event.stopPropagation()">
                 <i class="fas fa-external-link-alt"></i> Visit Message
             </a>
         </div>
     `;
     
-    // Lazy load lottie saat card masuk viewport
+    // Lazy load lottie dengan IntersectionObserver
     const lottiePlayer = card.querySelector('lottie-player');
     const placeholder = card.querySelector('.lottie-placeholder');
     
@@ -984,6 +1020,12 @@ function createGiftCard(gift, index) {
                         lottiePlayer.setAttribute('src', src);
                         lottiePlayer.style.display = 'block';
                         if (placeholder) placeholder.style.display = 'none';
+                        
+                        // Play jika mode play aktif
+                        if (state.lottiePlaying) {
+                            lottiePlayer.setAttribute('autoplay', '');
+                            try { lottiePlayer.play(); } catch(e) {}
+                        }
                     }
                     lazyObserver.unobserve(lottiePlayer);
                 }
@@ -995,6 +1037,16 @@ function createGiftCard(gift, index) {
     
     card.addEventListener('click', () => loadGiftDetail(gift.slug));
     return card;
+}
+
+// ==================== INIT LOTTIE PLAYERS ====================
+function initLottiePlayers() {
+    document.querySelectorAll('lottie-player:not([data-initialized])').forEach(player => {
+        player.setAttribute('data-initialized', 'true');
+        const src = player.getAttribute('data-src') || player.getAttribute('src');
+        if (src && !player.hasAttribute('src')) {
+        }
+    });
 }
 
 function showDetailModal(gift) {

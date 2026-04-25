@@ -37,8 +37,8 @@
         <button id="scrollToTopBtn" class="scroll-to-top-btn" title="Top Scroll">
             <i class="fas fa-chevron-up"></i>
         </button>
-        
-        <!-- Stats Section - Sebaris -->
+                
+        <!-- Di gift_scanned.html, update bagian stats-section -->
         <div class="stats-section">
             <div class="stats-row-inline">
                 <div class="stat-card-inline">
@@ -47,16 +47,31 @@
                     <span class="stat-label-inline">Total</span>
                 </div>
                 <div class="stat-card-inline">
-                    <i class="fas fa-star stat-icon-inline"></i>
+                    <i class="fas fa-user stat-icon-inline"></i>  <!-- Ganti icon -->
                     <span class="stat-value" id="uniqueGifts">0</span>
-                    <span class="stat-label-inline">Unique</span>
+                    <span class="stat-label-inline">User ID</span>  <!-- Ganti label -->
                 </div>
-                <!-- Toggle Play/Stop -->
                 <div class="stat-card-inline toggle-card" id="togglePlayBtn" title="Play Lottie">
                     <i class="fas fa-play stat-icon-inline"></i>
                     <span class="stat-value" style="font-size:12px;">Play</span>
                     <span class="stat-label-inline">Animasi</span>
                 </div>
+            </div>
+        </div>
+
+        <!-- Update filter panel title -->
+        <div id="filterPanel" class="filter-panel" style="display:none;">
+            <div class="filter-header">
+                <h3><i class="fas fa-user"></i> Filter by User ID</h3>  <!-- Ganti judul -->
+                <button id="filterClose" class="filter-close-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="filter-select-all" id="filterSelectAll" onclick="toggleSelectAll()">
+                <i class="fas fa-check-double"></i> Select All
+            </div>
+            <div class="filter-list" id="filterList"></div>
+            <div class="filter-actions">
+                <button id="filterApply" class="filter-action-btn apply-btn"><i class="fas fa-check"></i> Apply</button>
+                <button id="filterReset" class="filter-action-btn reset-btn"><i class="fas fa-undo"></i> Reset</button>
             </div>
         </div>
 
@@ -83,23 +98,6 @@
                 <button id="searchBtn" class="search-btn"><i class="fas fa-search"></i></button>
                 <button id="clearBtn" class="search-btn clear-btn" style="display:none;"><i class="fas fa-times"></i></button>
                 <button id="filterBtn" class="search-btn filter-btn"><i class="fas fa-filter"></i></button>
-            </div>
-        </div>
-
-        <!-- Filter Panel -->
-        <div id="filterPanel" class="filter-panel" style="display:none;">
-            <div class="filter-header">
-                <h3><i class="fas fa-filter"></i> Filter by Name</h3>
-                <button id="filterClose" class="filter-close-btn"><i class="fas fa-times"></i></button>
-            </div>
-            <!-- ✅ Select All button -->
-            <div class="filter-select-all" id="filterSelectAll" onclick="toggleSelectAll()">
-                <i class="fas fa-check-double"></i> Select All
-            </div>
-            <div class="filter-list" id="filterList"></div>
-            <div class="filter-actions">
-                <button id="filterApply" class="filter-action-btn apply-btn"><i class="fas fa-check"></i> Apply</button>
-                <button id="filterReset" class="filter-action-btn reset-btn"><i class="fas fa-undo"></i> Reset</button>
             </div>
         </div>
 
