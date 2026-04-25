@@ -158,18 +158,7 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-}
-
-/* ===== HEADER ===== */
-.gift-header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 20px;
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(64, 167, 227, 0.1));
-    border-radius: 24px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    padding-top: 0;
 }
 
 .header-icon {
@@ -199,11 +188,6 @@ body {
     border-radius: 20px;
     font-size: 11px;
     color: var(--primary-color);
-}
-
-/* ===== STATS SECTION ===== */
-.stats-section {
-    margin-bottom: 20px;
 }
 
 .stats-row {
@@ -479,10 +463,12 @@ body {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
-/* Lottie wrapper - seperti card-image Winedash */
+/* Fix lottie agar tidak menimpa header saat scroll */
 .card-lottie-wrapper {
     padding: 8px;
     background: var(--surface-light);
+    position: relative;
+    z-index: 1;
 }
 
 .card-lottie-border {
@@ -496,9 +482,26 @@ body {
     border-radius: 10px;
     padding: 4px;
     transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
 }
 
-/* Card Info - seperti marketplace-card-info Winedash */
+.lottie-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.03);
+    pointer-events: none;
+}
+
+/* Card info harus di atas lottie */
 .card-info {
     padding: 8px 10px 10px 10px;
     display: flex;
@@ -506,6 +509,41 @@ body {
     gap: 6px;
     background: var(--surface-light);
     border-top: 1px solid var(--border-light);
+    position: relative;
+    z-index: 3;
+    background: rgba(26, 26, 26, 0.95);
+}
+
+.gift-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-primary);
+    backdrop-filter: blur(10px);
+}
+
+.stats-section {
+    position: sticky;
+    top: 85px;
+    z-index: 99;
+    background: var(--bg-primary);
+    padding: 8px 0;
+    margin-bottom: 8px;
+}
+
+.search-filter-section {
+    position: sticky;
+    top: 155px;
+    z-index: 98;
+    background: var(--bg-primary);
+    padding: 8px 0;
+    margin-bottom: 8px;
+}
+
+.card-lottie-border lottie-player {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
 }
 
 /* Visit button style seperti card-telegram-btn Winedash */
@@ -966,11 +1004,6 @@ body {
     font-size: 10px;
     color: var(--text-muted);
     margin-left: auto;
-}
-
-/* ===== SEARCH + FILTER SECTION ===== */
-.search-filter-section {
-    margin-bottom: 16px;
 }
 
 .search-box {
@@ -1631,33 +1664,6 @@ body {
     z-index: 2;
 }
 
-/* Lottie container styling */
-.card-lottie-border lottie-player {
-    width: 100% !important;
-    height: 100% !important;
-}
-
-.card-lottie-border {
-    width: 100%;
-    aspect-ratio: 1 / 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 4px;
-    transition: all 0.2s;
-    position: relative;
-}
-
-.card-lottie-border lottie-player {
-    width: 100% !important;
-    height: 100% !important;
-    position: relative !important;
-    z-index: 10 !important;
-}
-
 .lottie-placeholder {
     position: absolute;
     top: 0;
@@ -1697,12 +1703,6 @@ body {
 /* Force lottie player to be visible */
 lottie-player {
     display: block !important;
-}
-
-.card-lottie-border lottie-player {
-    display: block !important;
-    width: 100% !important;
-    height: 100% !important;
 }
 
 /* Hapus display:none dari style bawaan */

@@ -1125,6 +1125,7 @@ async function loadGiftDetail(slug) {
     }
 }
 
+// ==================== SHOW DETAIL MODAL (DENGAN SAME MESSAGE SLUGS) ====================
 function showDetailModal(gift) {
     if (!elements.modalTitle || !elements.modalBody) return;
 
@@ -1145,7 +1146,7 @@ function showDetailModal(gift) {
                 src="${escapeHtml(lottieUrl)}" 
                 background="transparent" 
                 speed="1"
-                style="width:200px;height:200px;margin:0 auto;" 
+                style="width:200px;height:200px;margin:0 auto;display:none;" 
                 loop>
             </lottie-player>
         </div>
@@ -1227,6 +1228,19 @@ function showDetailModal(gift) {
             </a>
         </div>
 
+        <!-- ✅ AUTO-LOAD: Semua slug dari message_id yang sama -->
+        <div class="same-message-section" id="sameMessageSection">
+            <div class="same-message-header">
+                <span class="same-message-title">
+                    <i class="fas fa-list"></i> Semua Gift dari Msg.ID ${gift.message_id}
+                </span>
+                <span class="same-message-loading" id="sameMsgLoading">
+                    <i class="fas fa-spinner fa-spin"></i> Memuat...
+                </span>
+            </div>
+            <div class="same-message-scroll" id="sameMsgSlugs"></div>
+        </div>
+
         ${gift.text ? `
             <div class="detail-text-preview" style="margin-top:12px;">
                 <strong>📄 Text Content:</strong>
@@ -1243,18 +1257,84 @@ function showDetailModal(gift) {
         const modalPlaceholder = document.getElementById(`modal_placeholder_${lottieModalId}`);
         
         if (modalLottie && modalPlaceholder) {
-            // Sembunyikan placeholder
+            modalLottie.style.display = 'block';
             modalPlaceholder.style.display = 'none';
             
-            // Set autoplay jika mode play aktif
             if (state.lottiePlaying) {
                 modalLottie.setAttribute('autoplay', '');
-                try { 
-                    modalLottie.play(); 
-                } catch(e) {}
+                try { modalLottie.play(); } catch(e) {}
             }
         }
-    }, 200);
+    }, 100);
+    
+    // Load same message slugs (FIX: panggil function ini)
+    loadSameMessageSlugs(gift.message_id);
+}
+
+// ==================== LOAD SAME MESSAGE SLUGS (FIX) ====================
+async function loadSameMessageSlugs(messageId) {
+    const container = document.getElementById('sameMsgSlugs');
+    const loadingEl = document.getElementById('sameMsgLoading');
+    
+    if (!container || !loadingEl) {
+        console.log('Elements not found for same message slugs');
+        return;
+    }
+    
+    console.log(`🔄 Loading same message slugs for message_id: ${messageId}`);
+    
+    try {
+        const response = await fetch(`/gift-scam/api/by-message/${messageId}`);
+        const data = await response.json();
+        
+        console.log(`📡 Response:`, data);
+        
+        if (data.success && data.data && data.data.length > 0) {
+            loadingEl.style.display = 'none';
+            
+            // Clear container
+            container.innerHTML = '';
+            
+            data.data.forEach(gift => {
+                const miniCard = document.createElement('div');
+                miniCard.className = 'same-message-card';
+                miniCard.title = `${gift.slug}\nKlik untuk detail`;
+                miniCard.innerHTML = `
+                    <div class="same-message-lottie">
+                        <lottie-player src="${escapeHtml(gift.lottie_url)}" background="transparent" speed="1"
+                            style="width:45px;height:45px;margin:0 auto;" loop>
+                        </lottie-player>
+                    </div>
+                    <div class="same-message-name">${escapeHtml(gift.name)}</div>
+                    <div class="same-message-number">#${gift.number || ''}</div>
+                `;
+                
+                miniCard.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    closeModal();
+                    setTimeout(() => {
+                        loadGiftDetail(gift.slug);
+                    }, 300);
+                });
+                
+                container.appendChild(miniCard);
+            });
+            
+            // Update count di header
+            const header = document.querySelector('.same-message-title');
+            if (header) {
+                header.innerHTML = `<i class="fas fa-list"></i> Semua Gift dari Msg.ID ${messageId} (${data.data.length})`;
+            }
+        } else {
+            loadingEl.innerHTML = '<i class="fas fa-info-circle"></i> Tidak ada gift lain dari message ID ini';
+            console.log('No other gifts found for this message_id');
+        }
+    } catch (error) {
+        console.error('Error loading same message slugs:', error);
+        if (loadingEl) {
+            loadingEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Gagal memuat data gift lain';
+        }
+    }
 }
 
 // ==================== INIT LOTTIE PLAYERS ====================
@@ -1265,64 +1345,6 @@ function initLottiePlayers() {
         if (src && !player.hasAttribute('src')) {
         }
     });
-}
-
-async function loadSameMessageSlugs(messageId) {
-    const container = document.getElementById('sameMsgSlugs');
-    const loadingEl = document.getElementById('sameMsgLoading');
-    
-    if (!container || !loadingEl) return;
-    
-    try {
-        // Fetch semua gift dari database yang punya message_id sama
-        const response = await fetch(`/gift-scam/api/by-message/${messageId}`);
-        const data = await response.json();
-        
-        if (data.success && data.data.length > 0) {
-            loadingEl.style.display = 'none';
-            
-            const scrollDiv = document.createElement('div');
-            scrollDiv.className = 'same-message-scroll';
-            
-            data.data.forEach(gift => {
-                const miniCard = document.createElement('div');
-                miniCard.className = 'same-message-card';
-                miniCard.title = `${gift.slug}\nKlik untuk detail`;
-                miniCard.innerHTML = `
-                    <div class="same-message-lottie">
-                        <lottie-player src="${escapeHtml(gift.lottie_url)}" background="transparent" speed="1"
-                            style="width:50px;height:50px;margin:0 auto;" loop ${state.lottiePlaying ? 'autoplay' : ''}>
-                        </lottie-player>
-                    </div>
-                    <div class="same-message-name">${escapeHtml(gift.name)}</div>
-                    <div class="same-message-number">#${gift.number || ''}</div>
-                `;
-                
-                miniCard.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    loadGiftDetail(gift.slug);
-                });
-                
-                scrollDiv.appendChild(miniCard);
-            });
-            
-            container.innerHTML = '';
-            container.appendChild(scrollDiv);
-            
-            // Update count
-            const header = document.querySelector('.same-message-title');
-            if (header) {
-                header.innerHTML = `<i class="fas fa-list"></i> Semua Gift dari Msg.ID ${messageId} (${data.data.length})`;
-            }
-        } else {
-            loadingEl.innerHTML = '<i class="fas fa-info-circle"></i> Tidak ada gift lain';
-        }
-    } catch (error) {
-        console.error('Error loading same message slugs:', error);
-        if (loadingEl) {
-            loadingEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Gagal memuat';
-        }
-    }
 }
 
 function handleModalScan(event) {
