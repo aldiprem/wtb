@@ -1588,7 +1588,6 @@ if __name__ == '__main__':
     if user_bp: print("   - user_bp (/api/user)")
     if image_bp: print("   - image_bp (/api/images)")
     if frag_bp: print("   - frag_bp (/api/fragment)")
-    if jaseb_api_bp: print("   - jaseb_api_bp (/api/jaseb)")
     if gift_scanned_bp: print("   - gift_scanned_bp (no prefix)")
     print("="*60)
     print("\n📋 Gift Scanned Routes:")
