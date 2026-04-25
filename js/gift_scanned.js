@@ -82,6 +82,14 @@ document.addEventListener('DOMContentLoaded', () => {
     loadGifts();
 });
 
+// ==================== STATE GLOBAL ====================
+let scrollTimeout = null;
+let isObserving = false;
+let loadMoreInProgress = false;
+let lottieObserver = null;
+let lottieMutationObserver = null;
+let scrollCheckTimeout = null;
+
 // ==================== EVENT LISTENERS ====================
 function setupEventListeners() {
   // Search
@@ -207,6 +215,46 @@ function toggleLottiePlay() {
             }
         }
     });
+}
+
+function setupInfiniteScroll() {
+  // Hapus sentinel lama jika ada
+  const oldSentinel = document.getElementById('scrollSentinel');
+  if (oldSentinel) oldSentinel.remove();
+  
+  // Buat sentinel baru
+  const sentinel = document.createElement('div');
+  sentinel.id = 'scrollSentinel';
+  sentinel.style.height = '50px';  // Lebih besar untuk deteksi lebih baik
+  sentinel.style.width = '100%';
+  sentinel.style.visibility = 'hidden';  // Tidak terlihat tapi tetap trigger
+
+  // Tambahkan sentinel setelah giftGrid
+  if (elements.giftGrid && elements.giftGrid.parentNode) {
+    elements.giftGrid.insertAdjacentElement('afterend', sentinel);
+  }
+
+  // Hapus observer lama jika ada
+  if (window.scrollObserver) {
+    window.scrollObserver.disconnect();
+  }
+
+  window.scrollObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting && !state.isLoadingMore && !state.allLoaded && !state.isLoading) {
+        // Debounce untuk mencegah multiple call
+        if (scrollTimeout) clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          loadMoreGifts();
+        }, 300);
+      }
+    });
+  }, {
+    rootMargin: '300px',
+    threshold: 0.1
+  });
+
+  window.scrollObserver.observe(sentinel);
 }
 
 // ==================== FILTER FUNCTIONS ====================
@@ -491,9 +539,9 @@ function setupScrollToTopButton() {
     const scrollBtn = document.getElementById('scrollToTopBtn');
     if (!scrollBtn) return;
     
-    // Fungsi untuk mengecek apakah tombol harus ditampilkan
+    let ticking = false;
+    
     function checkScrollPosition() {
-        // Dapatkan tinggi satu baris card (perkiraan)
         const giftCards = document.querySelectorAll('.gift-card');
         
         if (giftCards.length === 0) {
@@ -501,121 +549,212 @@ function setupScrollToTopButton() {
             return;
         }
         
-        // Ambil card pertama dan kedua (satu baris = 2 card)
         const firstCard = giftCards[0];
         const cardBottom = firstCard.getBoundingClientRect().bottom;
         
-        // Jika card pertama sudah melewati atas layar (scroll melewati 1 baris)
         if (cardBottom < 0) {
             scrollBtn.classList.add('visible');
         } else {
             scrollBtn.classList.remove('visible');
         }
+        
+        ticking = false;
     }
     
-    // Event listener scroll
-    window.addEventListener('scroll', checkScrollPosition, { passive: true });
+    // Throttled scroll handler
+    window.addEventListener('scroll', () => {
+        if (!ticking) {
+            requestAnimationFrame(checkScrollPosition);
+            ticking = true;
+        }
+    }, { passive: true });
     
-    // Event listener klik
     scrollBtn.addEventListener('click', () => {
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
-        });
-        
-        // Haptic feedback (opsional)
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         if (window.Telegram?.WebApp?.HapticFeedback) {
             window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
         }
     });
     
-    // Cek posisi awal
     checkScrollPosition();
 }
 
-// ==================== LOAD GIFTS (Initial) ====================
+// ==================== LOAD GIFTS (DIPERBAIKI) ====================
+let loadRetryCount = 0;
+const MAX_RETRY = 2;
+
 async function loadGifts() {
-    if (state.isLoading) return;
-    state.isLoading = true;
-    state.currentPage = 1;
-    state.allLoaded = false;
-    state.gifts = [];
-    state.allGifts = [];  // ✅ Reset juga
-    showLoading(true);
-    hideAllStates();
+  // Cegah reload berulang
+  if (state.isLoading) {
+    console.log('Already loading, skip');
+    return;
+  }
+  
+  state.isLoading = true;
+  state.currentPage = 1;
+  state.allLoaded = false;
+  state.gifts = [];
+  state.allGifts = [];
+  
+  showLoading(true);
+  hideAllStates();
 
-    try {
-        let url;
-        let searchQuery = state.searchQuery;
-        
-        if (searchQuery.startsWith('msgid:')) {
-            const messageId = searchQuery.replace('msgid:', '');
-            url = `/gift-scam/api/by-message/${messageId}`;
-        } else if (searchQuery.startsWith('userid:')) {
-            const userId = searchQuery.replace('userid:', '');
-            url = `/gift-scam/api/by-user/${userId}`;
-        } else {
-            const params = new URLSearchParams({
-                page: 1,
-                limit: 5000,
-                search: searchQuery
-            });
-            url = `/gift-scam/api/list?${params}`;
-        }
-        
-        console.log(`📡 ${url}`);
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-
-        if (data.success) {
-            let items = data.data || [];
-            
-            // ✅ Simpan SEMUA data ke allGifts
-            state.allGifts = items;
-            
-            // ✅ Terapkan filter untuk tampilan
-            filterAndRenderGifts();
-            
-        } else {
-            showError(data.error || 'Gagal memuat data');
-        }
-    } catch (error) {
-        showError(`Gagal terhubung. ${error.message}`);
-    } finally {
-        state.isLoading = false;
-        showLoading(false);
+  try {
+    let url;
+    let searchQuery = state.searchQuery;
+    
+    if (searchQuery.startsWith('msgid:')) {
+      const messageId = searchQuery.replace('msgid:', '');
+      url = `/gift-scam/api/by-message/${messageId}`;
+    } else if (searchQuery.startsWith('userid:')) {
+      const userId = searchQuery.replace('userid:', '');
+      url = `/gift-scam/api/by-user/${userId}`;
+    } else {
+      // Batasi limit untuk mobile
+      const limit = window.innerWidth < 768 ? 200 : 5000;
+      const params = new URLSearchParams({
+        page: 1,
+        limit: limit,
+        search: searchQuery
+      });
+      url = `/gift-scam/api/list?${params}`;
     }
+    
+    console.log(`📡 ${url}`);
+    
+    // Tambahkan timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+
+    if (data.success) {
+      let items = data.data || [];
+      state.allGifts = items;
+      loadRetryCount = 0; // Reset retry counter
+      filterAndRenderGifts();
+    } else {
+      throw new Error(data.error || 'Gagal memuat data');
+    }
+  } catch (error) {
+    console.error('Load error:', error);
+    
+    // Retry logic untuk mobile
+    if (loadRetryCount < MAX_RETRY && error.name !== 'AbortError') {
+      loadRetryCount++;
+      console.log(`Retry ${loadRetryCount}/${MAX_RETRY}...`);
+      setTimeout(() => loadGifts(), 1000);
+      return;
+    }
+    
+    showError(`Gagal terhubung. ${error.message}`);
+  } finally {
+    state.isLoading = false;
+    showLoading(false);
+  }
 }
 
+// ==================== FILTER AND RENDER (DIPERBAIKI) ====================
 function filterAndRenderGifts() {
-    let items = [...state.allGifts];
+  let items = [...state.allGifts];
+  
+  // Filter by search query
+  if (state.searchQuery && !state.searchQuery.startsWith('msgid:') && !state.searchQuery.startsWith('userid:')) {
+    const query = state.searchQuery.toLowerCase();
+    items = items.filter(g => 
+      g.slug.toLowerCase().includes(query) || 
+      g.name.toLowerCase().includes(query) ||
+      (g.text && g.text.toLowerCase().includes(query))
+    );
+  }
+  
+  // Batasi jumlah awal untuk mobile (load 50 dulu, sisanya via infinite scroll)
+  const INITIAL_LOAD = 50;
+  const hasMore = items.length > INITIAL_LOAD;
+  
+  state.gifts = items.slice(0, INITIAL_LOAD);
+  state.allGiftsFull = items;  // Simpan semua untuk infinite scroll
+  state.allLoaded = !hasMore;
+  
+  if (state.gifts.length === 0) {
+    showEmpty();
+  } else {
+    renderGiftsBatch(state.gifts);
+    updateTotalCount(items.length);
+    if (elements.pagination) elements.pagination.style.display = 'none';
+  }
+  
+  // Reset infinite scroll untuk next batch
+  if (hasMore) {
+    state.currentPage = 1;
+    state.allGifts = items;  // Untuk loadMoreGifts
+  }
+}
+
+// Batch render awal
+function renderGiftsBatch(gifts, batchSize = 20) {
+  if (!elements.giftGrid) return;
+  elements.giftGrid.style.display = 'grid';
+  elements.giftGrid.innerHTML = '';
+  
+  let index = 0;
+  
+  function renderBatch() {
+    const batch = gifts.slice(index, index + batchSize);
+    const fragment = document.createDocumentFragment();
     
-    // ✅ Filter by search query (jika mode gift)
-    if (state.searchQuery && !state.searchQuery.startsWith('msgid:') && !state.searchQuery.startsWith('userid:')) {
-        const query = state.searchQuery.toLowerCase();
-        items = items.filter(g => 
-            g.slug.toLowerCase().includes(query) || 
-            g.name.toLowerCase().includes(query) ||
-            (g.text && g.text.toLowerCase().includes(query))
-        );
+    batch.forEach((gift, i) => {
+      const card = createGiftCard(gift, index + i);
+      fragment.appendChild(card);
+    });
+    
+    elements.giftGrid.appendChild(fragment);
+    index += batchSize;
+    
+    if (index < gifts.length) {
+      // Delay antar batch agar tidak freeze
+      setTimeout(renderBatch, 100);
+    } else if (state.allGiftsFull && state.allGiftsFull.length > gifts.length) {
+      // Sisa data akan di-load via infinite scroll
+      state.gifts = [...gifts];
+      state.allLoaded = false;
     }
-    
-    state.gifts = items;
-    state.allLoaded = true;
-    
-    if (items.length === 0) {
-        showEmpty();
-    } else {
-        renderGifts(items);
-        updateTotalCount(items.length);
-        if (elements.pagination) elements.pagination.style.display = 'none';
-    }
+  }
+  
+  renderBatch();
+}
+
+// ==================== DETEKSI TELEGRAM WEBVIEW ====================
+function isTelegramWebView() {
+  return !!(window.Telegram?.WebApp || navigator.userAgent.includes('Telegram'));
+}
+
+if (isTelegramWebView()) {
+  // Optimasi untuk Telegram MiniApp
+  document.body.classList.add('telegram-webview');
+  // Kurangi batch size untuk Telegram
+  window.TELEGRAM_MODE = true;
 }
 
 // ==================== LOAD MORE (Infinite Scroll) ====================
 async function loadMoreGifts() {
-  if (state.isLoadingMore || state.allLoaded) return;
+  // Cegah multiple call bersamaan
+  if (loadMoreInProgress) return;
+  if (state.isLoadingMore) return;
+  if (state.allLoaded) return;
+  if (state.isLoading) return;
+  
+  // Cek apakah masih ada data
+  if (state.gifts.length >= state.allGifts.length && state.allGifts.length > 0) {
+    state.allLoaded = true;
+    return;
+  }
+  
+  loadMoreInProgress = true;
   state.isLoadingMore = true;
 
   const nextPage = state.currentPage + 1;
@@ -632,16 +771,21 @@ async function loadMoreGifts() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
 
-    if (data.success && data.data.length > 0) {
+    if (data.success && data.data && data.data.length > 0) {
       let newGifts = data.data;
+      
+      // Filter jika ada filter name
       if (state.filterName) {
         newGifts = data.data.filter(g => g.name === state.filterName);
       }
 
       if (newGifts.length > 0) {
+        // Gabungkan dengan existing
         state.gifts = [...state.gifts, ...newGifts];
         state.currentPage = nextPage;
-        appendGifts(newGifts);
+        
+        // Append ke DOM dengan batch rendering
+        appendGiftsBatch(newGifts);
       }
 
       // Cek apakah sudah semua
@@ -651,13 +795,38 @@ async function loadMoreGifts() {
     } else {
       state.allLoaded = true;
     }
-
-    updateTotalCount(data.total);
   } catch (error) {
     console.error('❌ Error load more:', error);
   } finally {
     state.isLoadingMore = false;
+    loadMoreInProgress = false;
   }
+}
+
+function appendGiftsBatch(newGifts, batchSize = 5) {
+  if (!elements.giftGrid) return;
+  
+  let index = 0;
+  
+  function appendBatch() {
+    const batch = newGifts.slice(index, index + batchSize);
+    const fragment = document.createDocumentFragment();
+    
+    batch.forEach((gift, i) => {
+      const card = createGiftCard(gift, state.gifts.length - newGifts.length + index + i);
+      fragment.appendChild(card);
+    });
+    
+    elements.giftGrid.appendChild(fragment);
+    index += batchSize;
+    
+    if (index < newGifts.length) {
+      // Lanjutkan batch berikutnya dengan sedikit delay untuk memberi napas ke browser
+      setTimeout(appendBatch, 50);
+    }
+  }
+  
+  appendBatch();
 }
 
 function appendGifts(newGifts) {
@@ -779,11 +948,15 @@ function createGiftCard(gift, index) {
     card.className = 'gift-card';
     const msgLink = `https://t.me/listgiftkotor/${gift.message_id}`;
     
+    // Gunakan data-src untuk lazy loading lottie
     card.innerHTML = `
         <div class="card-lottie-wrapper">
             <div class="card-lottie-border">
-                <lottie-player src="${escapeHtml(gift.lottie_url)}" background="transparent" speed="1"
-                    style="width:100%;height:100%;" loop mode="normal">
+                <div class="lottie-placeholder" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.03);">
+                    <i class="fas fa-gift" style="font-size:32px;color:var(--primary-color);opacity:0.5;"></i>
+                </div>
+                <lottie-player data-src="${escapeHtml(gift.lottie_url)}" background="transparent" speed="1"
+                    style="width:100%;height:100%;display:none;" loop mode="normal">
                 </lottie-player>
             </div>
         </div>
@@ -797,6 +970,28 @@ function createGiftCard(gift, index) {
             </a>
         </div>
     `;
+    
+    // Lazy load lottie saat card masuk viewport
+    const lottiePlayer = card.querySelector('lottie-player');
+    const placeholder = card.querySelector('.lottie-placeholder');
+    
+    if (lottiePlayer && placeholder) {
+        const lazyObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const src = lottiePlayer.getAttribute('data-src');
+                    if (src && !lottiePlayer.hasAttribute('src')) {
+                        lottiePlayer.setAttribute('src', src);
+                        lottiePlayer.style.display = 'block';
+                        if (placeholder) placeholder.style.display = 'none';
+                    }
+                    lazyObserver.unobserve(lottiePlayer);
+                }
+            });
+        }, { rootMargin: '200px' });
+        
+        lazyObserver.observe(lottiePlayer);
+    }
     
     card.addEventListener('click', () => loadGiftDetail(gift.slug));
     return card;
@@ -1107,57 +1302,81 @@ function handleClearSearch() {
 
 // ==================== LOTTIE INTERSECTION OBSERVER ====================
 function setupLottieObserver() {
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            const player = entry.target;
-            if (entry.isIntersecting) {
-                // Terlihat di layar -> play (jika mode play aktif)
-                if (state.lottiePlaying) {
-                    player.setAttribute('autoplay', '');
-                    player.play?.();
-                } else {
-                    // Mode stop, tapi tetap di frame 0
-                    player.removeAttribute('autoplay');
-                    player.stop?.();
-                    player.seek?.(0);
-                }
-            } else {
-                // Tidak terlihat -> pause/stop
-                player.removeAttribute('autoplay');
-                player.stop?.();
-                player.seek?.(0);
+  // Hapus observer lama jika ada
+  if (lottieObserver) {
+    lottieObserver.disconnect();
+  }
+  
+  lottieObserver = new IntersectionObserver((entries) => {
+    // Batasi proses untuk mobile - hanya proses 10 entry per tick
+    const entriesToProcess = entries.slice(0, 10);
+    
+    entriesToProcess.forEach(entry => {
+      const player = entry.target;
+      if (!player) return;
+      
+      if (entry.isIntersecting) {
+        if (state.lottiePlaying) {
+          // Gunakan requestAnimationFrame untuk menghindari blocking
+          requestAnimationFrame(() => {
+            if (player && !player.hasAttribute('autoplay')) {
+              player.setAttribute('autoplay', '');
+              try { player.play?.(); } catch(e) {}
             }
-        });
-    }, {
-        rootMargin: '100px', // Mulai animasi 100px sebelum masuk viewport
-        threshold: 0.1
-    });
-
-    // Observe semua lottie player yang ada dan yang baru ditambahkan
-    const observeAll = () => {
-        document.querySelectorAll('lottie-player').forEach(player => {
-            if (!player.dataset.observed) {
-                observer.observe(player);
-                player.dataset.observed = 'true';
+          });
+        } else {
+          requestAnimationFrame(() => {
+            if (player) {
+              player.removeAttribute('autoplay');
+              try { player.stop?.(); player.seek?.(0); } catch(e) {}
             }
-        });
-    };
-
-    // Observe existing
-    observeAll();
-
-    // Observe new (MutationObserver untuk card yang ditambahkan via infinite scroll)
-    const mutationObserver = new MutationObserver(() => {
-        observeAll();
+          });
+        }
+      } else {
+        // Hanya stop jika benar-benar tidak visible (optimasi)
+        if (player && player.hasAttribute('autoplay')) {
+          player.removeAttribute('autoplay');
+          try { player.stop?.(); player.seek?.(0); } catch(e) {}
+        }
+      }
     });
+  }, {
+    rootMargin: '150px',
+    threshold: 0.05  // Threshold lebih rendah
+  });
 
-    const gridEl = document.getElementById('giftGrid');
-    if (gridEl) {
-        mutationObserver.observe(gridEl, {
-            childList: true,
-            subtree: true
-        });
-    }
+  // Observe existing players dengan batas
+  const observePlayers = () => {
+    const players = document.querySelectorAll('lottie-player:not([data-observed-mobile])');
+    // Batasi jumlah yang diobserve per tick (max 20)
+    const playersToObserve = Array.from(players).slice(0, 20);
+    
+    playersToObserve.forEach(player => {
+      lottieObserver.observe(player);
+      player.setAttribute('data-observed-mobile', 'true');
+    });
+  };
+  
+  observePlayers();
+
+  // MutationObserver dengan throttling
+  if (lottieMutationObserver) {
+    lottieMutationObserver.disconnect();
+  }
+  
+  let mutationTimeout = null;
+  lottieMutationObserver = new MutationObserver(() => {
+    if (mutationTimeout) clearTimeout(mutationTimeout);
+    mutationTimeout = setTimeout(observePlayers, 200);
+  });
+
+  const gridEl = document.getElementById('giftGrid');
+  if (gridEl) {
+    lottieMutationObserver.observe(gridEl, {
+      childList: true,
+      subtree: true
+    });
+  }
 }
 
 // ==================== UTILS ====================
