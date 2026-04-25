@@ -41,6 +41,13 @@ except ImportError as e1:
         print(f"⚠️ Second import attempt failed: {e2}")
         jaseb_api_bp = None
 
+try:
+    from database.data import db as jaseb_db
+    print("✅ Jaseb database imported successfully in panel_service")
+except ImportError as e:
+    print(f"⚠️ Failed to import Jaseb database: {e}")
+    jaseb_db = None
+
 # Menambahkan direktori root ke path
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT_DIR)
@@ -602,29 +609,6 @@ def serve_jaseb_services(filename):
 def serve_jaseb_images(filename):
     """Serve images for Jaseb"""
     return send_from_directory(os.path.join(JASEB_DIR, 'images'), filename)
-
-# ==================== JASEB API HEALTH CHECK ====================
-
-@app.route('/api/jaseb/health', methods=['GET'])
-def jaseb_health_check():
-    """Health check endpoint for Jaseb integration"""
-    try:
-        from database.data import db
-        stats = db.get_stats()
-        return jsonify({
-            'success': True,
-            'status': 'healthy',
-            'integration': 'active',
-            'stats': stats,
-            'timestamp': datetime.now().isoformat()
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'status': 'unhealthy',
-            'error': str(e),
-            'timestamp': datetime.now().isoformat()
-        }), 500
 
 @app.route('/source-viewer')
 def source_viewer_page():
