@@ -2,8 +2,8 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Info Perangkat & Lokasi | Edukasi</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Info Perangkat & Jaringan | Device Info Tool</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -21,11 +21,10 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
 
-        /* Header */
         .header {
             text-align: center;
             margin-bottom: 30px;
@@ -41,22 +40,15 @@
             margin-bottom: 10px;
         }
 
-        .header p {
-            color: #a0a0c0;
-            font-size: 0.9rem;
-        }
-
         .warning-banner {
-            background: rgba(255, 0, 100, 0.2);
-            border-left: 4px solid #ff0066;
+            background: rgba(255, 100, 100, 0.15);
+            border-left: 4px solid #ff6666;
             padding: 15px 20px;
             border-radius: 10px;
             margin-bottom: 20px;
             font-size: 0.85rem;
-            backdrop-filter: blur(10px);
         }
 
-        /* Grid */
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -75,7 +67,6 @@
 
         .card:hover {
             transform: translateY(-5px);
-            background: rgba(255, 255, 255, 0.12);
         }
 
         .card h3 {
@@ -91,7 +82,7 @@
         .info-row {
             display: flex;
             justify-content: space-between;
-            padding: 10px 0;
+            padding: 12px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
             font-size: 0.9rem;
         }
@@ -108,14 +99,6 @@
             max-width: 60%;
         }
 
-        .badge {
-            background: #667eea;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
         button {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border: none;
@@ -126,7 +109,7 @@
             cursor: pointer;
             width: 100%;
             font-size: 1rem;
-            transition: opacity 0.3s;
+            margin-top: 10px;
         }
 
         button:hover {
@@ -135,7 +118,6 @@
 
         .location-btn {
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            margin-top: 10px;
         }
 
         .status {
@@ -148,81 +130,73 @@
 
         .status.success {
             background: rgba(0, 255, 100, 0.2);
-            color: #0f0;
+            color: #a0ffa0;
         }
 
         .status.error {
-            background: rgba(255, 0, 0, 0.2);
-            color: #ff6666;
+            background: rgba(255, 50, 50, 0.2);
+            color: #ff8888;
         }
 
         .status.info {
             background: rgba(100, 100, 255, 0.2);
-            color: #88aaff;
+            color: #aaaaff;
         }
 
-        .ip-container {
-            font-family: monospace;
-            font-size: 1.1rem;
-            font-weight: bold;
-            text-align: center;
-            padding: 10px;
+        .refresh-btn {
+            background: rgba(255,255,255,0.1);
+            margin-top: 5px;
+            font-size: 0.8rem;
         }
 
         @media (max-width: 768px) {
-            .header h1 {
-                font-size: 1.8rem;
-            }
-            .grid {
-                grid-template-columns: 1fr;
-            }
-            .info-value {
-                max-width: 55%;
-                font-size: 0.8rem;
-            }
+            .header h1 { font-size: 1.8rem; }
+            .info-value { max-width: 55%; font-size: 0.75rem; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🕵️ Info Perangkat & Jaringan</h1>
-            <p>Informasi teknis yang biasanya tersedia secara publik dari browser Anda</p>
+            <h1>📡 Info Perangkat & Jaringan</h1>
+            <p>Informasi teknis yang tersedia dari browser Anda (Edukasi Privasi)</p>
         </div>
 
         <div class="warning-banner">
-            ⚠️ <strong>INFORMASI PENTING:</strong> Data berikut adalah informasi yang secara default dapat diakses oleh website manapun. 
-            Lokasi presisi <strong>MEMERLUKAN IZIN ANDA</strong>. Halaman ini dibuat untuk keperluan edukasi/Kesadaran Privasi.
+            ⚠️ <strong>INFORMASI PENTING:</strong> Data IP, ISP, dan lokasi kasar (kota/negara) diambil dari API publik. 
+            Lokasi presisi (GPS) <strong>MEMERLUKAN IZIN ANDA</strong>. Halaman ini hanya untuk edukasi.
         </div>
 
         <div class="grid">
-            <!-- IP Info Card -->
+            <!-- IP & Jaringan -->
             <div class="card">
-                <h3>
-                    <span>🌐</span> IP & Jaringan
-                </h3>
+                <h3>🌐 IP & Jaringan</h3>
                 <div class="info-row">
                     <span class="info-label">IP Publik</span>
-                    <span class="info-value" id="ip-address">Mengambil data...</span>
+                    <span class="info-value" id="ip-address">⏳ Mengambil...</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">ISP / Provider</span>
-                    <span class="info-value" id="isp">-</span>
+                    <span class="info-label">ISP/Provider</span>
+                    <span class="info-value" id="isp">⏳ Memuat...</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Kota/Region</span>
+                    <span class="info-value" id="city">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Negara</span>
+                    <span class="info-value" id="country">-</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Proxy/VPN</span>
-                    <span class="info-value" id="proxy">Memeriksa...</span>
+                    <span class="info-value" id="proxy">⏳ Memeriksa...</span>
                 </div>
-                <div class="ip-container" id="ip-location-link" style="display: none;">
-                    <small>📍 <span id="city"></span>, <span id="country"></span></small>
-                </div>
+                <button id="refresh-ip-btn" class="refresh-btn">🔄 Refresh IP Info</button>
             </div>
 
-            <!-- Device Info -->
+            <!-- Perangkat & Browser -->
             <div class="card">
-                <h3>
-                    <span>📱</span> Perangkat & Browser
-                </h3>
+                <h3>📱 Perangkat & Browser</h3>
                 <div class="info-row">
                     <span class="info-label">Device Type</span>
                     <span class="info-value" id="device-type">-</span>
@@ -236,7 +210,7 @@
                     <span class="info-value" id="browser">-</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">Screen</span>
+                    <span class="info-label">Screen Resolution</span>
                     <span class="info-value" id="screen">-</span>
                 </div>
                 <div class="info-row">
@@ -249,11 +223,34 @@
                 </div>
             </div>
 
-            <!-- Location (Requires Permission) -->
+            <!-- Hardware & Fitur -->
             <div class="card">
-                <h3>
-                    <span>📍</span> Lokasi Presisi
-                </h3>
+                <h3>🖥️ Hardware & Fitur</h3>
+                <div class="info-row">
+                    <span class="info-label">CPU Cores</span>
+                    <span class="info-value" id="cpu-cores">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">RAM (Device Memory)</span>
+                    <span class="info-value" id="memory">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Touch Support</span>
+                    <span class="info-value" id="touch">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Cookies Enabled</span>
+                    <span class="info-value" id="cookies">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Do Not Track</span>
+                    <span class="info-value" id="dnt">-</span>
+                </div>
+            </div>
+
+            <!-- Lokasi Presisi (Izin) -->
+            <div class="card">
+                <h3>📍 Lokasi Presisi (GPS)</h3>
                 <div class="info-row">
                     <span class="info-label">Status Izin</span>
                     <span class="info-value" id="loc-status">Belum diminta</span>
@@ -272,102 +269,97 @@
                         <span class="info-value" id="accuracy">-</span>
                     </div>
                 </div>
-                <button id="get-location-btn" class="location-btn">📍 Dapatkan Lokasi Saya (Izin Diperlukan)</button>
-                <div id="loc-message" class="status info" style="margin-top:10px">Klik tombol di atas untuk memberikan izin lokasi.</div>
-            </div>
-        </div>
-
-        <!-- Detailed Additional Info -->
-        <div class="grid">
-            <div class="card">
-                <h3>
-                    <span>🖥️</span> Hardware
-                </h3>
-                <div class="info-row">
-                    <span class="info-label">CPU Cores</span>
-                    <span class="info-value" id="cpu-cores">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Memory (RAM)</span>
-                    <span class="info-value" id="memory">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Touch Support</span>
-                    <span class="info-value" id="touch">-</span>
-                </div>
-            </div>
-            <div class="card">
-                <h3>
-                    <span>🔌</span> Fitur Browser
-                </h3>
-                <div class="info-row">
-                    <span class="info-label">Cookies Enabled</span>
-                    <span class="info-value" id="cookies">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Do Not Track</span>
-                    <span class="info-value" id="dnt">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">WebGL Vendor</span>
-                    <span class="info-value" id="webgl">Memeriksa...</span>
-                </div>
+                <button id="get-location-btn" class="location-btn">📍 Dapatkan Lokasi Saya</button>
+                <div id="loc-message" class="status info">Klik tombol di atas & berikan izin.</div>
             </div>
         </div>
     </div>
 
     <script>
-        // ==================== 1. IP & Geolocation via API Publik ====================
+        // ==================== MULTI API IP (Anti CORS) ====================
         async function fetchIPInfo() {
+            // Backup APIs (beberapa sumber biar gak kena CORS)
+            const apis = [
+                { url: 'https://api.ipify.org?format=json', type: 'ip' },
+                { url: 'https://api.my-ip.io/ip.json', type: 'ip' },
+                { url: 'https://ipapi.co/json/', type: 'full' },
+                { url: 'https://ipwho.is/', type: 'full' }
+            ];
+            
+            let ip = null;
+            
+            // Coba ambil IP dulu
+            for (const api of apis) {
+                if (api.type === 'ip') {
+                    try {
+                        const res = await fetch(api.url, { mode: 'cors', cache: 'no-cache' });
+                        const data = await res.json();
+                        ip = data.ip || data.query;
+                        if (ip) {
+                            document.getElementById('ip-address').innerText = ip;
+                            break;
+                        }
+                    } catch(e) { console.log('IP API failed:', api.url); }
+                }
+            }
+            
+            // Ambil info detail (ISP, lokasi, proxy)
             try {
-                // Ambil IP Publik
-                const ipRes = await fetch('https://api.ipify.org?format=json');
-                const ipData = await ipRes.json();
-                const publicIP = ipData.ip;
-                document.getElementById('ip-address').innerText = publicIP;
-
-                // Ambil info lebih detail (ISP, Lokasi Kasar) dari ip-api.com (gratis, tanpa izin, non-presisi)
-                const detailRes = await fetch(`http://ip-api.com/json/${publicIP}?fields=status,country,city,isp,proxy`);
+                // Gunakan ipapi.co (reliable, support CORS)
+                const detailRes = await fetch('https://ipapi.co/json/', { cache: 'no-cache' });
                 const detail = await detailRes.json();
                 
-                if (detail.status === 'success') {
-                    document.getElementById('isp').innerText = detail.isp || '-';
-                    document.getElementById('proxy').innerText = detail.proxy ? 'Terindikasi Proxy/VPN' : 'Tidak';
-                    document.getElementById('city').innerText = detail.city || 'Unknown';
-                    document.getElementById('country').innerText = detail.country || 'Unknown';
-                    document.getElementById('ip-location-link').style.display = 'block';
+                if (detail && !detail.error) {
+                    document.getElementById('isp').innerText = detail.org || detail.asn || '-';
+                    document.getElementById('city').innerText = detail.city || detail.region || '-';
+                    document.getElementById('country').innerText = detail.country_name || detail.country || '-';
+                    document.getElementById('proxy').innerText = detail.proxy ? '⚠️ Terdeteksi Proxy/VPN' : 'Tidak terdeteksi';
+                    
+                    // Kalau IP belum dapet, pake dari sini
+                    if (!ip && detail.ip) {
+                        document.getElementById('ip-address').innerText = detail.ip;
+                    }
                 } else {
-                    document.getElementById('isp').innerText = 'Tidak tersedia';
-                    document.getElementById('proxy').innerText = 'Tidak diketahui';
+                    // Fallback ke ipwho.is
+                    const fallbackRes = await fetch(`https://ipwho.is/${ip || ''}`, { cache: 'no-cache' });
+                    const fallback = await fallbackRes.json();
+                    if (fallback && !fallback.error) {
+                        document.getElementById('isp').innerText = fallback.connection?.isp || '-';
+                        document.getElementById('city').innerText = fallback.city || '-';
+                        document.getElementById('country').innerText = fallback.country || '-';
+                        document.getElementById('proxy').innerText = fallback.security?.proxy ? '⚠️ Proxy/VPN terdeteksi' : 'Tidak';
+                    }
                 }
-            } catch (err) {
-                console.error("Gagal fetch IP:", err);
-                document.getElementById('ip-address').innerHTML = 'Gagal mengambil data (CORS/Network)';
-                document.getElementById('isp').innerText = 'Error';
+            } catch(e) {
+                console.error('Detail IP error:', e);
+                document.getElementById('isp').innerText = 'Tidak dapat mengambil data';
+                document.getElementById('city').innerText = '-';
+                document.getElementById('country').innerText = '-';
+                document.getElementById('proxy').innerText = 'Gagal memeriksa';
             }
         }
 
-        // ==================== 2. Device / Browser Info (Data Publik) ====================
+        // ==================== Device Info (Langsung dari Browser) ====================
         function getDeviceInfo() {
             const ua = navigator.userAgent;
             
-            // Device Type Detection
+            // Device Type
             let deviceType = 'Desktop';
             if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) deviceType = 'Tablet';
-            else if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(ob|in)i/.test(ua)) deviceType = 'Mobile';
+            else if (/Mobile|Android|iPhone|iPad|iPod|IEMobile|BlackBerry|Kindle/i.test(ua)) deviceType = 'Mobile';
             document.getElementById('device-type').innerText = deviceType;
             
-            // OS Detection
+            // OS
             let os = 'Unknown';
             if (/Windows NT 10.0/.test(ua)) os = 'Windows 11/10';
             else if (/Windows NT 6.1/.test(ua)) os = 'Windows 7';
             else if (/Mac OS X/.test(ua)) os = 'macOS';
             else if (/Android/.test(ua)) os = 'Android';
-            else if (/iOS|iPhone|iPad/.test(ua)) os = 'iOS';
+            else if (/iPhone|iPad|iPod/.test(ua)) os = 'iOS';
             else if (/Linux/.test(ua)) os = 'Linux';
             document.getElementById('os').innerText = os;
             
-            // Browser Detection
+            // Browser
             let browser = 'Unknown';
             if (/Edg/.test(ua)) browser = 'Microsoft Edge';
             else if (/Chrome/.test(ua) && !/Edg/.test(ua)) browser = 'Chrome';
@@ -377,10 +369,10 @@
             document.getElementById('browser').innerText = browser;
             
             // Screen
-            document.getElementById('screen').innerText = `${screen.width}x${screen.height} (${window.devicePixelRatio || 1}x)`;
+            document.getElementById('screen').innerText = `${screen.width}x${screen.height} (${window.devicePixelRatio||1}x)`;
             
             // Language
-            document.getElementById('language').innerText = navigator.language || navigator.userLanguage || '-';
+            document.getElementById('language').innerText = navigator.language || '-';
             
             // Timezone
             document.getElementById('timezone').innerText = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -388,41 +380,28 @@
             // CPU Cores
             document.getElementById('cpu-cores').innerText = navigator.hardwareConcurrency || 'Unknown';
             
-            // Memory (Device RAM)
+            // Memory
             if (navigator.deviceMemory) {
                 document.getElementById('memory').innerText = `${navigator.deviceMemory} GB`;
             } else {
                 document.getElementById('memory').innerText = 'Tidak tersedia';
             }
             
-            // Touch Support
-            document.getElementById('touch').innerText = 'ontouchstart' in window ? 'Yes' : 'No';
+            // Touch
+            document.getElementById('touch').innerText = 'ontouchstart' in window ? 'Ya' : 'Tidak';
             
             // Cookies
             document.getElementById('cookies').innerText = navigator.cookieEnabled ? 'Enabled' : 'Disabled';
             
             // Do Not Track
-            if (navigator.doNotTrack) document.getElementById('dnt').innerText = navigator.doNotTrack === '1' ? 'Enabled' : 'Disabled';
-            else document.getElementById('dnt').innerText = 'Not set';
-            
-            // WebGL
-            const canvas = document.createElement('canvas');
-            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-            if (gl) {
-                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                if (debugInfo) {
-                    const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
-                    const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-                    document.getElementById('webgl').innerText = `${vendor} / ${renderer}`;
-                } else {
-                    document.getElementById('webgl').innerText = 'WebGL aktif, info tidak detail';
-                }
+            if (navigator.doNotTrack) {
+                document.getElementById('dnt').innerText = navigator.doNotTrack === '1' ? 'Enabled' : 'Disabled';
             } else {
-                document.getElementById('webgl').innerText = 'Tidak support';
+                document.getElementById('dnt').innerText = 'Not set';
             }
         }
 
-        // ==================== 3. Location with Permission ====================
+        // ==================== Location with Permission ====================
         function initLocation() {
             const btn = document.getElementById('get-location-btn');
             const locStatus = document.getElementById('loc-status');
@@ -432,7 +411,7 @@
             btn.addEventListener('click', () => {
                 if (!navigator.geolocation) {
                     locStatus.innerText = 'Tidak support';
-                    msgDiv.innerHTML = '❌ Browser Anda tidak mendukung Geolocation API';
+                    msgDiv.innerHTML = '❌ Browser tidak support GPS';
                     msgDiv.className = 'status error';
                     return;
                 }
@@ -443,67 +422,43 @@
                 
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
-                        // Success
                         locStatus.innerText = '✅ Diizinkan';
                         locationDiv.style.display = 'block';
-                        
                         document.getElementById('lat').innerText = position.coords.latitude.toFixed(6);
                         document.getElementById('lng').innerText = position.coords.longitude.toFixed(6);
                         document.getElementById('accuracy').innerText = `${Math.round(position.coords.accuracy)} meter`;
-                        
-                        msgDiv.innerHTML = '✅ Lokasi presisi berhasil didapatkan!';
+                        msgDiv.innerHTML = `✅ Lokasi didapat! <a href="https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}" target="_blank" style="color:#aaffaa;">Lihat Peta</a>`;
                         msgDiv.className = 'status success';
-                        
-                        // Optional: Tampilkan di Maps
-                        const mapsLink = `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`;
-                        msgDiv.innerHTML += ` <a href="${mapsLink}" target="_blank" style="color:white; text-decoration:underline;">Lihat Peta</a>`;
-                        
                     },
                     (error) => {
-                        // Error / Ditolak
-                        locStatus.innerText = '❌ Ditolak / Error';
+                        locStatus.innerText = '❌ Ditolak';
                         let errMsg = '';
                         switch(error.code) {
-                            case error.PERMISSION_DENIED:
-                                errMsg = 'Izin lokasi ditolak oleh pengguna.';
-                                break;
-                            case error.POSITION_UNAVAILABLE:
-                                errMsg = 'Informasi lokasi tidak tersedia.';
-                                break;
-                            case error.TIMEOUT:
-                                errMsg = 'Waktu permintaan lokasi habis.';
-                                break;
-                            default:
-                                errMsg = 'Terjadi kesalahan tidak dikenal.';
+                            case error.PERMISSION_DENIED: errMsg = 'Izin lokasi ditolak.'; break;
+                            case error.POSITION_UNAVAILABLE: errMsg = 'Lokasi tidak tersedia.'; break;
+                            case error.TIMEOUT: errMsg = 'Waktu habis.'; break;
+                            default: errMsg = 'Error tidak dikenal.';
                         }
                         msgDiv.innerHTML = `❌ ${errMsg}`;
                         msgDiv.className = 'status error';
                         locationDiv.style.display = 'none';
                     },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    }
+                    { enableHighAccuracy: true, timeout: 10000 }
                 );
             });
         }
 
-        // ==================== 4. Fingerprint Supplemental (Canvas, Audio) - Optional ====================
-        // (Tidak digunakan secara eksplisit untuk privacy, hanya demo teoretis)
-        function getCanvasFingerprint() {
-            // Hanya demo, tidak perlu ditampilkan.
-            return "Canvas fingerprint tersedia secara teknis di console";
-        }
+        // ==================== REFRESH ====================
+        document.getElementById('refresh-ip-btn').addEventListener('click', () => {
+            document.getElementById('ip-address').innerText = '⏳ Mengambil...';
+            document.getElementById('isp').innerText = '⏳ Memuat...';
+            fetchIPInfo();
+        });
 
-        // ==================== RUN ALL ====================
+        // ==================== RUN ====================
         fetchIPInfo();
         getDeviceInfo();
         initLocation();
-        
-        // Additional small print debug untuk console
-        console.log("Info website edukasi: Data yang dikumpulkan hanya untuk demonstrasi teknis.");
-        console.log("Canvas FP demo:", getCanvasFingerprint());
     </script>
 </body>
 </html>
