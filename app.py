@@ -221,8 +221,10 @@ except ImportError as e:
         gift_scanned_bp = None
 
 try:
+    import sys
+    sys.path.insert(0, '/root/wtb')
     from services.jaseb.panel_service import panel_bp
-    print("✅ panel_service imported from services/jaseb/")
+    print("✅ panel_service imported from /root/wtb/services/jaseb/")
 except ImportError as e:
     print(f"⚠️ panel_service import error: {e}")
     panel_bp = None
@@ -577,102 +579,6 @@ def serve_jaseb_database(filename):
 def jaseb_panel_dashboard():
     """API endpoint for Jaseb panel dashboard"""
     try:
-        # Import panel_service
-        try:
-            from services.jaseb.panel_service import get_dashboard_data
-            return get_dashboard_data()
-        except ImportError:
-            # Fallback: ambil dari database langsung
-            import sqlite3
-            db_path = JASEB_DB_PATH
-            if not os.path.exists(db_path):
-                db_path = os.path.join(JASEB_DIR, 'jaseb.db')
-            
-            if not os.path.exists(db_path):
-                return jsonify({'success': False, 'error': 'Database not found'}), 500
-            
-            conn = sqlite3.connect(db_path)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            
-            # Get stats
-            cursor.execute("SELECT COUNT(*) as count FROM jaseb_users")
-            total_users = cursor.fetchone()['count'] if cursor.fetchone() else 0
-            
-            cursor.execute("SELECT COUNT(*) as count FROM jaseb_userbot_sessions WHERE is_active = 1")
-            active_sessions = cursor.fetchone()['count'] if cursor.fetchone() else 0
-            
-            cursor.execute("SELECT COUNT(*) as count FROM jaseb_userbot_groups WHERE is_active = 1")
-            total_groups = cursor.fetchone()['count'] if cursor.fetchone() else 0
-            
-            cursor.execute("SELECT COUNT(*) as count FROM jaseb_userbot_messages")
-            total_messages = cursor.fetchone()['count'] if cursor.fetchone() else 0
-            
-            cursor.execute("SELECT COUNT(*) as count FROM jaseb_userbot_sebar WHERE is_running = 1")
-            active_sebar = cursor.fetchone()['count'] if cursor.fetchone() else 0
-            
-            cursor.execute("SELECT COUNT(*) as count FROM jaseb_group_join_queue WHERE status = 'pending'")
-            pending_queue = cursor.fetchone()['count'] if cursor.fetchone() else 0
-            
-            conn.close()
-            
-            return jsonify({
-                'success': True,
-                'stats': {
-                    'total_users': total_users,
-                    'active_sessions': active_sessions,
-                    'total_groups': total_groups,
-                    'total_messages': total_messages,
-                    'active_sebar': active_sebar,
-                    'pending_queue': pending_queue
-                }
-            })
-    except Exception as e:
-        logger.error(f"Error in jaseb_panel_dashboard: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/jaseb/api/panel/logs', methods=['GET'])
-def jaseb_panel_logs():
-    """API endpoint for Jaseb panel logs"""
-    try:
-        limit = request.args.get('limit', 50, type=int)
-        
-        try:
-            from services.jaseb.panel_service import get_logs_data
-            return get_logs_data(limit)
-        except ImportError:
-            import sqlite3
-        db_path = JASEB_DB_PATH
-        if not os.path.exists(db_path):
-            db_path = os.path.join(JASEB_DIR, 'jaseb.db')
-            
-            if not os.path.exists(db_path):
-                return jsonify({'success': False, 'error': 'Database not found'}), 500
-            
-            conn = sqlite3.connect(db_path)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            
-            cursor.execute("""
-                SELECT * FROM jaseb_activity_logs 
-                ORDER BY created_at DESC 
-                LIMIT ?
-            """, (limit,))
-            
-            logs = [dict(row) for row in cursor.fetchall()]
-            conn.close()
-            
-            return jsonify({'success': True, 'data': logs})
-    except Exception as e:
-        logger.error(f"Error in jaseb_panel_logs: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/jaseb/api/panel/user/<int:user_id>/status', methods=['GET'])
-def jaseb_panel_user_status(user_id):
-    """API endpoint for user status"""
-    try:
         import sqlite3
         db_path = JASEB_DB_PATH
         if not os.path.exists(db_path):
@@ -685,16 +591,108 @@ def jaseb_panel_user_status(user_id):
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
+        # Get stats - simpan hasil fetchone() ke variabel
+        cursor.execute("SELECT COUNT(*) as count FROM jaseb_users")
+        row = cursor.fetchone()
+        total_users = row['count'] if row else 0
+        
+        cursor.execute("SELECT COUNT(*) as count FROM jaseb_userbot_sessions WHERE is_active = 1")
+        row = cursor.fetchone()
+        active_sessions = row['count'] if row else 0
+        
+        cursor.execute("SELECT COUNT(*) as count FROM jaseb_userbot_groups WHERE is_active = 1")
+        row = cursor.fetchone()
+        total_groups = row['count'] if row else 0
+        
+        cursor.execute("SELECT COUNT(*) as count FROM jaseb_userbot_messages")
+        row = cursor.fetchone()
+        total_messages = row['count'] if row else 0
+        
+        cursor.execute("SELECT COUNT(*) as count FROM jaseb_userbot_sebar WHERE is_running = 1")
+        row = cursor.fetchone()
+        active_sebar = row['count'] if row else 0
+        
+        cursor.execute("SELECT COUNT(*) as count FROM jaseb_group_join_queue WHERE status = 'pending'")
+        row = cursor.fetchone()
+        pending_queue = row['count'] if row else 0
+        
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'total_users': total_users,
+                'active_sessions': active_sessions,
+                'total_groups': total_groups,
+                'total_messages': total_messages,
+                'active_sebar': active_sebar,
+                'pending_queue': pending_queue
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error in jaseb_panel_dashboard: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/jaseb/api/panel/logs', methods=['GET'])
+def jaseb_panel_logs():
+    """API endpoint for Jaseb panel logs"""
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        
+        # Langsung gunakan database, tidak perlu import panel_service
+        db_path = JASEB_DB_PATH
+        if not os.path.exists(db_path):
+            db_path = os.path.join(JASEB_DIR, 'jaseb.db')
+        
+        if not os.path.exists(db_path):
+            return jsonify({'success': False, 'error': 'Database not found'}), 500
+        
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT * FROM jaseb_activity_logs 
+            ORDER BY created_at DESC 
+            LIMIT ?
+        """, (limit,))
+        
+        logs = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        return jsonify({'success': True, 'data': logs})
+    except Exception as e:
+        logger.error(f"Error in jaseb_panel_logs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/jaseb/api/panel/user/<int:user_id>/status', methods=['GET'])
+def jaseb_panel_user_status(user_id):
+    """API endpoint for user status"""
+    try:
+        db_path = JASEB_DB_PATH
+        if not os.path.exists(db_path):
+            db_path = os.path.join(JASEB_DIR, 'jaseb.db')
+        
+        if not os.path.exists(db_path):
+            return jsonify({'success': False, 'error': 'Database not found'}), 500
+        
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
         cursor.execute("SELECT * FROM jaseb_userbot_sessions WHERE user_id = ?", (user_id,))
-        session = cursor.fetchone()
-        session_active = session is not None and session['is_active'] == 1
+        session = cursor.fetchone()  # Simpan ke variabel
+        
+        session_active = session is not None and session['is_active'] == 1 if session else False
         
         cursor.execute("SELECT is_running FROM jaseb_userbot_sebar WHERE user_id = ?", (user_id,))
-        sebar = cursor.fetchone()
+        sebar = cursor.fetchone()  # Simpan ke variabel
         is_running = sebar['is_running'] == 1 if sebar else False
         
         cursor.execute("SELECT mode_type FROM jaseb_userbot_mode WHERE user_id = ?", (user_id,))
-        mode = cursor.fetchone()
+        mode = cursor.fetchone()  # Simpan ke variabel
         
         conn.close()
         
@@ -712,7 +710,6 @@ def jaseb_panel_user_status(user_id):
 def jaseb_panel_user_groups(user_id):
     """API endpoint for user groups"""
     try:
-        import sqlite3
         db_path = JASEB_DB_PATH
         if not os.path.exists(db_path):
             db_path = os.path.join(JASEB_DIR, 'jaseb.db')
