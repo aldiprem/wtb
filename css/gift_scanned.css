@@ -541,9 +541,9 @@ body {
 }
 
 .card-lottie-border lottie-player {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
+    position: relative;
+    z-index: 2;
+    border-radius: 10px;
 }
 
 /* Visit button style seperti card-telegram-btn Winedash */
@@ -1675,6 +1675,15 @@ body {
     align-items: center;
     justify-content: center;
     background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+}
+
+/* Hanya border kosong, tanpa background image atau icon */
+.card-lottie-border {
+    position: relative;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
 }
 
 /* Hapus CSS yang bikin konflik */

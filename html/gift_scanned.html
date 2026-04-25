@@ -37,8 +37,8 @@
         <button id="scrollToTopBtn" class="scroll-to-top-btn" title="Top Scroll">
             <i class="fas fa-chevron-up"></i>
         </button>
-                
-        <!-- Di gift_scanned.html, update bagian stats-section -->
+                        
+        <!-- Stats Section -->
         <div class="stats-section">
             <div class="stats-row-inline">
                 <div class="stat-card-inline">
@@ -47,9 +47,9 @@
                     <span class="stat-label-inline">Total</span>
                 </div>
                 <div class="stat-card-inline">
-                    <i class="fas fa-user stat-icon-inline"></i>  <!-- Ganti icon -->
+                    <i class="fas fa-star stat-icon-inline"></i>  <!-- Kembalikan icon star -->
                     <span class="stat-value" id="uniqueGifts">0</span>
-                    <span class="stat-label-inline">User ID</span>  <!-- Ganti label -->
+                    <span class="stat-label-inline">Unique</span>  <!-- Kembalikan label Unique -->
                 </div>
                 <div class="stat-card-inline toggle-card" id="togglePlayBtn" title="Play Lottie">
                     <i class="fas fa-play stat-icon-inline"></i>
@@ -59,10 +59,10 @@
             </div>
         </div>
 
-        <!-- Update filter panel title -->
+        <!-- Filter Panel - Kembalikan ke Filter by Name -->
         <div id="filterPanel" class="filter-panel" style="display:none;">
             <div class="filter-header">
-                <h3><i class="fas fa-user"></i> Filter by User ID</h3>  <!-- Ganti judul -->
+                <h3><i class="fas fa-filter"></i> Filter by Name</h3>
                 <button id="filterClose" class="filter-close-btn"><i class="fas fa-times"></i></button>
             </div>
             <div class="filter-select-all" id="filterSelectAll" onclick="toggleSelectAll()">

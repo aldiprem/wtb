@@ -5,7 +5,7 @@
 // ==================== STATE ====================
 const state = {
     currentPage: 1,
-    limit: 20,  // Ubah ke 20
+    limit: 20,
     allLoaded: false,
     searchMode: 'gift',
     searchQuery: '',
@@ -13,8 +13,8 @@ const state = {
     selectedFilterNames: [],
     gifts: [],
     allGifts: [],
-    allSenders: [],
-    senderCounts: {},
+    allNames: [],
+    nameCounts: {},
     lottiePlaying: false,
     isLoading: false,
     isLoadingMore: false
@@ -71,7 +71,7 @@ function showLoading(show = true) {
 
 // ==================== UPDATE INIT FUNCTION ====================
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🎁 Gift Scanned Gallery v3');
+    console.log('🎁 Gift Scanned Gallery v4');
     showLoading(true);
     setupEventListeners();
     setupModalListeners();
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupScrollToTopButton();
     setupInfiniteScroll();
     loadStats();
-    loadAllSenders();
+    loadAllNames();
     loadGifts(true);
 });
 
@@ -327,24 +327,64 @@ function collectAllNamesFromGifts() {
     return Array.from(names).sort();
 }
 
+// ==================== LOAD ALL NAMES (GIFT NAMES) ====================
+async function loadAllNames() {
+    try {
+        console.log('🔄 Loading gift names from /gift-scam/api/names...');
+        const response = await fetch('/gift-scam/api/names');
+        
+        if (!response.ok) {
+            console.warn(`Names API returned ${response.status}`);
+            return;
+        }
+        
+        const data = await response.json();
+        if (data.success && data.names) {
+            state.allNames = data.names;
+            state.nameCounts = data.name_counts || {};
+            console.log(`✅ Loaded ${state.allNames.length} unique gift names from API`);
+        } else {
+            console.warn('Names API returned success=false');
+        }
+    } catch (e) {
+        console.error('Error loading names:', e);
+        // Fallback: collect from gifts data
+        if (state.allGifts && state.allGifts.length > 0) {
+            const namesMap = new Map();
+            state.allGifts.forEach(g => {
+                const name = g.name;
+                if (name) {
+                    namesMap.set(name, (namesMap.get(name) || 0) + 1);
+                }
+            });
+            state.allNames = Array.from(namesMap.keys());
+            state.nameCounts = Object.fromEntries(namesMap);
+            console.log(`✅ Fallback: Loaded ${state.allNames.length} unique gift names from gifts data`);
+        }
+    }
+    
+    renderFilterChips();
+}
+
+// ==================== RENDER FILTER CHIPS (GIFT NAMES) ====================
 function renderFilterChips() {
     if (!elements.filterList) return;
     
-    // Gunakan allSenders
-    const senders = state.allSenders.length > 0 ? state.allSenders : [];
+    // Gunakan allNames (gift names)
+    const names = state.allNames.length > 0 ? state.allNames : [];
     
     let html = '';
-    senders.forEach(senderId => {
-        const isSelected = state.selectedFilterNames.includes(senderId.toString());
-        const count = state.senderCounts[senderId] || 0;
+    names.forEach(name => {
+        const isSelected = state.selectedFilterNames.includes(name);
+        const count = state.nameCounts[name] || 0;
         
-        // Format display untuk sender ID (bisa ditampilkan sebagai ID atau username)
-        const displayName = `User ${senderId}`;
+        // Format display untuk nama gift
+        const displayName = name;
         
         html += `
             <div class="filter-list-item ${isSelected ? 'selected' : ''}" 
-                 data-name="${escapeHtml(senderId.toString())}"
-                 onclick="selectFilterChip('${escapeHtml(senderId.toString()).replace(/'/g, "\\'")}')">
+                 data-name="${escapeHtml(name)}"
+                 onclick="selectFilterChip('${escapeHtml(name).replace(/'/g, "\\'")}')">
                 <div class="filter-checkbox ${isSelected ? 'checked' : ''}">
                     ${isSelected ? '<i class="fas fa-check"></i>' : ''}
                 </div>
@@ -354,7 +394,7 @@ function renderFilterChips() {
         `;
     });
     
-    if (senders.length === 0) {
+    if (names.length === 0) {
         html = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Memuat data...</div>';
     }
     
@@ -376,14 +416,14 @@ function selectFilterChip(name) {
 
 function toggleSelectAll() {
     const selectAllBtn = document.getElementById('filterSelectAll');
-    const allSenders = state.allSenders;
+    const allNames = state.allNames;
     
-    if (state.selectedFilterNames.length === allSenders.length) {
+    if (state.selectedFilterNames.length === allNames.length) {
         state.selectedFilterNames = [];
         selectAllBtn.classList.remove('all-selected');
         selectAllBtn.innerHTML = '<i class="fas fa-check-double"></i> Select All';
     } else {
-        state.selectedFilterNames = allSenders.map(s => s.toString());
+        state.selectedFilterNames = [...allNames];
         selectAllBtn.classList.add('all-selected');
         selectAllBtn.innerHTML = '<i class="fas fa-times"></i> Unselect All';
     }
@@ -401,7 +441,7 @@ function selectFilterChip(name) {
     
     // Update Select All button
     const selectAllBtn = document.getElementById('filterSelectAll');
-    const allNames = state.allNames.length > 0 ? state.allNames : collectAllNamesFromGifts();
+    const allNames = state.allNames;
     
     if (state.selectedFilterNames.length === allNames.length) {
         selectAllBtn.classList.add('all-selected');
@@ -414,35 +454,12 @@ function selectFilterChip(name) {
     renderFilterChips();
 }
 
-function renderFilterChips() {
-    if (!elements.filterList) return;
-    
-    const names = state.allNames.length > 0 ? state.allNames : collectAllNamesFromGifts();
-    
-    let html = '';
-    names.forEach(name => {
-        const isSelected = state.selectedFilterNames.includes(name);
-        const count = (state.nameCounts && state.nameCounts[name]) ? state.nameCounts[name] : '?';
-        html += `
-            <div class="filter-list-item ${isSelected ? 'selected' : ''}" 
-                 data-name="${escapeHtml(name)}"
-                 onclick="selectFilterChip('${escapeHtml(name).replace(/'/g, "\\'")}')">
-                <div class="filter-checkbox ${isSelected ? 'checked' : ''}">
-                    ${isSelected ? '<i class="fas fa-check"></i>' : ''}
-                </div>
-                <span class="filter-item-name">${escapeHtml(name)}</span>
-                <span class="filter-item-count">${count}</span>
-            </div>
-        `;
-    });
-    
-    elements.filterList.innerHTML = html;
-}
-
+// ==================== APPLY FILTER (GIFT NAMES) ====================
 function applyFilter() {
     if (state.selectedFilterNames.length > 0) {
+        // Filter berdasarkan nama gift (slug prefix)
         const filtered = state.allGifts.filter(g => 
-            g.sender_id && state.selectedFilterNames.includes(g.sender_id.toString())
+            state.selectedFilterNames.includes(g.name)
         );
         state.gifts = filtered;
         state.allLoaded = true;
@@ -459,7 +476,7 @@ function applyFilter() {
     scrollToTop();
     
     const filterText = state.selectedFilterNames.length > 0 
-        ? `${state.selectedFilterNames.length} user terpilih` 
+        ? `${state.selectedFilterNames.length} gift terpilih` 
         : 'Semua';
     showToast(`Filter: ${filterText}`, 'info');
 }
@@ -529,17 +546,17 @@ async function loadStats() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         if (data.success && data.stats) {
-            animateValue(elements.totalGifts, 0, data.stats.total, 1000);
-            // Tampilkan unique_senders (bukan unique names)
-            animateValue(elements.uniqueGifts, 0, data.stats.unique_senders || 0, 1000);
+            const total = data.stats.total;
+            const unique = data.stats.unique;
             
-            // Update label "Unique" menjadi "User ID"
-            const uniqueLabel = document.querySelector('.stat-card-inline:last-child .stat-label-inline');
-            if (uniqueLabel && uniqueLabel.textContent === 'Unique') {
-                uniqueLabel.textContent = 'User ID';
-            }
+            animateValue(elements.totalGifts, 0, total, 1000);
+            animateValue(elements.uniqueGifts, 0, unique, 1000);
+            
+            console.log(`📊 Stats: Total=${total}, Unique=${unique}`);
         }
-    } catch (error) { console.error('Stats error:', error); }
+    } catch (error) { 
+        console.error('Stats error:', error); 
+    }
 }
 
 function setupInfiniteScroll() {
@@ -1016,7 +1033,7 @@ function scanSlugsInText(text, container) {
     container.appendChild(wrapper);
 }
 
-// ==================== CREATE GIFT CARD (FIX LOTTIE) ====================
+// ==================== CREATE GIFT CARD (FIX LOTTIE EMPTY STATE) ====================
 function createGiftCard(gift, index) {
     const card = document.createElement('div');
     card.className = 'gift-card';
@@ -1030,15 +1047,15 @@ function createGiftCard(gift, index) {
     card.innerHTML = `
         <div class="card-lottie-wrapper">
             <div class="card-lottie-border" id="border_${lottieId}">
-                <div class="lottie-placeholder" id="placeholder_${lottieId}" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.03);">
-                    <i class="fas fa-gift" style="font-size:32px;color:var(--primary-color);opacity:0.5;"></i>
+                <div class="lottie-placeholder" id="placeholder_${lottieId}" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.03);border-radius:10px;">
+                    <!-- Kosongkan - hanya border kosong, tidak ada emoji -->
                 </div>
                 <lottie-player 
                     id="${lottieId}"
                     data-src="${escapeHtml(lottieUrl)}" 
                     background="transparent" 
                     speed="1"
-                    style="width:100%;height:100%;" 
+                    style="width:100%;height:100%;display:none;" 
                     loop 
                     mode="normal">
                 </lottie-player>
@@ -1049,7 +1066,6 @@ function createGiftCard(gift, index) {
                 <span class="card-name">${escapeHtml(gift.name)}</span>
                 ${gift.number ? `<span class="card-number">#${escapeHtml(gift.number)}</span>` : ''}
             </div>
-            ${gift.sender_id ? `<div class="card-sender" style="font-size:10px;color:var(--text-muted);">👤 ${escapeHtml(gift.sender_id)}</div>` : ''}
             <a href="${msgLink}" target="_blank" rel="noopener" class="card-visit-btn" onclick="event.stopPropagation()">
                 <i class="fas fa-external-link-alt"></i> Visit Message
             </a>
@@ -1061,7 +1077,7 @@ function createGiftCard(gift, index) {
     const placeholder = card.querySelector(`#placeholder_${lottieId}`);
     
     if (lottiePlayer && placeholder) {
-        // Set src langsung, jangan pakai data-src
+        // Set src langsung
         lottiePlayer.setAttribute('src', lottieUrl);
         
         // Sembunyikan placeholder
@@ -1070,7 +1086,6 @@ function createGiftCard(gift, index) {
         // Set autoplay jika mode play aktif
         if (state.lottiePlaying) {
             lottiePlayer.setAttribute('autoplay', '');
-            // Tunggu sebentar lalu play
             setTimeout(() => {
                 try { 
                     lottiePlayer.play(); 
@@ -1080,12 +1095,6 @@ function createGiftCard(gift, index) {
             }, 100);
         } else {
             lottiePlayer.removeAttribute('autoplay');
-            // Set ke frame 0
-            setTimeout(() => {
-                try { 
-                    lottiePlayer.seek(0); 
-                } catch(e) {}
-            }, 100);
         }
         
         // Tambahkan event listener untuk error
@@ -1098,6 +1107,8 @@ function createGiftCard(gift, index) {
         // Tambahkan event listener untuk load
         lottiePlayer.addEventListener('load', () => {
             console.log('Lottie loaded for', gift.slug);
+            lottiePlayer.style.display = 'block';
+            placeholder.style.display = 'none';
             if (state.lottiePlaying) {
                 try { lottiePlayer.play(); } catch(e) {}
             }

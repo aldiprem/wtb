@@ -128,13 +128,17 @@ def api_get_stats():
         cur.execute("SELECT COUNT(*) as count FROM gift_scanned")
         total = cur.fetchone()['count']
         
-        # Unique sender IDs (bukan unique names)
-        cur.execute("SELECT DISTINCT sender_id FROM gift_scanned WHERE sender_id IS NOT NULL")
-        unique_senders = len(cur.fetchall())
+        # Unique names (dari slug)
+        cur.execute("SELECT slug FROM gift_scanned")
+        slugs = cur.fetchall()
         
-        # Total sender IDs (count of records with sender_id)
-        cur.execute("SELECT COUNT(*) FROM gift_scanned WHERE sender_id IS NOT NULL")
-        total_with_sender = cur.fetchone()['count']
+        unique_names = set()
+        for row in slugs:
+            parts = row['slug'].rsplit('-', 1)
+            if len(parts) == 2 and parts[1].isdigit():
+                unique_names.add(parts[0])
+            else:
+                unique_names.add(row['slug'])
         
         conn.close()
         
@@ -142,12 +146,44 @@ def api_get_stats():
             'success': True,
             'stats': {
                 'total': total,
-                'unique_senders': unique_senders,  # Ganti unique dengan unique_senders
-                'total_with_sender': total_with_sender
+                'unique': len(unique_names)
             }
         })
         
     except Exception as e:
+        logger.error(f"Error in api_get_stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# Perbaiki /api/names - pastikan mengembalikan semua names
+@gift_scanned_bp.route('/api/names')
+def api_get_unique_names():
+    """API: Mendapatkan semua unique names dari database"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'success': False, 'error': 'Database tidak ditemukan'}), 500
+        
+        cur = conn.cursor()
+        cur.execute("SELECT slug FROM gift_scanned")
+        slugs = cur.fetchall()
+        conn.close()
+        
+        name_counts = {}
+        for row in slugs:
+            parts = row['slug'].rsplit('-', 1)
+            name = parts[0] if len(parts) == 2 and parts[1].isdigit() else row['slug']
+            name_counts[name] = name_counts.get(name, 0) + 1
+        
+        sorted_names = sorted(name_counts.keys())
+        
+        return jsonify({
+            'success': True,
+            'names': sorted_names,
+            'name_counts': name_counts
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in api_get_names: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @gift_scanned_bp.route('/api/senders')
@@ -195,37 +231,6 @@ def api_get_senders():
         
     except Exception as e:
         logger.error(f"Error in api_get_senders: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# Tapi tetap ada untuk kompatibilitas
-@gift_scanned_bp.route('/api/names')
-def api_get_unique_names():
-    """API: Mendapatkan semua unique names dari database (deprecated, pakai /api/senders)"""
-    try:
-        conn = get_db_connection()
-        if not conn:
-            return jsonify({'success': False, 'error': 'Database tidak ditemukan'}), 500
-        
-        cur = conn.cursor()
-        cur.execute("SELECT slug FROM gift_scanned")
-        slugs = cur.fetchall()
-        conn.close()
-        
-        name_counts = {}
-        for row in slugs:
-            parts = row['slug'].rsplit('-', 1)
-            name = parts[0] if len(parts) == 2 and parts[1].isdigit() else row['slug']
-            name_counts[name] = name_counts.get(name, 0) + 1
-        
-        sorted_names = sorted(name_counts.keys())
-        
-        return jsonify({
-            'success': True,
-            'names': sorted_names,
-            'name_counts': name_counts
-        })
-        
-    except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # Perbaiki API /api/list untuk limit yang lebih kecil (default 20)
