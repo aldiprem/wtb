@@ -17,6 +17,7 @@ import sys
 # ==================== INTEGRASI JASEB USERBOT MANAGER ====================
 
 JASEB_DIR = '/root/jaseb'
+JASEB_DB_PATH = os.path.join(JASEB_DIR, 'jaseb.db')
 if JASEB_DIR not in sys.path:
     sys.path.insert(0, JASEB_DIR)
 
@@ -525,7 +526,7 @@ def serve_jaseb_panel():
     try:
         panel_path = os.path.join(JASEB_DIR, 'html', 'panel.html')
         if os.path.exists(panel_path):
-            return send_from_directory(os.path.join(ROOT_DIR, 'html'), 'panel.html')
+            return send_from_directory(os.path.join(JASEB_DIR, 'html'), 'panel.html')
         
         return f"Panel not found at {panel_path}", 404
     except Exception as e:
@@ -537,26 +538,38 @@ def serve_jaseb_panel():
 @app.route('/jaseb/css/<path:filename>')
 def serve_jaseb_css(filename):
     """Serve CSS files for Jaseb Panel"""
-    css_path = os.path.join(ROOT_DIR, 'css', filename)
+    css_dir = os.path.join(JASEB_DIR, 'css')
+    css_path = os.path.join(css_dir, filename)
     if os.path.exists(css_path):
-        return send_from_directory(os.path.join(ROOT_DIR, 'css'), filename)
+        return send_from_directory(css_dir, filename)
     return f"CSS file not found: {filename}", 404
 
 @app.route('/jaseb/js/<path:filename>')
 def serve_jaseb_js(filename):
     """Serve JS files for Jaseb Panel"""
-    js_path = os.path.join(ROOT_DIR, 'js', filename)
+    js_dir = os.path.join(JASEB_DIR, 'js')
+    js_path = os.path.join(js_dir, filename)
     if os.path.exists(js_path):
-        return send_from_directory(os.path.join(ROOT_DIR, 'js'), filename)
+        return send_from_directory(js_dir, filename)
     return f"JS file not found: {filename}", 404
 
 @app.route('/jaseb/images/<path:filename>')
 def serve_jaseb_images(filename):
     """Serve images for Jaseb Panel"""
-    images_path = os.path.join(ROOT_DIR, 'images', filename)
+    images_dir = os.path.join(JASEB_DIR, 'images')
+    images_path = os.path.join(images_dir, filename)
     if os.path.exists(images_path):
-        return send_from_directory(os.path.join(ROOT_DIR, 'images'), filename)
+        return send_from_directory(images_dir, filename)
     return f"Image file not found: {filename}", 404
+
+@app.route('/jaseb/database/<path:filename>')
+def serve_jaseb_database(filename):
+    """Serve database files for Jaseb Panel (if needed)"""
+    db_dir = os.path.join(JASEB_DIR, 'database')
+    db_path = os.path.join(db_dir, filename)
+    if os.path.exists(db_path):
+        return send_from_directory(db_dir, filename)
+    return f"Database file not found: {filename}", 404
 
 # ==================== API ROUTE UNTUK PANEL JASEB ====================
 
@@ -571,11 +584,9 @@ def jaseb_panel_dashboard():
         except ImportError:
             # Fallback: ambil dari database langsung
             import sqlite3
-            db_path = os.path.join(ROOT_DIR, 'jaseb.db')
-            
-            # Jika database Jaseb tidak ada di ROOT_DIR, coba di /root/jaseb/
+            db_path = JASEB_DB_PATH
             if not os.path.exists(db_path):
-                db_path = '/root/jaseb/jaseb.db'
+                db_path = os.path.join(JASEB_DIR, 'jaseb.db')
             
             if not os.path.exists(db_path):
                 return jsonify({'success': False, 'error': 'Database not found'}), 500
@@ -633,10 +644,9 @@ def jaseb_panel_logs():
             return get_logs_data(limit)
         except ImportError:
             import sqlite3
-            db_path = os.path.join(ROOT_DIR, 'jaseb.db')
-            
-            if not os.path.exists(db_path):
-                db_path = '/root/jaseb/jaseb.db'
+        db_path = JASEB_DB_PATH
+        if not os.path.exists(db_path):
+            db_path = os.path.join(JASEB_DIR, 'jaseb.db')
             
             if not os.path.exists(db_path):
                 return jsonify({'success': False, 'error': 'Database not found'}), 500
@@ -664,9 +674,9 @@ def jaseb_panel_user_status(user_id):
     """API endpoint for user status"""
     try:
         import sqlite3
-        db_path = os.path.join(ROOT_DIR, 'jaseb.db')
+        db_path = JASEB_DB_PATH
         if not os.path.exists(db_path):
-            db_path = '/root/jaseb/jaseb.db'
+            db_path = os.path.join(JASEB_DIR, 'jaseb.db')
         
         if not os.path.exists(db_path):
             return jsonify({'success': False, 'error': 'Database not found'}), 500
@@ -703,9 +713,9 @@ def jaseb_panel_user_groups(user_id):
     """API endpoint for user groups"""
     try:
         import sqlite3
-        db_path = os.path.join(ROOT_DIR, 'jaseb.db')
+        db_path = JASEB_DB_PATH
         if not os.path.exists(db_path):
-            db_path = '/root/jaseb/jaseb.db'
+            db_path = os.path.join(JASEB_DIR, 'jaseb.db')
         
         if not os.path.exists(db_path):
             return jsonify({'success': False, 'error': 'Database not found'}), 500
