@@ -524,20 +524,36 @@ body {
 
 .stats-section {
     position: sticky;
-    top: 85px;
+    top: 0;
     z-index: 99;
     background: var(--bg-primary);
     padding: 8px 0;
     margin-bottom: 8px;
+    transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
 .search-filter-section {
     position: sticky;
-    top: 155px;
+    top: 70px;
     z-index: 98;
     background: var(--bg-primary);
     padding: 8px 0;
     margin-bottom: 8px;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.stats-section.hide-stats,
+.search-filter-section.hide-search {
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.stats-section.show-stats,
+.search-filter-section.show-search {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .card-lottie-border lottie-player {
@@ -1611,9 +1627,9 @@ body {
 /* ===== SCROLL TO TOP BUTTON - Glassmorphism 3D Fixed ===== */
 .scroll-to-top-btn {
     position: fixed;
-    bottom: 20px;       /* Tadi error di sini (kurang titik koma) */
+    bottom: 20px;
     right: 20px;
-    width: 50px;         
+    width: 50px;
     height: 50px;
     background: var(--bg-card);
     backdrop-filter: blur(5px) saturate(150%);
@@ -1626,7 +1642,7 @@ body {
     z-index: 9999;
     opacity: 0;
     visibility: hidden;
-    transform: translateY(100px) scale(0.5); 
+    transform: translateY(100px) scale(0.5);
     transition: all 0.4s cubic-bezier(0.03, -0.46, 1, 1.49);
 }
 
@@ -1648,12 +1664,41 @@ body {
     pointer-events: none;
 }
 
+.modal-overlay.active ~ .scroll-to-top-btn,
+.detail-modal-open .scroll-to-top-btn {
+    z-index: 999;
+    opacity: 0.3;
+    pointer-events: none;
+}
+
 /* State Aktif */
 .scroll-to-top-btn.active,
 .scroll-to-top-btn.visible {
-    opacity: 1;
+    opacity: 0.7;
     visibility: visible;
     transform: translateY(0) scale(1);
+}
+
+.scroll-to-top-btn.visible:hover {
+    opacity: 1;
+}
+
+/* Smooth transition untuk stats dan search */
+.stats-section,
+.search-filter-section {
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* Modal overlay style untuk deteksi */
+.modal-overlay.active {
+    display: flex !important;
+}
+
+/* Scroll to top button z-index management */
+.detail-modal-open .scroll-to-top-btn {
+    z-index: 999;
+    opacity: 0.3;
+    pointer-events: none;
 }
 
 /* Icon (Tambahkan ini agar icon panah terlihat) */

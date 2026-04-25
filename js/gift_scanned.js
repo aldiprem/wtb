@@ -71,12 +71,13 @@ function showLoading(show = true) {
 
 // ==================== UPDATE INIT FUNCTION ====================
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🎁 Gift Scanned Gallery v4');
+    console.log('🎁 Gift Scanned Gallery v5');
     showLoading(true);
     setupEventListeners();
     setupModalListeners();
     setupLottieObserver();
     setupScrollToTopButton();
+    setupScrollHideElements();
     setupInfiniteScroll();
     loadStats();
     loadAllNames();
@@ -92,6 +93,8 @@ let lottieObserver = null;
 let lottieMutationObserver = null;
 let scrollCheckTimeout = null;
 let scrollObserver = null;
+let lastScrollY = 0;
+let scrollDirectionTimeout = null;
 
 // ==================== EVENT LISTENERS ====================
 function setupEventListeners() {
@@ -181,9 +184,36 @@ function setupModalListeners() {
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && elements.detailModal?.style.display === 'flex') closeModal(); });
 }
 
-// ==================== MODAL ====================
-function openModal() { if (elements.detailModal) { elements.detailModal.style.display = 'flex'; document.body.style.overflow = 'hidden'; } }
-function closeModal() { if (elements.detailModal) { elements.detailModal.style.display = 'none'; document.body.style.overflow = ''; } }
+// ==================== UPDATE MODAL FUNCTIONS ====================
+function openModal() { 
+    if (elements.detailModal) { 
+        elements.detailModal.style.display = 'flex'; 
+        elements.detailModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        document.body.classList.add('detail-modal-open');
+        
+        // Sembunyikan scroll-to-top saat modal terbuka
+        const scrollBtn = document.getElementById('scrollToTopBtn');
+        if (scrollBtn) scrollBtn.classList.remove('visible');
+    } 
+}
+
+function closeModal() { 
+    if (elements.detailModal) { 
+        elements.detailModal.style.display = 'none'; 
+        elements.detailModal.classList.remove('active');
+        document.body.style.overflow = '';
+        document.body.classList.remove('detail-modal-open');
+        
+        // Tampilkan kembali scroll-to-top jika perlu
+        setTimeout(() => {
+            const scrollBtn = document.getElementById('scrollToTopBtn');
+            if (scrollBtn && window.scrollY > 200) {
+                scrollBtn.classList.add('visible');
+            }
+        }, 100);
+    } 
+}
 
 // ==================== TOGGLE LOTTIE PLAY/STOP ====================
 function toggleLottiePlay() {
@@ -655,15 +685,78 @@ function setupInfiniteScroll() {
   observer.observe(sentinel);
 }
 
-// ==================== SCROLL TO TOP BUTTON ====================
+function setupScrollHideElements() {
+    const statsSection = document.querySelector('.stats-section');
+    const searchSection = document.querySelector('.search-filter-section');
+    
+    if (!statsSection || !searchSection) return;
+    
+    window.addEventListener('scroll', () => {
+        const currentScrollY = window.scrollY;
+        
+        // Clear previous timeout
+        if (scrollDirectionTimeout) clearTimeout(scrollDirectionTimeout);
+        
+        // Scroll ke bawah
+        if (currentScrollY > lastScrollY && currentScrollY > 100) {
+            statsSection.classList.add('hide-stats');
+            statsSection.classList.remove('show-stats');
+            searchSection.classList.add('hide-search');
+            searchSection.classList.remove('show-search');
+        } 
+        // Scroll ke atas
+        else if (currentScrollY < lastScrollY) {
+            statsSection.classList.add('show-stats');
+            statsSection.classList.remove('hide-stats');
+            searchSection.classList.add('show-search');
+            searchSection.classList.remove('hide-search');
+        }
+        
+        // Set timeout untuk kembali sembunyikan jika berhenti scroll di posisi bawah
+        if (currentScrollY > 100) {
+            scrollDirectionTimeout = setTimeout(() => {
+                if (window.scrollY > 100) {
+                    statsSection.classList.add('hide-stats');
+                    statsSection.classList.remove('show-stats');
+                    searchSection.classList.add('hide-search');
+                    searchSection.classList.remove('show-search');
+                }
+            }, 2000);
+        } else {
+            // Di posisi atas, tampilkan
+            statsSection.classList.add('show-stats');
+            statsSection.classList.remove('hide-stats');
+            searchSection.classList.add('show-search');
+            searchSection.classList.remove('hide-search');
+        }
+        
+        lastScrollY = currentScrollY;
+    }, { passive: true });
+}
+
+// ==================== SCROLL TO TOP BUTTON (DIPERBAIKI) ====================
 function setupScrollToTopButton() {
     const scrollBtn = document.getElementById('scrollToTopBtn');
     if (!scrollBtn) return;
     
     let ticking = false;
+    let hideTimeout = null;
     
     function checkScrollPosition() {
         const giftCards = document.querySelectorAll('.gift-card');
+        const modal = document.getElementById('detailModal');
+        
+        // Cek apakah modal terbuka
+        const isModalOpen = modal && modal.style.display === 'flex';
+        
+        if (isModalOpen) {
+            // Modal terbuka, scroll-to-top harus disabled
+            document.body.classList.add('detail-modal-open');
+            scrollBtn.classList.remove('visible');
+            return;
+        } else {
+            document.body.classList.remove('detail-modal-open');
+        }
         
         if (giftCards.length === 0) {
             scrollBtn.classList.remove('visible');
@@ -673,7 +766,18 @@ function setupScrollToTopButton() {
         const firstCard = giftCards[0];
         const cardBottom = firstCard.getBoundingClientRect().bottom;
         
-        if (cardBottom < 0) {
+        // Tampilkan button jika sudah melewati 2 baris card
+        if (window.scrollY > 200) {
+            scrollBtn.classList.add('visible');
+            
+            // Auto hide setelah 2 detik jika tidak ada interaksi
+            if (hideTimeout) clearTimeout(hideTimeout);
+            hideTimeout = setTimeout(() => {
+                if (!scrollBtn.matches(':hover')) {
+                    scrollBtn.classList.remove('visible');
+                }
+            }, 3000);
+        } else if (cardBottom < 0) {
             scrollBtn.classList.add('visible');
         } else {
             scrollBtn.classList.remove('visible');
@@ -690,11 +794,29 @@ function setupScrollToTopButton() {
         }
     }, { passive: true });
     
+    // Show on hover untuk kemudahan
+    scrollBtn.addEventListener('mouseenter', () => {
+        scrollBtn.classList.add('visible');
+        if (hideTimeout) clearTimeout(hideTimeout);
+    });
+    
+    scrollBtn.addEventListener('mouseleave', () => {
+        hideTimeout = setTimeout(() => {
+            if (window.scrollY > 200) {
+                scrollBtn.classList.remove('visible');
+            }
+        }, 1000);
+    });
+    
     scrollBtn.addEventListener('click', () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         if (window.Telegram?.WebApp?.HapticFeedback) {
             window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
         }
+        // Sembunyikan setelah klik
+        setTimeout(() => {
+            scrollBtn.classList.remove('visible');
+        }, 500);
     });
     
     checkScrollPosition();
