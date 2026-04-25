@@ -150,7 +150,6 @@ def api_get_stats():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# Tambahkan endpoint untuk mendapatkan sender IDs
 @gift_scanned_bp.route('/api/senders')
 def api_get_senders():
     """API: Mendapatkan daftar unique sender IDs"""
@@ -161,19 +160,32 @@ def api_get_senders():
         
         cur = conn.cursor()
         
+        # Cek kolom sender_id
+        cur.execute("PRAGMA table_info(gift_scanned)")
+        cols = [col[1] for col in cur.fetchall()]
+        
+        if 'sender_id' not in cols:
+            conn.close()
+            return jsonify({'success': True, 'senders': [], 'sender_counts': {}})
+        
         # Ambil semua sender_id unique
         cur.execute("""
             SELECT sender_id, COUNT(*) as count 
             FROM gift_scanned 
-            WHERE sender_id IS NOT NULL 
+            WHERE sender_id IS NOT NULL AND sender_id != ''
             GROUP BY sender_id 
             ORDER BY sender_id
         """)
         rows = cur.fetchall()
         conn.close()
         
-        senders = [row['sender_id'] for row in rows]
-        sender_counts = {row['sender_id']: row['count'] for row in rows}
+        senders = []
+        sender_counts = {}
+        for row in rows:
+            sender_id = row[0]
+            if sender_id:
+                senders.append(sender_id)
+                sender_counts[sender_id] = row[1]
         
         return jsonify({
             'success': True,
@@ -182,6 +194,7 @@ def api_get_senders():
         })
         
     except Exception as e:
+        logger.error(f"Error in api_get_senders: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # Tapi tetap ada untuk kompatibilitas

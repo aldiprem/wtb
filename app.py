@@ -1408,6 +1408,53 @@ def gift_scam_filter():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e), 'data': []}), 500
 
+@app.route('/gift-scam/api/senders', methods=['GET'])
+def gift_scam_senders():
+    """API daftar unique sender IDs"""
+    conn = get_gift_db_connection()
+    if not conn:
+        return jsonify({'success': False, 'error': 'Database tidak ditemukan', 'senders': [], 'sender_counts': {}}), 500
+    
+    try:
+        cur = conn.cursor()
+        
+        # Cek apakah kolom sender_id ada
+        cur.execute("PRAGMA table_info(gift_scanned)")
+        cols = [col[1] for col in cur.fetchall()]
+        
+        if 'sender_id' not in cols:
+            conn.close()
+            return jsonify({'success': True, 'senders': [], 'sender_counts': {}})
+        
+        # Ambil semua sender_id unique
+        cur.execute("""
+            SELECT sender_id, COUNT(*) as count 
+            FROM gift_scanned 
+            WHERE sender_id IS NOT NULL AND sender_id != ''
+            GROUP BY sender_id 
+            ORDER BY sender_id
+        """)
+        rows = cur.fetchall()
+        conn.close()
+        
+        senders = []
+        sender_counts = {}
+        for row in rows:
+            sender_id = row[0]
+            if sender_id:
+                senders.append(sender_id)
+                sender_counts[sender_id] = row[1]
+        
+        return jsonify({
+            'success': True,
+            'senders': senders,
+            'sender_counts': sender_counts
+        })
+        
+    except Exception as e:
+        print(f"Error in /gift-scam/api/senders: {e}")
+        return jsonify({'success': False, 'error': str(e), 'senders': [], 'sender_counts': {}}), 500
+
 # ==================== MAIN ====================
 
 if __name__ == '__main__':

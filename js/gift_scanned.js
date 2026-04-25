@@ -270,20 +270,55 @@ function toggleFilterPanel() {
     }
 }
 
+// ==================== LOAD ALL SENDERS (DIPERBAIKI DENGAN FALLBACK) ====================
 async function loadAllSenders() {
     try {
+        console.log('🔄 Loading senders from /gift-scam/api/senders...');
         const response = await fetch('/gift-scam/api/senders');
+        
+        if (!response.ok) {
+            console.warn(`Senders API returned ${response.status}, using fallback`);
+            // Fallback: ambil dari data gifts
+            if (state.allGifts && state.allGifts.length > 0) {
+                const sendersMap = new Map();
+                state.allGifts.forEach(g => {
+                    if (g.sender_id) {
+                        sendersMap.set(g.sender_id, (sendersMap.get(g.sender_id) || 0) + 1);
+                    }
+                });
+                state.allSenders = Array.from(sendersMap.keys());
+                state.senderCounts = Object.fromEntries(sendersMap);
+                console.log(`✅ Fallback: Loaded ${state.allSenders.length} unique senders from gifts data`);
+                renderFilterChips();
+            }
+            return;
+        }
+        
         const data = await response.json();
         if (data.success && data.senders) {
             state.allSenders = data.senders;
             state.senderCounts = data.sender_counts || {};
-            console.log(`✅ Loaded ${state.allSenders.length} unique senders`);
+            console.log(`✅ Loaded ${state.allSenders.length} unique senders from API`);
+        } else {
+            console.warn('Senders API returned success=false, using fallback');
         }
     } catch (e) {
         console.error('Error loading senders:', e);
-        state.allSenders = [];
-        state.senderCounts = {};
+        // Fallback: ambil dari data gifts
+        if (state.allGifts && state.allGifts.length > 0) {
+            const sendersMap = new Map();
+            state.allGifts.forEach(g => {
+                if (g.sender_id) {
+                    sendersMap.set(g.sender_id, (sendersMap.get(g.sender_id) || 0) + 1);
+                }
+            });
+            state.allSenders = Array.from(sendersMap.keys());
+            state.senderCounts = Object.fromEntries(sendersMap);
+            console.log(`✅ Fallback: Loaded ${state.allSenders.length} unique senders from gifts data`);
+        }
     }
+    
+    renderFilterChips();
 }
 
 function collectAllNamesFromGifts() {
@@ -881,22 +916,6 @@ function updateTotalCount(total) {
   if (elements.totalItems) elements.totalItems.textContent = total;
 }
 
-async function loadGiftDetail(slug) {
-    try {
-        showToast('Memuat detail...', 'info');
-        const response = await fetch(`/gift-scam/api/detail/${encodeURIComponent(slug)}`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        if (data.success) {
-            showDetailModal(data.data);
-        } else {
-            showToast(data.error || 'Gagal memuat detail', 'error');
-        }
-    } catch (error) {
-        showToast('Gagal memuat detail', 'error');
-    }
-}
-
 function extractSlugsFromText(text) {
     if (!text) return [];
     
@@ -971,7 +990,7 @@ function scanSlugsInText(text, container) {
     container.appendChild(wrapper);
 }
 
-// ==================== CREATE GIFT CARD (DIPERBAIKI UNTUK LAZY LOAD) ====================
+// ==================== CREATE GIFT CARD (DIPERBAIKI UNTUK LOTTIE) ====================
 function createGiftCard(gift, index) {
     const card = document.createElement('div');
     card.className = 'gift-card';
@@ -979,13 +998,17 @@ function createGiftCard(gift, index) {
     
     const lottieUrl = gift.lottie_url || `https://nft.fragment.com/gift/${gift.slug}.lottie.json`;
     
+    // Tambahkan ID unik untuk lottie player
+    const lottieId = `lottie_${gift.slug.replace(/[^a-zA-Z0-9]/g, '_')}_${index}`;
+    
     card.innerHTML = `
         <div class="card-lottie-wrapper">
             <div class="card-lottie-border">
-                <div class="lottie-placeholder" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.03);">
+                <div class="lottie-placeholder" id="placeholder_${lottieId}" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.03);">
                     <i class="fas fa-gift" style="font-size:32px;color:var(--primary-color);opacity:0.5;"></i>
                 </div>
                 <lottie-player 
+                    id="${lottieId}"
                     data-src="${escapeHtml(lottieUrl)}" 
                     background="transparent" 
                     speed="1"
@@ -1007,46 +1030,51 @@ function createGiftCard(gift, index) {
         </div>
     `;
     
-    // Lazy load lottie dengan IntersectionObserver
-    const lottiePlayer = card.querySelector('lottie-player');
-    const placeholder = card.querySelector('.lottie-placeholder');
+    // Load lottie dengan timeout untuk memastikan DOM siap
+    const lottiePlayer = card.querySelector(`#${lottieId}`);
+    const placeholder = card.querySelector(`#placeholder_${lottieId}`);
     
     if (lottiePlayer && placeholder) {
-        const lazyObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const src = lottiePlayer.getAttribute('data-src');
-                    if (src && !lottiePlayer.hasAttribute('src')) {
-                        lottiePlayer.setAttribute('src', src);
-                        lottiePlayer.style.display = 'block';
-                        if (placeholder) placeholder.style.display = 'none';
-                        
-                        // Play jika mode play aktif
-                        if (state.lottiePlaying) {
-                            lottiePlayer.setAttribute('autoplay', '');
-                            try { lottiePlayer.play(); } catch(e) {}
-                        }
+        // Gunakan setTimeout untuk memastikan lottie-player terdaftar
+        setTimeout(() => {
+            const src = lottiePlayer.getAttribute('data-src');
+            if (src && !lottiePlayer.hasAttribute('src')) {
+                lottiePlayer.setAttribute('src', src);
+                lottiePlayer.style.display = 'block';
+                if (placeholder) placeholder.style.display = 'none';
+                
+                // Set autoplay jika mode play aktif
+                if (state.lottiePlaying) {
+                    lottiePlayer.setAttribute('autoplay', '');
+                    try { 
+                        lottiePlayer.play(); 
+                    } catch(e) { 
+                        console.log('Play error:', e);
                     }
-                    lazyObserver.unobserve(lottiePlayer);
                 }
-            });
-        }, { rootMargin: '200px' });
-        
-        lazyObserver.observe(lottiePlayer);
+            }
+        }, 50);
     }
     
     card.addEventListener('click', () => loadGiftDetail(gift.slug));
     return card;
 }
 
-// ==================== INIT LOTTIE PLAYERS ====================
-function initLottiePlayers() {
-    document.querySelectorAll('lottie-player:not([data-initialized])').forEach(player => {
-        player.setAttribute('data-initialized', 'true');
-        const src = player.getAttribute('data-src') || player.getAttribute('src');
-        if (src && !player.hasAttribute('src')) {
+// ==================== LOAD GIFT DETAIL (PERBAIKI LOTTIE DI MODAL) ====================
+async function loadGiftDetail(slug) {
+    try {
+        showToast('Memuat detail...', 'info');
+        const response = await fetch(`/gift-scam/api/detail/${encodeURIComponent(slug)}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (data.success) {
+            showDetailModal(data.data);
+        } else {
+            showToast(data.error || 'Gagal memuat detail', 'error');
         }
-    });
+    } catch (error) {
+        showToast('Gagal memuat detail', 'error');
+    }
 }
 
 function showDetailModal(gift) {
@@ -1054,13 +1082,24 @@ function showDetailModal(gift) {
 
     elements.modalTitle.textContent = `🎁 ${gift.name}`;
     const msgLink = `https://t.me/listgiftkotor/${gift.message_id}`;
+    const lottieUrl = gift.lottie_url || `https://nft.fragment.com/gift/${gift.slug}.lottie.json`;
+    const lottieModalId = `modal_lottie_${gift.slug.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
     const formatRarity = (val) => val ? `${(val / 10).toFixed(1)}%` : '-';
 
     elements.modalBody.innerHTML = `
         <div class="detail-lottie-wrapper">
-            <lottie-player src="${escapeHtml(gift.lottie_url)}" background="transparent" speed="1"
-                style="width:200px;height:200px;margin:0 auto;" loop ${state.lottiePlaying ? 'autoplay' : ''}>
+            <div id="modal_placeholder_${lottieModalId}" style="width:200px;height:200px;margin:0 auto;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border-radius:20px;">
+                <i class="fas fa-gift" style="font-size:60px;color:var(--primary-color);opacity:0.5;"></i>
+            </div>
+            <lottie-player 
+                id="${lottieModalId}"
+                src="${escapeHtml(lottieUrl)}" 
+                background="transparent" 
+                speed="1"
+                style="width:200px;height:200px;margin:0 auto;display:none;" 
+                loop 
+                ${state.lottiePlaying ? 'autoplay' : ''}>
             </lottie-player>
         </div>
 
@@ -1141,19 +1180,6 @@ function showDetailModal(gift) {
             </a>
         </div>
 
-        <!-- ✅ AUTO-LOAD: Semua slug dari message_id yang sama -->
-        <div class="same-message-section" id="sameMessageSection">
-            <div class="same-message-header">
-                <span class="same-message-title">
-                    <i class="fas fa-list"></i> Semua Gift dari Msg.ID ${gift.message_id}
-                </span>
-                <span class="same-message-loading" id="sameMsgLoading">
-                    <i class="fas fa-spinner fa-spin"></i> Memuat...
-                </span>
-            </div>
-            <div class="same-message-slugs" id="sameMsgSlugs"></div>
-        </div>
-
         ${gift.text ? `
             <div class="detail-text-preview" style="margin-top:12px;">
                 <strong>📄 Text Content:</strong>
@@ -1163,8 +1189,32 @@ function showDetailModal(gift) {
     `;
 
     openModal();
+    
+    // Load lottie di modal setelah modal terbuka
+    setTimeout(() => {
+        const modalLottie = document.getElementById(lottieModalId);
+        const modalPlaceholder = document.getElementById(`modal_placeholder_${lottieModalId}`);
+        
+        if (modalLottie && modalPlaceholder) {
+            modalLottie.style.display = 'block';
+            modalPlaceholder.style.display = 'none';
+            
+            if (state.lottiePlaying) {
+                modalLottie.setAttribute('autoplay', '');
+                try { modalLottie.play(); } catch(e) {}
+            }
+        }
+    }, 100);
+}
 
-    loadSameMessageSlugs(gift.message_id);
+// ==================== INIT LOTTIE PLAYERS ====================
+function initLottiePlayers() {
+    document.querySelectorAll('lottie-player:not([data-initialized])').forEach(player => {
+        player.setAttribute('data-initialized', 'true');
+        const src = player.getAttribute('data-src') || player.getAttribute('src');
+        if (src && !player.hasAttribute('src')) {
+        }
+    });
 }
 
 async function loadSameMessageSlugs(messageId) {
