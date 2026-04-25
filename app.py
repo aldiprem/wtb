@@ -14,6 +14,12 @@ import requests
 import sqlite3
 import sys
 
+# ==================== INTEGRASI JASEB USERBOT MANAGER ====================
+
+JASEB_DIR = '/root/jaseb'
+if JASEB_DIR not in sys.path:
+    sys.path.insert(0, JASEB_DIR)
+
 # Menambahkan direktori root ke path
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT_DIR)
@@ -517,8 +523,7 @@ def serve_gift_scam():
 def serve_jaseb_panel():
     """Halaman utama panel Jaseb"""
     try:
-        # Cari file panel.html di ROOT_DIR/html
-        panel_path = os.path.join(ROOT_DIR, 'html', 'panel.html')
+        panel_path = os.path.join(JASEB_DIR, 'html', 'panel.html')
         if os.path.exists(panel_path):
             return send_from_directory(os.path.join(ROOT_DIR, 'html'), 'panel.html')
         
@@ -721,18 +726,6 @@ def jaseb_panel_user_groups(user_id):
         return jsonify({'success': True, 'groups': groups})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/source-viewer')
-def source_viewer_page():
-    try:
-        all_code_content = get_winedash_source_logic()
-        template_path = os.path.join(base_dir, 'html', 'source-code.html')
-        with open(template_path, 'r', encoding='utf-8') as f:
-            html_template = f.read()
-        final_html = html_template.replace('{{ CONTENT }}', all_code_content)
-        return final_html
-    except Exception as e:
-        return f"Error: {str(e)}", 500
 
 # ==================== WINEDASH ROUTES ====================
 @app.route('/winedash/gift-scammer')
@@ -1588,6 +1581,7 @@ if __name__ == '__main__':
     if user_bp: print("   - user_bp (/api/user)")
     if image_bp: print("   - image_bp (/api/images)")
     if frag_bp: print("   - frag_bp (/api/fragment)")
+    if jaseb_api_bp: print("   - jaseb_api_bp (/api/jaseb)")
     if gift_scanned_bp: print("   - gift_scanned_bp (no prefix)")
     print("="*60)
     print("\n📋 Gift Scanned Routes:")
