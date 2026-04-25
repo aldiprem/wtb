@@ -777,6 +777,31 @@ function renderGifts(gifts) {
     }
 }
 
+// ==================== RELOAD LOTTIE AFTER RENDER ====================
+function reloadLottiePlayers() {
+    document.querySelectorAll('.gift-card lottie-player').forEach(player => {
+        const src = player.getAttribute('src') || player.getAttribute('data-src');
+        if (src && !player.hasAttribute('data-loaded')) {
+            player.setAttribute('data-loaded', 'true');
+            
+            // Refresh player dengan reload src
+            const currentSrc = player.getAttribute('src');
+            if (currentSrc) {
+                // Re-assign src to trigger reload
+                player.setAttribute('src', '');
+                setTimeout(() => {
+                    player.setAttribute('src', currentSrc);
+                    if (state.lottiePlaying) {
+                        player.setAttribute('autoplay', '');
+                        try { player.play(); } catch(e) {}
+                    }
+                }, 50);
+            }
+        }
+    });
+}
+
+// Panggil reloadLottiePlayers setelah renderGiftsBatch
 function renderGiftsBatch(gifts) {
     if (!elements.giftGrid || !gifts.length) return;
     
@@ -789,10 +814,11 @@ function renderGiftsBatch(gifts) {
     
     elements.giftGrid.appendChild(fragment);
     
-    // Trigger lottie load setelah DOM update
+    // Reload lottie players setelah DOM update
     setTimeout(() => {
+        reloadLottiePlayers();
         initLottiePlayers();
-    }, 50);
+    }, 100);
 }
 
 // ==================== DETEKSI TELEGRAM WEBVIEW ====================
@@ -990,7 +1016,7 @@ function scanSlugsInText(text, container) {
     container.appendChild(wrapper);
 }
 
-// ==================== CREATE GIFT CARD (DIPERBAIKI UNTUK LOTTIE) ====================
+// ==================== CREATE GIFT CARD (FIX LOTTIE) ====================
 function createGiftCard(gift, index) {
     const card = document.createElement('div');
     card.className = 'gift-card';
@@ -1003,7 +1029,7 @@ function createGiftCard(gift, index) {
     
     card.innerHTML = `
         <div class="card-lottie-wrapper">
-            <div class="card-lottie-border">
+            <div class="card-lottie-border" id="border_${lottieId}">
                 <div class="lottie-placeholder" id="placeholder_${lottieId}" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.03);">
                     <i class="fas fa-gift" style="font-size:32px;color:var(--primary-color);opacity:0.5;"></i>
                 </div>
@@ -1012,7 +1038,7 @@ function createGiftCard(gift, index) {
                     data-src="${escapeHtml(lottieUrl)}" 
                     background="transparent" 
                     speed="1"
-                    style="width:100%;height:100%;display:none;" 
+                    style="width:100%;height:100%;" 
                     loop 
                     mode="normal">
                 </lottie-player>
@@ -1030,30 +1056,52 @@ function createGiftCard(gift, index) {
         </div>
     `;
     
-    // Load lottie dengan timeout untuk memastikan DOM siap
+    // Load lottie dengan cara yang benar
     const lottiePlayer = card.querySelector(`#${lottieId}`);
     const placeholder = card.querySelector(`#placeholder_${lottieId}`);
     
     if (lottiePlayer && placeholder) {
-        // Gunakan setTimeout untuk memastikan lottie-player terdaftar
-        setTimeout(() => {
-            const src = lottiePlayer.getAttribute('data-src');
-            if (src && !lottiePlayer.hasAttribute('src')) {
-                lottiePlayer.setAttribute('src', src);
-                lottiePlayer.style.display = 'block';
-                if (placeholder) placeholder.style.display = 'none';
-                
-                // Set autoplay jika mode play aktif
-                if (state.lottiePlaying) {
-                    lottiePlayer.setAttribute('autoplay', '');
-                    try { 
-                        lottiePlayer.play(); 
-                    } catch(e) { 
-                        console.log('Play error:', e);
-                    }
+        // Set src langsung, jangan pakai data-src
+        lottiePlayer.setAttribute('src', lottieUrl);
+        
+        // Sembunyikan placeholder
+        placeholder.style.display = 'none';
+        
+        // Set autoplay jika mode play aktif
+        if (state.lottiePlaying) {
+            lottiePlayer.setAttribute('autoplay', '');
+            // Tunggu sebentar lalu play
+            setTimeout(() => {
+                try { 
+                    lottiePlayer.play(); 
+                } catch(e) { 
+                    console.log('Play error:', e);
                 }
+            }, 100);
+        } else {
+            lottiePlayer.removeAttribute('autoplay');
+            // Set ke frame 0
+            setTimeout(() => {
+                try { 
+                    lottiePlayer.seek(0); 
+                } catch(e) {}
+            }, 100);
+        }
+        
+        // Tambahkan event listener untuk error
+        lottiePlayer.addEventListener('error', (e) => {
+            console.log('Lottie error for', gift.slug, e);
+            placeholder.style.display = 'flex';
+            lottiePlayer.style.display = 'none';
+        });
+        
+        // Tambahkan event listener untuk load
+        lottiePlayer.addEventListener('load', () => {
+            console.log('Lottie loaded for', gift.slug);
+            if (state.lottiePlaying) {
+                try { lottiePlayer.play(); } catch(e) {}
             }
-        }, 50);
+        });
     }
     
     card.addEventListener('click', () => loadGiftDetail(gift.slug));
@@ -1088,7 +1136,7 @@ function showDetailModal(gift) {
     const formatRarity = (val) => val ? `${(val / 10).toFixed(1)}%` : '-';
 
     elements.modalBody.innerHTML = `
-        <div class="detail-lottie-wrapper">
+        <div class="detail-lottie-wrapper" id="modal_wrapper_${lottieModalId}">
             <div id="modal_placeholder_${lottieModalId}" style="width:200px;height:200px;margin:0 auto;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border-radius:20px;">
                 <i class="fas fa-gift" style="font-size:60px;color:var(--primary-color);opacity:0.5;"></i>
             </div>
@@ -1097,9 +1145,8 @@ function showDetailModal(gift) {
                 src="${escapeHtml(lottieUrl)}" 
                 background="transparent" 
                 speed="1"
-                style="width:200px;height:200px;margin:0 auto;display:none;" 
-                loop 
-                ${state.lottiePlaying ? 'autoplay' : ''}>
+                style="width:200px;height:200px;margin:0 auto;" 
+                loop>
             </lottie-player>
         </div>
 
@@ -1196,15 +1243,18 @@ function showDetailModal(gift) {
         const modalPlaceholder = document.getElementById(`modal_placeholder_${lottieModalId}`);
         
         if (modalLottie && modalPlaceholder) {
-            modalLottie.style.display = 'block';
+            // Sembunyikan placeholder
             modalPlaceholder.style.display = 'none';
             
+            // Set autoplay jika mode play aktif
             if (state.lottiePlaying) {
                 modalLottie.setAttribute('autoplay', '');
-                try { modalLottie.play(); } catch(e) {}
+                try { 
+                    modalLottie.play(); 
+                } catch(e) {}
             }
         }
-    }, 100);
+    }, 200);
 }
 
 // ==================== INIT LOTTIE PLAYERS ====================
