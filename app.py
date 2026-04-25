@@ -479,6 +479,8 @@ if admin_bp:
     app.register_blueprint(admin_bp)
 if market_bp:
     app.register_blueprint(market_bp)
+if panel_bp:
+    app.register_blueprint(panel_bp)
 
 # REGISTER GIFT SCANNED BLUEPRINT - TANPA URL PREFIX
 if gift_scanned_bp:
@@ -585,6 +587,16 @@ def serve_jaseb_css(filename):
 def serve_jaseb_js(filename):
     """Serve JS files for Jaseb"""
     return send_from_directory(os.path.join(JASEB_DIR, 'js'), filename)
+
+@app.route('/jaseb/database/<path:filename>')
+def serve_jaseb_database(filename):
+    """Serve CSS files for Jaseb"""
+    return send_from_directory(os.path.join(JASEB_DIR, 'database'), filename)
+
+@app.route('/jaseb/services/<path:filename>')
+def serve_jaseb_services(filename):
+    """Serve CSS files for Jaseb"""
+    return send_from_directory(os.path.join(JASEB_DIR, 'services'), filename)
 
 @app.route('/jaseb/images/<path:filename>')
 def serve_jaseb_images(filename):
