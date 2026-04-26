@@ -1159,6 +1159,18 @@ def serve_image_files(filename):
     """Serve image files including .tgs"""
     return send_from_directory('image', filename)
 
+@app.route('/image/gifts/<path:filename>')
+def serve_gift_tgs(filename):
+    """Serve TGS files for gifts with cache headers"""
+    tgs_path = os.path.join(base_dir, 'image', 'gifts', filename)
+    if os.path.exists(tgs_path):
+        response = send_from_directory(os.path.join(base_dir, 'image', 'gifts'), filename)
+        # Add cache headers to reduce repeated requests
+        response.headers['Cache-Control'] = 'public, max-age=3600'
+        response.headers['ETag'] = str(os.path.getmtime(tgs_path))
+        return response
+    return jsonify({'error': 'File not found'}), 404
+
 # ==================== GIFT SCANNED API ROUTES (DIRECT) ====================
 # Ini adalah fallback langsung jika blueprint gagal
 
