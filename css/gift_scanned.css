@@ -1205,40 +1205,116 @@ body {
 .filter-list {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    max-height: 250px;
+    gap: 4px;
+    max-height: 300px;
     overflow-y: auto;
     margin-bottom: 14px;
-    padding: 0;
+    padding: 4px;
+}
+
+/* Scrollbar styling untuk filter list */
+.filter-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.filter-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+.filter-list::-webkit-scrollbar-thumb {
+    background: var(--accent-color);
+    border-radius: 4px;
+}
+
+/* Responsive untuk mobile */
+@media (max-width: 480px) {
+    .filter-item-animation {
+        width: 30px;
+        height: 30px;
+    }
+    
+    .filter-item-name {
+        font-size: 12px;
+    }
+    
+    .filter-item-count {
+        font-size: 9px;
+    }
+    
+    .filter-list-item {
+        padding: 8px 10px;
+    }
 }
 
 .filter-list-item {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 14px;
+    padding: 10px 14px;
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.15s;
     border: 1px solid transparent;
 }
 
-.filter-list-item:hover {
+.filter-item-animation {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: rgba(255, 255, 255, 0.05);
-    border-color: var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
 }
 
-.filter-list-item.selected {
-    background: rgba(139, 92, 246, 0.1);
-    border-color: rgba(139, 92, 246, 0.3);
+.filter-item-animation lottie-player {
+    width: 100% !important;
+    height: 100% !important;
 }
 
-/* Checkbox kotak */
+.filter-item-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.filter-item-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    text-align: left;
+}
+
+.filter-item-count {
+    font-size: 10px;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 6px;
+    border-radius: 10px;
+    display: inline-block;
+    width: fit-content;
+}
+
+.filter-list-item.selected .filter-item-name {
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+.filter-list-item.selected .filter-item-count {
+    background: rgba(139, 92, 246, 0.2);
+    color: var(--accent-color);
+}
+
+/* Checkbox styling */
 .filter-checkbox {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     border: 2px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: 5px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1253,35 +1329,21 @@ body {
 
 .filter-checkbox.checked i {
     color: white;
-    font-size: 11px;
+    font-size: 10px;
+}
+
+.filter-list-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-color);
+}
+
+.filter-list-item.selected {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: rgba(139, 92, 246, 0.3);
 }
 
 .filter-list-item.selected .filter-checkbox {
     border-color: var(--accent-color);
-}
-
-/* Nama filter */
-.filter-item-name {
-    flex: 1;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-primary);
-    text-align: left;
-}
-
-.filter-list-item.selected .filter-item-name {
-    color: var(--accent-color);
-    font-weight: 600;
-}
-
-/* Count badge */
-.filter-item-count {
-    font-size: 11px;
-    color: var(--text-muted);
-    background: rgba(255, 255, 255, 0.05);
-    padding: 3px 8px;
-    border-radius: 10px;
-    font-family: monospace;
 }
 
 .filter-chip {

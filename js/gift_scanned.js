@@ -415,7 +415,23 @@ function collectAllNamesFromGifts() {
     return Array.from(names).sort();
 }
 
-// ==================== LOAD ALL NAMES (GIFT NAMES) ====================
+// ==================== PRELOAD TGS FOR FILTER ====================
+async function preloadFilterTgs(names) {
+    // Preload TGS untuk 10 nama pertama saja agar tidak overload
+    const namesToPreload = names.slice(0, 10);
+    
+    for (const name of namesToPreload) {
+        const tgsUrl = `/image/gifts/${name}.tgs`;
+        try {
+            // Fetch untuk cache
+            await fetch(tgsUrl, { method: 'HEAD' });
+        } catch(e) {
+            // Ignore error, fallback akan handle
+        }
+    }
+}
+
+// Panggil preload setelah loadAllNames selesai
 async function loadAllNames() {
     try {
         console.log('🔄 Loading gift names from /gift-scam/api/names...');
@@ -423,7 +439,6 @@ async function loadAllNames() {
         
         if (!response.ok) {
             console.warn(`Names API returned ${response.status}`);
-            // Fallback: collect from gifts data
             if (state.allGifts && state.allGifts.length > 0) {
                 const namesMap = new Map();
                 state.allGifts.forEach(g => {
@@ -436,6 +451,8 @@ async function loadAllNames() {
                 state.nameCounts = Object.fromEntries(namesMap);
                 console.log(`✅ Fallback: Loaded ${state.allNames.length} unique gift names from gifts data`);
                 renderFilterChips();
+                // Preload TGS
+                preloadFilterTgs(state.allNames);
             }
             return;
         }
@@ -445,9 +462,11 @@ async function loadAllNames() {
             state.allNames = data.names;
             state.nameCounts = data.name_counts || {};
             console.log(`✅ Loaded ${state.allNames.length} unique gift names from API`);
+            renderFilterChips();
+            // Preload TGS
+            preloadFilterTgs(state.allNames);
         } else {
             console.warn('Names API returned empty or success=false, using fallback');
-            // Fallback: collect from gifts data
             if (state.allGifts && state.allGifts.length > 0) {
                 const namesMap = new Map();
                 state.allGifts.forEach(g => {
@@ -459,11 +478,12 @@ async function loadAllNames() {
                 state.allNames = Array.from(namesMap.keys()).sort();
                 state.nameCounts = Object.fromEntries(namesMap);
                 console.log(`✅ Fallback: Loaded ${state.allNames.length} unique gift names from gifts data`);
+                renderFilterChips();
+                preloadFilterTgs(state.allNames);
             }
         }
     } catch (e) {
         console.error('Error loading names:', e);
-        // Fallback: collect from gifts data
         if (state.allGifts && state.allGifts.length > 0) {
             const namesMap = new Map();
             state.allGifts.forEach(g => {
@@ -475,10 +495,10 @@ async function loadAllNames() {
             state.allNames = Array.from(namesMap.keys()).sort();
             state.nameCounts = Object.fromEntries(namesMap);
             console.log(`✅ Fallback: Loaded ${state.allNames.length} unique gift names from gifts data`);
+            renderFilterChips();
+            preloadFilterTgs(state.allNames);
         }
     }
-    
-    renderFilterChips();
 }
 
 function countGiftsByName(name) {
@@ -529,7 +549,7 @@ function resetFilter() {
     showToast('Filter direset', 'info');
 }
 
-// ==================== RENDER FILTER CHIPS (GIFT NAMES) ====================
+// ==================== RENDER FILTER CHIPS (DENGAN ANIMASI TGS) ====================
 function renderFilterChips() {
     if (!elements.filterList) return;
     
@@ -546,6 +566,10 @@ function renderFilterChips() {
         const isSelected = state.selectedFilterNames.includes(name);
         const count = state.nameCounts[name] || 0;
         
+        // Buat URL TGS berdasarkan nama gift
+        // Nama file TGS: BunnyMuffin.tgs, JellyBunny.tgs, dll.
+        const tgsUrl = `/image/gifts/${name}.tgs`;
+        
         html += `
             <div class="filter-list-item ${isSelected ? 'selected' : ''}" 
                  data-name="${escapeHtml(name)}"
@@ -553,13 +577,52 @@ function renderFilterChips() {
                 <div class="filter-checkbox ${isSelected ? 'checked' : ''}">
                     ${isSelected ? '<i class="fas fa-check"></i>' : ''}
                 </div>
-                <span class="filter-item-name">${escapeHtml(name)}</span>
-                <span class="filter-item-count">${count}</span>
+                <div class="filter-item-animation">
+                    <lottie-player 
+                        data-src="${escapeHtml(tgsUrl)}" 
+                        background="transparent" 
+                        speed="1"
+                        style="width:36px;height:36px;" 
+                        loop 
+                        autoplay>
+                    </lottie-player>
+                </div>
+                <div class="filter-item-info">
+                    <span class="filter-item-name">${escapeHtml(name)}</span>
+                    <span class="filter-item-count">${count}</span>
+                </div>
             </div>
         `;
     });
     
     elements.filterList.innerHTML = html;
+    
+    // Inisialisasi lottie player untuk filter
+    setTimeout(() => {
+        initFilterLottiePlayers();
+    }, 50);
+}
+
+// ==================== INIT FILTER LOTTIE PLAYERS ====================
+function initFilterLottiePlayers() {
+    const filterPlayers = document.querySelectorAll('#filterList lottie-player');
+    
+    filterPlayers.forEach(player => {
+        const src = player.getAttribute('data-src');
+        if (src && !player.hasAttribute('src')) {
+            player.setAttribute('src', src);
+            
+            // Tambahkan error handling
+            player.addEventListener('error', (e) => {
+                console.log('TGS error for filter:', src);
+                // Fallback ke icon gift
+                const container = player.parentElement;
+                if (container) {
+                    container.innerHTML = '<i class="fas fa-gift" style="font-size:20px;color:var(--primary-color);"></i>';
+                }
+            });
+        }
+    });
 }
 
 function toggleSelectAll() {
