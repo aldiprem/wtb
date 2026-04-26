@@ -178,79 +178,41 @@
 <script>
     // ==================== IP2Location.io API (SOLUSI FINAL) ====================
     const IP2LOCATION_KEY = "6EB4A091A2076236C36962F2FB51E969";
-    
+        
     async function getLocationFromIP() {
         const statusDiv = document.getElementById("auto-status-msg");
-        statusDiv.innerHTML = '<span class="loading-spinner"></span> Menarik data dari IP2Location.io...';
+        statusDiv.innerHTML = '<span class="loading-spinner"></span> Menarik data lokasi...';
         statusDiv.className = "status-badge";
         
         try {
-            // Endpoint HTTPS resmi IP2Location.io dengan CORS enabled
-            const url = `https://api.ip2location.io/?key=${IP2LOCATION_KEY}&format=json&security=true`;
-            const response = await fetch(url, { 
+            // Panggil proxy PHP di server sendiri (CORS friendly)
+            const response = await fetch('/proxy-ip.php', {
                 cache: "no-store",
-                mode: "cors",
-                headers: {
-                    'Accept': 'application/json'
-                }
+                headers: { 'Accept': 'application/json' }
             });
-            
-            if (response.status === 401) {
-                throw new Error("API_KEY_NOT_ACTIVE");
-            }
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
             
             const data = await response.json();
             
             if (data && data.ip) {
-                // Tampilkan IP
                 document.getElementById("auto-ip").innerText = data.ip;
                 
-                // Koordinat dari IP2Location
-                let lat = data.latitude;
-                let lng = data.longitude;
-                
-                if (lat && lng) {
-                    document.getElementById("auto-coord").innerHTML = `${lat}, ${lng} <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" class="map-link">🗺️ lihat peta</a>`;
-                } else {
-                    document.getElementById("auto-coord").innerText = "Tidak tersedia";
+                if (data.latitude && data.longitude) {
+                    document.getElementById("auto-coord").innerHTML = `${data.latitude}, ${data.longitude} <a href="https://www.google.com/maps?q=${data.latitude},${data.longitude}" target="_blank" class="map-link">🗺️ lihat peta</a>`;
                 }
                 
-                // City & Region
                 let cityName = data.city_name || data.city || "-";
                 let regionName = data.region_name || data.region || "";
                 let fullLocation = cityName;
-                if (regionName && regionName !== cityName && regionName !== "-") {
+                if (regionName && regionName !== cityName) {
                     fullLocation += `, ${regionName}`;
                 }
                 document.getElementById("auto-city").innerText = fullLocation;
+                document.getElementById("auto-country").innerText = `${data.country_name || '-'} (${data.country_code || '-'})`;
+                document.getElementById("auto-isp").innerText = data.isp || data.asn || "-";
                 
-                // Negara
-                const countryName = data.country_name || "-";
-                const countryCode = data.country_code || "-";
-                document.getElementById("auto-country").innerText = `${countryName} (${countryCode})`;
-                
-                // ISP / ASN
-                let ispText = data.isp || data.asn || "-";
-                document.getElementById("auto-isp").innerText = ispText;
-                
-                // Proxy/VPN detection
-                let isProxy = false;
-                let proxyType = "";
-                if (data.security) {
-                    isProxy = data.security.is_proxy === true;
-                    proxyType = data.security.proxy_type || "";
-                }
-                if (data.proxy === true) isProxy = true;
-                
-                let proxyText = isProxy ? `⚠️ Proxy/VPN terdeteksi ${proxyType ? `(${proxyType})` : ''}` : "✅ Clean (bukan proxy publik)";
-                document.getElementById("auto-proxy").innerHTML = proxyText;
-                
-                // Info akurasi
-                document.getElementById("auto-accuracy").innerHTML = `IP2Location - Akurasi tingkat kota`;
+                let isProxy = data.is_proxy === true || data.proxy === true;
+                document.getElementById("auto-proxy").innerHTML = isProxy ? "⚠️ Proxy/VPN terdeteksi" : "✅ Clean";
+                document.getElementById("auto-accuracy").innerHTML = `IP2Location via proxy - ${data.country_code}`;
                 
                 statusDiv.innerHTML = `✅ Auto tracking sukses! Koordinat dari IP ${data.ip}`;
                 statusDiv.className = "status-badge success";
@@ -258,26 +220,10 @@
             } else {
                 throw new Error("Data tidak lengkap");
             }
-            
         } catch (error) {
-            console.error("IP2Location error:", error);
-            
-            if (error.message === "API_KEY_NOT_ACTIVE") {
-                document.getElementById("auto-status-msg").innerHTML = "⚠️ API key IP2Location sedang propagasi. Tunggu 15-30 menit atau cek email verifikasi. Sementara gunakan GPS manual.";
-                document.getElementById("auto-status-msg").className = "status-badge warning";
-                document.getElementById("auto-ip").innerText = "Menunggu aktivasi key";
-                document.getElementById("auto-coord").innerText = "Gunakan GPS manual";
-                document.getElementById("auto-isp").innerText = "-";
-                document.getElementById("auto-proxy").innerHTML = "❓ Belum bisa deteksi";
-                return false;
-            }
-            
-            document.getElementById("auto-ip").innerText = "Gagal";
-            document.getElementById("auto-coord").innerText = "Error";
-            document.getElementById("auto-isp").innerText = "-";
-            document.getElementById("auto-proxy").innerHTML = "❌ Gagal deteksi";
-            document.getElementById("auto-status-msg").innerHTML = `❌ Error: ${error.message}. Gunakan GPS manual untuk dapat lokasi presisi.`;
-            document.getElementById("auto-status-msg").className = "status-badge error";
+            console.error("Error:", error);
+            statusDiv.innerHTML = `❌ Error: ${error.message}. Klik tombol GPS manual untuk lokasi presisi.`;
+            statusDiv.className = "status-badge error";
             return false;
         }
     }
