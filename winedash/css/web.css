@@ -143,20 +143,25 @@ body::after {
 .winedash-container {
     max-width: 500px;
     margin: 0 auto;
-    padding: 16px;
+    padding: 0 12px;
     padding-bottom: 90px;
     min-height: 100vh;
     background: transparent;
     position: relative;
     z-index: 1;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+    padding-top: max(8px, env(safe-area-inset-top, 0px));
+    width: 100%;
 }
 
+/* Profile Header - padding disesuaikan */
 .profile-header {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     margin-bottom: 16px;
-    padding: 8px 12px;
+    padding: 8px 0;
 }
 
 .profile-left {
@@ -175,7 +180,6 @@ body::after {
     justify-content: center;
     overflow: hidden;
     flex-shrink: 0;
-    margin-right: auto;
 }
 
 .profile-avatar img {
@@ -320,13 +324,26 @@ body::after {
     box-shadow: 0 4px 12px var(--primary-glow);
 }
 
-/* web.css - Fix search container dan button Apply */
-
 .search-container {
     display: flex;
     gap: 10px;
     margin-bottom: 16px;
     align-items: center;
+    width: 100%;
+}
+
+.search-input {
+    flex: 1;
+    padding: 12px 16px;
+    font-size: 15px;
+    color: var(--text);
+    outline: none;
+    transition: all 0.3s ease;
+    border-radius: 20px;
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    min-width: 0;
 }
 
 .search-input {
@@ -345,7 +362,7 @@ body::after {
         inset 0 1px 1px rgba(255, 255, 255, 0.2), 
         inset 0 -1px 1px rgba(0, 0, 0, 0.3),
         0 4px 15px rgba(0, 0, 0, 0.2);
-    min-width: 0; /* Penting untuk flex shrink */
+    min-width: 0;
 }
 
 /* 4. Efek Saat Fokus (Border berubah jadi Biru/Primary) */
@@ -378,7 +395,7 @@ body::after {
     overflow: hidden;
     height: auto;
     min-width: 80px;
-    letter-spacing: 0.5px;
+    border: none;
 }
 
 /* Border 3D untuk tombol Apply */
@@ -408,8 +425,8 @@ body::after {
 .tabs-container {
     position: fixed;
     bottom: 20px;
-    left: 16px;
-    right: 16px;
+    left: 12px;
+    right: 12px;
     display: flex;
     gap: 4px;
     background: rgba(17, 17, 17, 0.9);
@@ -419,7 +436,7 @@ body::after {
     z-index: 1000;
     box-shadow: var(--shadow);
     border: none;
-    max-width: calc(500px - 32px);
+    max-width: calc(500px - 24px);
     margin: 0 auto;
 }
 
@@ -490,8 +507,6 @@ body::after {
     display: block;
 }
 
-/* web.css - Glassmorphism 2.0 untuk section-card */
-
 .section-card {
     background: rgba(17, 17, 17, 0.45);
     backdrop-filter: blur(6px) saturate(180%);
@@ -501,6 +516,7 @@ body::after {
     margin-bottom: 16px;
     position: relative;
     overflow: hidden;
+    width: 100%;
 }
 
 /* Specular highlight (pantulan cahaya di tepi atas) */
@@ -852,12 +868,16 @@ button:disabled {
     gap: 12px !important;
     margin-bottom: 20px !important;
     border-radius: 16px;
-    overflow: hidden;
+    overflow: visible;
+    width: 100%;
 }
 
 .marketplace-grid .marketplace-card {
     margin-bottom: 0 !important;
-    border-radius: 14px;
+    border-radius: 16px;
+    height: 180px;
+    width: 100%;
+    min-width: 0;
 }
 
 /* Pastikan container list memiliki margin bottom */
@@ -978,13 +998,13 @@ button:disabled {
     margin-top: 0;
 }
 
-/* Perbaikan layout toggle button */
 .layout-toggle {
     display: flex;
     gap: 4px;
     background: var(--glass-bg);
     border-radius: 20px;
     padding: 3px;
+    flex-shrink: 0;
 }
 
 .layout-toggle .layout-btn {
@@ -1048,7 +1068,6 @@ button:disabled {
     pointer-events: none;
 }
 
-/* Card Image Background - diperkecil tingginya */
 .marketplace-grid .marketplace-card-image {
     position: relative;
     width: 100%;
@@ -1064,7 +1083,7 @@ button:disabled {
     flex-shrink: 0;
 }
 
-/* Avatar di card - lebih kecil */
+/* Card Avatar */
 .marketplace-grid .card-avatar {
     width: 50px;
     height: 50px;
@@ -1147,11 +1166,11 @@ button:disabled {
     color: var(--text-muted);
 }
 
-/* Marketplace List Layout - SAMA PERSIS DENGAN STORAGE LIST */
 .marketplace-list {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    width: 100%;
 }
 
 .marketplace-list .marketplace-item {
@@ -1164,8 +1183,11 @@ button:disabled {
     border-radius: 14px;
     position: relative;
     overflow: hidden;
-    border: none;
+    border: 1px solid var(--border-light);
     cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 0;
+    width: 100%;
 }
 
 .marketplace-list .marketplace-item::after {
@@ -1184,6 +1206,32 @@ button:disabled {
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
+}
+
+.marketplace-filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+}
+
+.marketplace-filter-bar::-webkit-scrollbar {
+    height: 3px;
+}
+
+.marketplace-filter-bar::-webkit-scrollbar-track {
+    background: var(--border-light);
+    border-radius: 3px;
+}
+
+.marketplace-filter-bar::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 3px;
 }
 
 .marketplace-list .marketplace-avatar {
@@ -2698,16 +2746,16 @@ body.wallet-panel-open {
     backdrop-filter: var(--glass-blur);
     border: 1px solid var(--border);
     border-radius: 24px;
-    padding: 8px 16px;
+    padding: 6px 14px;
     color: var(--text-secondary);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
-    white-space: nowrap;
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-shrink: 0;
 }
 
 .filter-action-btn i {
@@ -2903,34 +2951,6 @@ body.filter-open {
     position: fixed;
     width: 100%;
     height: 100%;
-}
-
-.layout-toggle .layout-btn {
-    background: transparent;
-    border: none;
-    padding: 6px 10px;
-    border-radius: 16px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s;
-}
-
-.layout-toggle .layout-btn.active {
-    background: var(--primary-glass);
-    color: var(--primary);
-}
-
-.layout-toggle .layout-btn i {
-    font-size: 14px;
-}
-
-.layout-toggle {
-    display: flex;
-    gap: 4px;
-    background: var(--glass-bg);
-    border-radius: 20px;
-    padding: 3px;
 }
 
 /* Mencegah MiniApp tertutup saat scroll mentok ke atas */
@@ -3184,39 +3204,6 @@ body, .winedash-container, .tab-btn, .action-btn, .filter-action-btn,
     width: 100%;
 }
 
-/* Marketplace Grid - Jarak antar card */
-.marketplace-grid {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 12px !important;
-    margin-bottom: 20px !important;
-    border-radius: 16px;
-    overflow: visible;
-}
-
-/* Marketplace List Layout - Jarak antar item */
-.marketplace-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.marketplace-list .marketplace-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    border-radius: 14px;
-    position: relative;
-    overflow: hidden;
-    border: 1px solid var(--border-light);
-    cursor: pointer;
-    transition: all 0.2s;
-    margin-bottom: 0;
-}
-
 .marketplace-list .marketplace-item:hover {
     background: rgba(255, 255, 255, 0.08);
     transform: translateY(-1px);
@@ -3244,46 +3231,6 @@ body, .winedash-container, .tab-btn, .action-btn, .filter-action-btn,
     gap: 10px;
     margin-bottom: 16px;
     align-items: center;
-}
-
-.search-input {
-    flex: 1;
-    padding: 12px 16px;
-    font-size: 15px;
-    color: var(--text);
-    outline: none;
-    transition: all 0.3s ease;
-    border-radius: 20px;
-    border: none;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-}
-
-.search-apply-btn {
-    background: rgba(64, 167, 227, 0.2);
-    backdrop-filter: blur(4px);
-    border-radius: 20px;
-    padding: 10px 24px;
-    color: var(--primary);
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.1s;
-    white-space: nowrap;
-    position: relative;
-    overflow: hidden;
-    height: auto;
-    min-width: 80px;
-    border: none;
-}
-
-/* Layout Toggle */
-.layout-toggle {
-    display: flex;
-    gap: 4px;
-    background: var(--glass-bg);
-    border-radius: 20px;
-    padding: 3px;
 }
 
 .layout-btn {
@@ -3418,4 +3365,90 @@ body, .winedash-container, .tab-btn, .action-btn, .filter-action-btn,
     .amount-input {
         font-size: 22px;
     }
+}
+
+@media (max-width: 480px) {
+    .winedash-container {
+        padding: 0 12px;
+        padding-bottom: 90px;
+        padding-top: max(8px, env(safe-area-inset-top, 0px));
+    }
+    
+    .marketplace-grid {
+        gap: 8px !important;
+    }
+    
+    .marketplace-grid .marketplace-card {
+        height: 165px;
+    }
+    
+    .marketplace-grid .marketplace-card-image {
+        height: 95px;
+    }
+    
+    .marketplace-grid .card-avatar {
+        width: 45px;
+        height: 45px;
+        margin-bottom: 15px;
+    }
+    
+    .marketplace-grid .card-username {
+        font-size: 10px;
+        padding: 3px 10px;
+        margin-top: -12px;
+    }
+    
+    .search-apply-btn {
+        padding: 8px 16px;
+        font-size: 12px;
+        min-width: 70px;
+    }
+    
+    .search-input {
+        padding: 10px 14px;
+        font-size: 13px;
+    }
+    
+    .tabs-container {
+        left: 12px;
+        right: 12px;
+        bottom: max(20px, env(safe-area-inset-bottom, 0px));
+    }
+}
+
+/* Untuk device dengan lebar sangat kecil */
+@media (max-width: 360px) {
+    .winedash-container {
+        padding: 0 10px;
+        padding-bottom: 80px;
+    }
+    
+    .marketplace-grid {
+        gap: 6px !important;
+    }
+    
+    .filter-action-btn {
+        padding: 4px 10px;
+        font-size: 10px;
+    }
+    
+    .filter-action-btn i {
+        font-size: 10px;
+    }
+}
+
+/* Pastikan body tidak overflow horizontal */
+body {
+    overflow-x: hidden !important;
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Pastikan semua container tidak overflow */
+.winedash-container,
+.section-card,
+.marketplace-grid,
+.marketplace-list,
+.search-container {
+    overflow-x: hidden !important;
 }
