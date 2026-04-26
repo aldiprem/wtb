@@ -6,14 +6,13 @@ import ipaddress
 import secrets
 from datetime import datetime
 from pathlib import Path
-from flask import Flask, request, jsonify, send_from_directory, abort, redirect
+from flask import Flask, request, jsonify, send_from_directory, abort
 from flask_cors import CORS
 from collections import defaultdict, Counter
 import logging
 import requests
 import sqlite3
 import sys
-import io
 
 # ==================== INTEGRASI JASEB USERBOT MANAGER ====================
 
@@ -1579,144 +1578,6 @@ def gift_scam_senders():
     except Exception as e:
         print(f"Error in /gift-scam/api/senders: {e}")
         return jsonify({'success': False, 'error': str(e), 'senders': [], 'sender_counts': {}}), 500
-
-@app.route('/api/star-gift-png/<name>', methods=['GET'])
-def get_star_gift_png(name):
-    """Mengambil gambar PNG gift dari star_gifts.db"""
-    try:
-        star_db_path = '/root/project/website/star_gifts.db'
-        
-        if not os.path.exists(star_db_path):
-            return redirect(f'/api/gift-png/{name}')
-        
-        conn = sqlite3.connect(star_db_path)
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        
-        name_lower = name.lower().replace("'", "''")
-        
-        cur.execute("""
-            SELECT gift_id FROM star_gifts 
-            WHERE LOWER(title) = ? OR LOWER(title) LIKE ?
-            LIMIT 1
-        """, (name_lower, f"%{name_lower}%"))
-        
-        row = cur.fetchone()
-        
-        if not row:
-            conn.close()
-            return redirect(f'/api/gift-png/{name}')
-        
-        gift_id = row['gift_id']
-        
-        cur.execute("""
-            SELECT bytes FROM star_gift_thumbs
-            WHERE gift_id = ? AND thumb_type = 'm'
-            LIMIT 1
-        """, (gift_id,))
-        
-        thumb = cur.fetchone()
-        conn.close()
-        
-        if not thumb or not thumb['bytes']:
-            return redirect(f'/api/gift-png/{name}')
-        
-        return send_file(
-            io.BytesIO(thumb['bytes']),
-            mimetype='image/jpeg'
-        )
-        
-    except Exception as e:
-        print(f"Error: {e}")
-        return redirect(f'/api/gift-png/{name}')
-
-# Tambahkan juga endpoint untuk mendapatkan info gift dari star_gifts.db
-@app.route('/api/star-gift-info/<name>', methods=['GET'])
-def get_star_gift_info(name):
-    """Mendapatkan informasi gift dari star_gifts.db berdasarkan nama"""
-    try:
-        star_db_path = '/root/project/website/star_gifts.db'
-        
-        if not os.path.exists(star_db_path):
-            alt_paths = [
-                os.path.join(base_dir, 'star_gifts.db'),
-                '/root/project/website/star_gifts.db',
-                os.path.join(ROOT_DIR, 'star_gifts.db'),
-                'star_gifts.db'
-            ]
-            for path in alt_paths:
-                if os.path.exists(path):
-                    star_db_path = path
-                    break
-            else:
-                return jsonify({'success': False, 'error': 'Star Gifts DB not found'}), 404
-        
-        conn = sqlite3.connect(star_db_path)
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        
-        name_lower = name.lower().replace("'", "''")
-        
-        cur.execute("""
-            SELECT 
-                sg.gift_id, sg.title, sg.stars, sg.convert_stars,
-                sg.is_limited, sg.is_sold_out, sg.is_birthday,
-                sg.require_premium, sg.availability_total, sg.availability_resale,
-                sg.resell_min_stars, sg.sticker_alt as emoji
-            FROM star_gifts sg
-            WHERE LOWER(sg.title) = ? OR LOWER(sg.title) LIKE ?
-            LIMIT 1
-        """, (name_lower, f"%{name_lower}%"))
-        
-        row = cur.fetchone()
-        
-        if not row:
-            conn.close()
-            return jsonify({'success': False, 'error': 'Gift not found'}), 404
-        
-        gift_id = row['gift_id']
-        
-        # Ambil attributes
-        cur.execute("""
-            SELECT attribute_type, name, rarity_permille
-            FROM star_gift_attributes
-            WHERE gift_id = ?
-        """, (gift_id,))
-        attrs = cur.fetchall()
-        conn.close()
-        
-        attributes = {}
-        for attr in attrs:
-            attr_type = attr['attribute_type'].replace('StarGiftAttribute', '').lower()
-            attributes[attr_type] = {
-                "name": attr['name'],
-                "rarity_permille": attr['rarity_permille'],
-                "rarity_percent": (attr['rarity_permille'] / 10) if attr['rarity_permille'] else None
-            }
-        
-        return jsonify({
-            'success': True,
-            'data': {
-                'gift_id': row['gift_id'],
-                'title': row['title'],
-                'stars': row['stars'],
-                'convert_stars': row['convert_stars'],
-                'is_limited': bool(row['is_limited']),
-                'is_sold_out': bool(row['is_sold_out']),
-                'is_birthday': bool(row['is_birthday']),
-                'require_premium': bool(row['require_premium']),
-                'availability_total': row['availability_total'],
-                'availability_resale': row['availability_resale'],
-                'resell_min_stars': row['resell_min_stars'],
-                'emoji': row['emoji'] or '🎁',
-                'attributes': attributes,
-                'image_url': f'/api/star-gift-png/{name}'
-            }
-        })
-        
-    except Exception as e:
-        print(f"Error in get_star_gift_info: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ==================== MAIN ====================
 
