@@ -215,7 +215,7 @@ function closeModal() {
     } 
 }
 
-// ==================== TOGGLE LOTTIE PLAY/STOP ====================
+// ==================== TOGGLE LOTTIE PLAY/STOP (UNTUK SEMUA PLAYER TERMASUK FILTER) ====================
 function toggleLottiePlay() {
     state.lottiePlaying = !state.lottiePlaying;
     const btn = elements.togglePlayBtn;
@@ -232,20 +232,30 @@ function toggleLottiePlay() {
         btn.title = 'Play Lottie';
     }
 
-    // ✅ Update hanya lottie yang TERLIHAT di viewport
-    document.querySelectorAll('lottie-player').forEach(player => {
+    // Update lottie player di halaman utama (gift cards)
+    document.querySelectorAll('.gift-card lottie-player').forEach(player => {
         const rect = player.getBoundingClientRect();
         const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
         
         if (isVisible) {
             if (state.lottiePlaying) {
                 player.setAttribute('autoplay', '');
-                player.play?.();
+                try { player.play(); } catch(e) {}
             } else {
                 player.removeAttribute('autoplay');
-                player.stop?.();
-                player.seek?.(0);
+                try { player.stop(); player.seek(0); } catch(e) {}
             }
+        }
+    });
+    
+    // Update lottie player di filter panel
+    document.querySelectorAll('#filterList lottie-player').forEach(player => {
+        if (state.lottiePlaying) {
+            player.setAttribute('autoplay', '');
+            try { player.play(); } catch(e) {}
+        } else {
+            player.removeAttribute('autoplay');
+            try { player.stop(); player.seek(0); } catch(e) {}
         }
     });
 }
@@ -431,7 +441,7 @@ async function preloadFilterTgs(names) {
     }
 }
 
-// Panggil preload setelah loadAllNames selesai
+// ==================== LOAD ALL NAMES (DENGAN PRELOAD TGS) ====================
 async function loadAllNames() {
     try {
         console.log('🔄 Loading gift names from /gift-scam/api/names...');
@@ -451,7 +461,7 @@ async function loadAllNames() {
                 state.nameCounts = Object.fromEntries(namesMap);
                 console.log(`✅ Fallback: Loaded ${state.allNames.length} unique gift names from gifts data`);
                 renderFilterChips();
-                // Preload TGS
+                // Preload TGS untuk filter
                 preloadFilterTgs(state.allNames);
             }
             return;
@@ -463,7 +473,7 @@ async function loadAllNames() {
             state.nameCounts = data.name_counts || {};
             console.log(`✅ Loaded ${state.allNames.length} unique gift names from API`);
             renderFilterChips();
-            // Preload TGS
+            // Preload TGS untuk filter
             preloadFilterTgs(state.allNames);
         } else {
             console.warn('Names API returned empty or success=false, using fallback');
@@ -549,11 +559,10 @@ function resetFilter() {
     showToast('Filter direset', 'info');
 }
 
-// ==================== RENDER FILTER CHIPS (DENGAN ANIMASI TGS) ====================
+// ==================== RENDER FILTER CHIPS (DENGAN ANIMASI TGS YANG BENAR) ====================
 function renderFilterChips() {
     if (!elements.filterList) return;
     
-    // Gunakan allNames (gift names)
     const names = state.allNames.length > 0 ? state.allNames : [];
     
     if (names.length === 0) {
@@ -566,8 +575,8 @@ function renderFilterChips() {
         const isSelected = state.selectedFilterNames.includes(name);
         const count = state.nameCounts[name] || 0;
         
-        // Buat URL TGS berdasarkan nama gift
-        // Nama file TGS: BunnyMuffin.tgs, JellyBunny.tgs, dll.
+        // Gunakan endpoint yang benar untuk file .tgs
+        // File .tgs disimpan di folder /image/gifts/
         const tgsUrl = `/image/gifts/${name}.tgs`;
         
         html += `
@@ -577,15 +586,10 @@ function renderFilterChips() {
                 <div class="filter-checkbox ${isSelected ? 'checked' : ''}">
                     ${isSelected ? '<i class="fas fa-check"></i>' : ''}
                 </div>
-                <div class="filter-item-animation">
-                    <lottie-player 
-                        data-src="${escapeHtml(tgsUrl)}" 
-                        background="transparent" 
-                        speed="1"
-                        style="width:36px;height:36px;" 
-                        loop 
-                        autoplay>
-                    </lottie-player>
+                <div class="filter-item-animation" data-tgs="${escapeHtml(tgsUrl)}">
+                    <div class="filter-lottie-placeholder" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-gift" style="font-size:20px;color:var(--primary-color);opacity:0.6;"></i>
+                    </div>
                 </div>
                 <div class="filter-item-info">
                     <span class="filter-item-name">${escapeHtml(name)}</span>
@@ -597,31 +601,71 @@ function renderFilterChips() {
     
     elements.filterList.innerHTML = html;
     
-    // Inisialisasi lottie player untuk filter
+    // Inisialisasi lottie untuk filter dengan delay
     setTimeout(() => {
         initFilterLottiePlayers();
-    }, 50);
+    }, 100);
 }
 
-// ==================== INIT FILTER LOTTIE PLAYERS ====================
+// ==================== INIT FILTER LOTTIE PLAYERS (DENGAN LOADING YANG BENAR) ====================
 function initFilterLottiePlayers() {
-    const filterPlayers = document.querySelectorAll('#filterList lottie-player');
+    const filterItems = document.querySelectorAll('#filterList .filter-list-item');
     
-    filterPlayers.forEach(player => {
-        const src = player.getAttribute('data-src');
-        if (src && !player.hasAttribute('src')) {
-            player.setAttribute('src', src);
-            
-            // Tambahkan error handling
-            player.addEventListener('error', (e) => {
-                console.log('TGS error for filter:', src);
-                // Fallback ke icon gift
-                const container = player.parentElement;
-                if (container) {
-                    container.innerHTML = '<i class="fas fa-gift" style="font-size:20px;color:var(--primary-color);"></i>';
+    filterItems.forEach(item => {
+        const animationContainer = item.querySelector('.filter-item-animation');
+        if (!animationContainer) return;
+        
+        const tgsUrl = animationContainer.getAttribute('data-tgs');
+        if (!tgsUrl) return;
+        
+        // Cek apakah sudah memiliki lottie player
+        const existingPlayer = animationContainer.querySelector('lottie-player');
+        if (existingPlayer) return;
+        
+        // Sembunyikan placeholder
+        const placeholder = animationContainer.querySelector('.filter-lottie-placeholder');
+        
+        // Buat lottie player baru
+        const player = document.createElement('lottie-player');
+        player.setAttribute('src', tgsUrl);
+        player.setAttribute('background', 'transparent');
+        player.setAttribute('speed', '1');
+        player.setAttribute('loop', '');
+        player.setAttribute('style', 'width:36px;height:36px;');
+        
+        // Atur autoplay berdasarkan state
+        if (state.lottiePlaying) {
+            player.setAttribute('autoplay', '');
+        }
+        
+        // Event listeners
+        player.addEventListener('load', () => {
+            if (placeholder) placeholder.style.display = 'none';
+            player.style.display = 'block';
+            if (state.lottiePlaying) {
+                try { player.play(); } catch(e) {}
+            }
+        });
+        
+        player.addEventListener('error', (e) => {
+            console.log('TGS load error for filter:', tgsUrl, e);
+            if (placeholder) {
+                placeholder.style.display = 'flex';
+                placeholder.innerHTML = '<i class="fas fa-gift" style="font-size:20px;color:var(--primary-color);opacity:0.6;"></i>';
+            }
+            player.style.display = 'none';
+        });
+        
+        player.style.display = 'none';
+        animationContainer.appendChild(player);
+        
+        // Coba fetch untuk validasi
+        fetch(tgsUrl, { method: 'HEAD' })
+            .catch(() => {
+                if (placeholder) {
+                    placeholder.style.display = 'flex';
                 }
             });
-        }
     });
 }
 
