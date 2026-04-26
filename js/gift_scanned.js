@@ -529,10 +529,11 @@ function resetFilter() {
     showToast('Filter direset', 'info');
 }
 
-// ==================== UPDATE FILTER CHIPS (MENGGUNAKAN PNG) ====================
+// ==================== RENDER FILTER CHIPS (GIFT NAMES) ====================
 function renderFilterChips() {
     if (!elements.filterList) return;
     
+    // Gunakan allNames (gift names)
     const names = state.allNames.length > 0 ? state.allNames : [];
     
     if (names.length === 0) {
@@ -544,7 +545,6 @@ function renderFilterChips() {
     names.forEach(name => {
         const isSelected = state.selectedFilterNames.includes(name);
         const count = state.nameCounts[name] || 0;
-        const imageUrl = `/api/gift-png/${name}`;
         
         html += `
             <div class="filter-list-item ${isSelected ? 'selected' : ''}" 
@@ -553,19 +553,8 @@ function renderFilterChips() {
                 <div class="filter-checkbox ${isSelected ? 'checked' : ''}">
                     ${isSelected ? '<i class="fas fa-check"></i>' : ''}
                 </div>
-                <div class="filter-item-image">
-                    <img 
-                        src="${escapeHtml(imageUrl)}" 
-                        alt="${escapeHtml(name)}"
-                        loading="lazy"
-                        style="width:36px;height:36px;object-fit:cover;border-radius:8px;"
-                        onerror="this.src='/image/placeholder-gift.png';this.onerror=null;"
-                    >
-                </div>
-                <div class="filter-item-info">
-                    <span class="filter-item-name">${escapeHtml(name)}</span>
-                    <span class="filter-item-count">${count}</span>
-                </div>
+                <span class="filter-item-name">${escapeHtml(name)}</span>
+                <span class="filter-item-count">${count}</span>
             </div>
         `;
     });
@@ -1185,19 +1174,26 @@ function createGiftCard(gift, index) {
     card.className = 'gift-card';
     const msgLink = `https://t.me/listgiftkotor/${gift.message_id}`;
     
-    // Gunakan endpoint PNG
-    const imageUrl = `/api/gift-png/${gift.name}`;
+    const lottieUrl = gift.lottie_url || `https://nft.fragment.com/gift/${gift.slug}.lottie.json`;
+    
+    // Tambahkan ID unik untuk lottie player
+    const lottieId = `lottie_${gift.slug.replace(/[^a-zA-Z0-9]/g, '_')}_${index}`;
     
     card.innerHTML = `
         <div class="card-lottie-wrapper">
-            <div class="card-image-border" style="aspect-ratio:1/1;background:var(--bg-card);border-radius:14px;overflow:hidden;">
-                <img 
-                    src="${escapeHtml(imageUrl)}" 
-                    alt="${escapeHtml(gift.name)}"
-                    loading="lazy"
-                    style="width:100%;height:100%;object-fit:cover;"
-                    onerror="this.src='/image/placeholder-gift.png';this.onerror=null;"
-                >
+            <div class="card-lottie-border" id="border_${lottieId}">
+                <div class="lottie-placeholder" id="placeholder_${lottieId}" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.03);border-radius:10px;">
+                    <!-- Kosongkan - hanya border kosong, tidak ada emoji -->
+                </div>
+                <lottie-player 
+                    id="${lottieId}"
+                    data-src="${escapeHtml(lottieUrl)}" 
+                    background="transparent" 
+                    speed="1"
+                    style="width:100%;height:100%;display:none;" 
+                    loop 
+                    mode="normal">
+                </lottie-player>
             </div>
         </div>
         <div class="card-info">
@@ -1210,6 +1206,49 @@ function createGiftCard(gift, index) {
             </a>
         </div>
     `;
+    
+    // Load lottie dengan cara yang benar
+    const lottiePlayer = card.querySelector(`#${lottieId}`);
+    const placeholder = card.querySelector(`#placeholder_${lottieId}`);
+    
+    if (lottiePlayer && placeholder) {
+        // Set src langsung
+        lottiePlayer.setAttribute('src', lottieUrl);
+        
+        // Sembunyikan placeholder
+        placeholder.style.display = 'none';
+        
+        // Set autoplay jika mode play aktif
+        if (state.lottiePlaying) {
+            lottiePlayer.setAttribute('autoplay', '');
+            setTimeout(() => {
+                try { 
+                    lottiePlayer.play(); 
+                } catch(e) { 
+                    console.log('Play error:', e);
+                }
+            }, 100);
+        } else {
+            lottiePlayer.removeAttribute('autoplay');
+        }
+        
+        // Tambahkan event listener untuk error
+        lottiePlayer.addEventListener('error', (e) => {
+            console.log('Lottie error for', gift.slug, e);
+            placeholder.style.display = 'flex';
+            lottiePlayer.style.display = 'none';
+        });
+        
+        // Tambahkan event listener untuk load
+        lottiePlayer.addEventListener('load', () => {
+            console.log('Lottie loaded for', gift.slug);
+            lottiePlayer.style.display = 'block';
+            placeholder.style.display = 'none';
+            if (state.lottiePlaying) {
+                try { lottiePlayer.play(); } catch(e) {}
+            }
+        });
+    }
     
     card.addEventListener('click', () => loadGiftDetail(gift.slug));
     return card;
@@ -1232,24 +1271,30 @@ async function loadGiftDetail(slug) {
     }
 }
 
-// ==================== UPDATE MODAL DETAIL (MENGGUNAKAN PNG) ====================
+// ==================== SHOW DETAIL MODAL (DENGAN SAME MESSAGE SLUGS) ====================
 function showDetailModal(gift) {
     if (!elements.modalTitle || !elements.modalBody) return;
 
     elements.modalTitle.textContent = `🎁 ${gift.name}`;
     const msgLink = `https://t.me/listgiftkotor/${gift.message_id}`;
-    const imageUrl = `/api/gift-png/${gift.name}`;
+    const lottieUrl = gift.lottie_url || `https://nft.fragment.com/gift/${gift.slug}.lottie.json`;
+    const lottieModalId = `modal_lottie_${gift.slug.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
     const formatRarity = (val) => val ? `${(val / 10).toFixed(1)}%` : '-';
 
     elements.modalBody.innerHTML = `
-        <div class="detail-image-wrapper" style="text-align:center;margin-bottom:20px;">
-            <img 
-                src="${escapeHtml(imageUrl)}" 
-                alt="${escapeHtml(gift.name)}"
-                style="width:200px;height:200px;object-fit:cover;border-radius:20px;background:var(--bg-card);"
-                onerror="this.src='/image/placeholder-gift.png';this.onerror=null;"
-            >
+        <div class="detail-lottie-wrapper" id="modal_wrapper_${lottieModalId}">
+            <div id="modal_placeholder_${lottieModalId}" style="width:200px;height:200px;margin:0 auto;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border-radius:20px;">
+                <i class="fas fa-gift" style="font-size:60px;color:var(--primary-color);opacity:0.5;"></i>
+            </div>
+            <lottie-player 
+                id="${lottieModalId}"
+                src="${escapeHtml(lottieUrl)}" 
+                background="transparent" 
+                speed="1"
+                style="width:200px;height:200px;margin:0 auto;display:none;" 
+                loop>
+            </lottie-player>
         </div>
 
         <div class="detail-info-card">
@@ -1303,6 +1348,15 @@ function showDetailModal(gift) {
                 </div>
             </div>
             ` : ''}
+            ${gift.availability_total ? `
+            <div class="detail-info-row">
+                <div class="detail-info-icon"><i class="fas fa-chart-bar"></i></div>
+                <div class="detail-info-content">
+                    <div class="detail-info-label">Availability</div>
+                    <div class="detail-info-value">${gift.availability_issued} / ${gift.availability_total}</div>
+                </div>
+            </div>
+            ` : ''}
             <div class="detail-info-row">
                 <div class="detail-info-icon"><i class="fas fa-link"></i></div>
                 <div class="detail-info-content">
@@ -1320,7 +1374,7 @@ function showDetailModal(gift) {
             </a>
         </div>
 
-        <!-- Same Message Section -->
+        <!-- ✅ AUTO-LOAD: Semua slug dari message_id yang sama -->
         <div class="same-message-section" id="sameMessageSection">
             <div class="same-message-header">
                 <span class="same-message-title">
@@ -1342,10 +1396,134 @@ function showDetailModal(gift) {
     `;
 
     openModal();
+    
+    // Load lottie di modal setelah modal terbuka
+    setTimeout(() => {
+        const modalLottie = document.getElementById(lottieModalId);
+        const modalPlaceholder = document.getElementById(`modal_placeholder_${lottieModalId}`);
+        
+        if (modalLottie && modalPlaceholder) {
+            modalLottie.style.display = 'block';
+            modalPlaceholder.style.display = 'none';
+            
+            if (state.lottiePlaying) {
+                modalLottie.setAttribute('autoplay', '');
+                try { modalLottie.play(); } catch(e) {}
+            }
+        }
+    }, 100);
+    
+    // Load same message slugs (FIX: panggil function ini)
     loadSameMessageSlugs(gift.message_id);
 }
 
-// ==================== UPDATE SAME MESSAGE SLUGS (MENGGUNAKAN PNG) ====================
+// ==================== UPDATE FILTER CHIPS (MENGGUNAKAN PNG DARI STAR_GIFTS.DB) ====================
+async function renderFilterChips() {
+    if (!elements.filterList) return;
+    
+    // Tampilkan loading
+    elements.filterList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Memuat daftar gift...</div>';
+    
+    const names = state.allNames.length > 0 ? state.allNames : [];
+    
+    if (names.length === 0) {
+        elements.filterList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Belum ada data gift, jalankan /scan terlebih dahulu</div>';
+        return;
+    }
+    
+    // Siapkan array untuk menyimpan data gift info
+    const giftInfoMap = new Map();
+    let loadedCount = 0;
+    
+    // Fungsi untuk memuat gambar dan info setiap gift secara async
+    async function loadGiftInfo(name, index) {
+        try {
+            const response = await fetch(`/gift-scam/api/star-gift-info/${encodeURIComponent(name)}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.data) {
+                    giftInfoMap.set(name, data.data);
+                }
+            }
+        } catch (e) {
+            console.log(`Gagal memuat info untuk ${name}:`, e);
+        }
+        loadedCount++;
+        
+        // Update render setelah beberapa item selesai
+        if (loadedCount % 5 === 0 || loadedCount === names.length) {
+            renderFilterList();
+        }
+    }
+    
+    // Fungsi render ulang filter list
+    async function renderFilterList() {
+        let html = '';
+        
+        for (const name of names) {
+            const isSelected = state.selectedFilterNames.includes(name);
+            const count = state.nameCounts[name] || 0;
+            const giftInfo = giftInfoMap.get(name);
+            const imageUrl = giftInfo?.image_url || `/gift-scam/api/star-gift-png/${encodeURIComponent(name)}`;
+            const emoji = giftInfo?.emoji || '🎁';
+            const isLimited = giftInfo?.is_limited ? '✨' : '';
+            
+            html += `
+                <div class="filter-list-item ${isSelected ? 'selected' : ''}" 
+                     data-name="${escapeHtml(name)}"
+                     onclick="selectFilterChip('${escapeHtml(name).replace(/'/g, "\\'")}')">
+                    <div class="filter-checkbox ${isSelected ? 'checked' : ''}">
+                        ${isSelected ? '<i class="fas fa-check"></i>' : ''}
+                    </div>
+                    <div class="filter-item-image">
+                        <img 
+                            src="${escapeHtml(imageUrl)}" 
+                            alt="${escapeHtml(name)}"
+                            loading="lazy"
+                            class="filter-gift-img"
+                            onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23252525%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 font-size=%2240%22>${emoji}</text></svg>';"
+                        >
+                    </div>
+                    <div class="filter-item-info">
+                        <span class="filter-item-name">${escapeHtml(name)} ${isLimited}</span>
+                        <span class="filter-item-count">${count}</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Tambahkan Select All button di atas
+        const selectAllHtml = `
+            <div class="filter-select-all" id="filterSelectAll" onclick="toggleSelectAll()">
+                <i class="fas fa-check-double"></i> Select All
+            </div>
+        `;
+        
+        elements.filterList.innerHTML = selectAllHtml + html;
+        
+        // Re-attach event listener untuk select all
+        const selectAllBtn = document.getElementById('filterSelectAll');
+        if (selectAllBtn) {
+            // Hapus listener lama (kalau ada yang bentrok)
+            const newSelectAll = selectAllBtn.cloneNode(true);
+            selectAllBtn.parentNode.replaceChild(newSelectAll, selectAllBtn);
+            newSelectAll.onclick = toggleSelectAll;
+        }
+    }
+    
+    // Mulai load gambar untuk semua item (batasi concurrent requests)
+    const batchSize = 5;
+    for (let i = 0; i < names.length; i += batchSize) {
+        const batch = names.slice(i, i + batchSize);
+        await Promise.all(batch.map((name, idx) => loadGiftInfo(name, i + idx)));
+    }
+    
+    // Pastikan render terakhir
+    renderFilterList();
+}
+
+
+// ==================== UPDATE SAME MESSAGE SECTION (MENGGUNAKAN PNG) ====================
 async function loadSameMessageSlugs(messageId) {
     const container = document.getElementById('sameMsgSlugs');
     const loadingEl = document.getElementById('sameMsgLoading');
@@ -1360,8 +1538,9 @@ async function loadSameMessageSlugs(messageId) {
             loadingEl.style.display = 'none';
             container.innerHTML = '';
             
-            data.data.forEach(gift => {
-                const imageUrl = `/api/gift-png/${gift.name}`;
+            for (const gift of data.data) {
+                const imageUrl = `/gift-scam/api/star-gift-png/${encodeURIComponent(gift.name)}`;
+                const emoji = '🎁';
                 
                 const miniCard = document.createElement('div');
                 miniCard.className = 'same-message-card';
@@ -1372,8 +1551,8 @@ async function loadSameMessageSlugs(messageId) {
                             src="${escapeHtml(imageUrl)}" 
                             alt="${escapeHtml(gift.name)}"
                             loading="lazy"
-                            style="width:45px;height:45px;object-fit:cover;border-radius:8px;"
-                            onerror="this.src='/image/placeholder-gift.png';this.onerror=null;"
+                            class="same-message-img"
+                            onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23252525%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 font-size=%2240%22>${emoji}</text></svg>';"
                         >
                     </div>
                     <div class="same-message-name">${escapeHtml(gift.name)}</div>
@@ -1387,7 +1566,7 @@ async function loadSameMessageSlugs(messageId) {
                 });
                 
                 container.appendChild(miniCard);
-            });
+            }
             
             const header = document.querySelector('.same-message-title');
             if (header) {
