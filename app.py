@@ -1011,7 +1011,7 @@ def serve_tracker_data():
     return send_from_directory(os.path.join(base_dir, 'tracker', 'html'), 'data-tracker.html')
 
 # ==================== TAMBAHKAN ROUTE VIEW TRACKER ====================
-@app.route('/simpang-404/view')
+@app.route('/tracker/view')
 def tracker_view_page():
     """Halaman tracking untuk endpoint unik - menggunakan blueprint atau langsung"""
     token = request.args.get('token', '')
