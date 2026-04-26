@@ -82,12 +82,16 @@ body {
     color: var(--text);
     background: #0a0c10;
     overflow-x: hidden !important;
+    overflow-y: auto !important;
     width: 100%;
     max-width: 100%;
+    min-height: 100vh;
+    position: relative;
     overscroll-behavior: none !important;
     overscroll-behavior-y: none !important;
     -webkit-overscroll-behavior: none !important;
     image-rendering: pixelated;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* ============================================================
@@ -286,17 +290,15 @@ body::after {
     max-width: 500px;
     margin: 0 auto;
     padding: 0 12px;
-    padding-bottom: 90px;
+    padding-top: max(8px, env(safe-area-inset-top, 0px));
+    padding-bottom: 100px;
     min-height: 100vh;
     background: transparent;
     position: relative;
     z-index: 1;
-    overscroll-behavior: contain !important;
-    overscroll-behavior-y: contain !important;
-    -webkit-overflow-scrolling: touch;
-    padding-top: max(8px, env(safe-area-inset-top, 0px));
-    width: 100%;
+    overflow-y: visible;
     overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* ============================================================

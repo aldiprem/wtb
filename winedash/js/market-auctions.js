@@ -1,4 +1,4 @@
-// winedash/js/market-auctions.js - VERSI DIPERBAIKI
+// winedash/js/market-auctions.js - DENGAN SAFE AREA
 
 (function() {
     'use strict';
@@ -8,9 +8,6 @@
     const API_BASE_URL = window.location.origin;
     
     let telegramUser = null;
-    let tonConnectUI = null;
-    let isWalletConnected = false;
-    let walletAddress = null;
     
     // State
     let currentAuctionsFilter = 'active';
@@ -18,7 +15,7 @@
     let currentSearchTerm = '';
     let currentLayout = localStorage.getItem('market_auctions_layout') || 'grid';
     let auctionTimers = {};
-    let currentActivityTab = 'global-auctions'; // global-auctions, my-bids
+    let currentMarketTab = 'global-auctions';
     
     // DOM Elements
     let auctionsContainer = null;
@@ -37,6 +34,79 @@
     let auctionDetailOverlay = null;
     let auctionDetailPanel = null;
 
+    // ==================== SAFE AREA INSET ====================
+    
+    function applySafeAreaInsets() {
+        const tg = window.Telegram?.WebApp;
+        if (!tg) return;
+        
+        const root = document.documentElement;
+        
+        let safeTop = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-top')) || 0;
+        let safeBottom = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-bottom')) || 0;
+        let safeLeft = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-left')) || 0;
+        let safeRight = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-right')) || 0;
+        
+        if (tg.safeAreaInset) {
+            safeTop = tg.safeAreaInset.top || safeTop;
+            safeBottom = tg.safeAreaInset.bottom || safeBottom;
+            safeLeft = tg.safeAreaInset.left || safeLeft;
+            safeRight = tg.safeAreaInset.right || safeRight;
+        }
+        
+        let contentTop = safeTop;
+        let contentBottom = safeBottom;
+        
+        if (tg.contentSafeAreaInset) {
+            contentTop = tg.contentSafeAreaInset.top || safeTop;
+            contentBottom = tg.contentSafeAreaInset.bottom || safeBottom;
+        }
+        
+        // Apply ke body
+        document.body.style.paddingTop = `${safeTop}px`;
+        document.body.style.paddingBottom = `${safeBottom}px`;
+        document.body.style.paddingLeft = `${safeLeft}px`;
+        document.body.style.paddingRight = `${safeRight}px`;
+        
+        // Apply ke container utama
+        const container = document.querySelector('.storage-container');
+        if (container) {
+            container.style.paddingTop = `${contentTop + 12}px`;
+            container.style.paddingBottom = `${contentBottom + 90}px`;
+        }
+        
+        // Apply ke bottom navigation
+        const bottomNav = document.querySelector('.storage-bottom-nav');
+        if (bottomNav) {
+            bottomNav.style.bottom = `${Math.max(20, safeBottom)}px`;
+        }
+        
+        console.log('[MARKET AUCTIONS] Safe area applied:', { safeTop, safeBottom, contentTop, contentBottom });
+    }
+    
+    function initSafeArea() {
+        const tg = window.Telegram?.WebApp;
+        if (!tg) return;
+        
+        setTimeout(applySafeAreaInsets, 100);
+        applySafeAreaInsets();
+        
+        if (tg.onEvent) {
+            tg.onEvent('safeAreaChanged', () => applySafeAreaInsets());
+            tg.onEvent('contentSafeAreaChanged', () => applySafeAreaInsets());
+            tg.onEvent('viewportChanged', () => applySafeAreaInsets());
+            tg.onEvent('fullscreenChanged', () => setTimeout(applySafeAreaInsets, 100));
+        }
+        
+        if (typeof tg.disableVerticalSwipes === 'function') {
+            tg.disableVerticalSwipes();
+        }
+        
+        if (typeof tg.expand === 'function') {
+            tg.expand();
+        }
+    }
+
     // ==================== UTILITY FUNCTIONS ====================
     
     function getTelegramWebApp() {
@@ -53,34 +123,9 @@
         }
     }
     
-    function hapticMedium() {
-        const tg = getTelegramWebApp();
-        if (tg && tg.HapticFeedback) {
-            tg.HapticFeedback.impactOccurred('medium');
-        }
-    }
-    
-    function hapticSuccess() {
-        const tg = getTelegramWebApp();
-        if (tg && tg.HapticFeedback) {
-            tg.HapticFeedback.notificationOccurred('success');
-        }
-    }
-    
-    function hapticError() {
-        const tg = getTelegramWebApp();
-        if (tg && tg.HapticFeedback) {
-            tg.HapticFeedback.notificationOccurred('error');
-        }
-    }
-    
     function showToast(message, type = 'info', duration = 3000) {
         const toastContainer = document.getElementById('toastContainer');
         if (!toastContainer) return;
-        
-        if (type === 'success') hapticSuccess();
-        else if (type === 'error') hapticError();
-        else hapticLight();
         
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
@@ -181,7 +226,7 @@
         }
     }
     
-    // ==================== PROFILE PHOTO ====================
+    // ==================== PROFILE PHOTO & BALANCE ====================
     
     async function fetchProfilePhoto(username) {
         const cached = localStorage.getItem(`avatar_${username}`);
@@ -204,27 +249,62 @@
         }
     }
     
+    async function loadMarketBalance() {
+        if (!telegramUser) return;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/user/${telegramUser.id}`);
+            const data = await response.json();
+            
+            if (data.success && data.user) {
+                const balanceCard = document.getElementById('marketAuctionsBalanceCard');
+                if (balanceCard) {
+                    const formattedBalance = parseFloat(data.user.balance).toFixed(2);
+                    balanceCard.innerHTML = `
+                        <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="balance-logo">
+                        <span class="balance-amount">${formattedBalance}</span>
+                    `;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading balance:', error);
+        }
+    }
+    
+    function updateMarketUserUI() {
+        if (!telegramUser) return;
+        
+        const avatarContainer = document.getElementById('marketAuctionsUserAvatar');
+        if (avatarContainer) {
+            if (telegramUser.photo_url) {
+                avatarContainer.innerHTML = `<img src="${telegramUser.photo_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+            } else {
+                const fullName = `${telegramUser.first_name || ''} ${telegramUser.last_name || ''}`.trim();
+                const nameForAvatar = encodeURIComponent(fullName || telegramUser.username || 'User');
+                const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2`;
+                avatarContainer.innerHTML = `<img src="${avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+            }
+        }
+    }
+    
     // ==================== LOAD AUCTIONS ====================
     
     async function loadMarketAuctions() {
-        console.log(`[MARKET AUCTIONS] Loading auctions with filter: ${currentAuctionsFilter}, tab: ${currentActivityTab}`);
+        console.log(`[MARKET AUCTIONS] Loading with filter: ${currentAuctionsFilter}, tab: ${currentMarketTab}`);
         
         showLoading(true);
         
         try {
             let url = '';
             
-            if (currentActivityTab === 'my-bids' && telegramUser) {
-                // My Bids - hanya auctions yang user pernah bid
+            if (currentMarketTab === 'my-bids' && telegramUser) {
                 url = `${API_BASE_URL}/api/winedash/auctions/my-bids/${telegramUser.id}`;
             } else {
-                // Global Auctions - semua auctions (active + ended dari semua user)
                 if (currentAuctionsFilter === 'active') {
                     url = `${API_BASE_URL}/api/winedash/auctions/active`;
                 } else if (currentAuctionsFilter === 'ended') {
                     url = `${API_BASE_URL}/api/winedash/auctions/ended-all`;
                 } else {
-                    // All Auctions - gabungkan active dan ended
                     const [activeRes, endedRes] = await Promise.all([
                         fetch(`${API_BASE_URL}/api/winedash/auctions/active`),
                         fetch(`${API_BASE_URL}/api/winedash/auctions/ended-all`)
@@ -234,15 +314,10 @@
                     const endedData = await endedRes.json();
                     
                     let allAuctions = [];
-                    if (activeData.success) {
-                        allAuctions = [...allAuctions, ...(activeData.auctions || [])];
-                    }
-                    if (endedData.success) {
-                        allAuctions = [...allAuctions, ...(endedData.auctions || [])];
-                    }
+                    if (activeData.success) allAuctions = [...allAuctions, ...(activeData.auctions || [])];
+                    if (endedData.success) allAuctions = [...allAuctions, ...(endedData.auctions || [])];
                     
                     currentAuctions = allAuctions;
-                    console.log(`[MARKET AUCTIONS] Loaded ${currentAuctions.length} total auctions (all)`);
                     renderMarketAuctions();
                     startTimers();
                     showLoading(false);
@@ -255,16 +330,14 @@
             
             if (data.success) {
                 currentAuctions = data.auctions || [];
-                console.log(`[MARKET AUCTIONS] Loaded ${currentAuctions.length} auctions`);
                 renderMarketAuctions();
                 startTimers();
             } else {
-                console.error('[MARKET AUCTIONS] Failed to load:', data.error);
                 currentAuctions = [];
                 renderEmptyState();
             }
         } catch (error) {
-            console.error('[MARKET AUCTIONS] Error loading auctions:', error);
+            console.error('[MARKET AUCTIONS] Error:', error);
             currentAuctions = [];
             renderEmptyState();
         } finally {
@@ -277,26 +350,11 @@
         
         let filtered = [...currentAuctions];
         
-        // Filter by search term
         if (currentSearchTerm && currentSearchTerm.trim() !== '') {
             const term = currentSearchTerm.toLowerCase().trim();
             filtered = filtered.filter(auction => 
                 auction.username && auction.username.toLowerCase().includes(term)
             );
-        }
-        
-        // Filter by status untuk global auctions
-        if (currentActivityTab !== 'my-bids' && currentAuctionsFilter !== 'all' && currentAuctionsFilter !== 'active' && currentAuctionsFilter !== 'ended') {
-            const now = new Date();
-            filtered = filtered.filter(auction => {
-                if (currentAuctionsFilter === 'active') {
-                    return auction.status === 'active' && (auction.end_time && new Date(auction.end_time) > now);
-                }
-                if (currentAuctionsFilter === 'ended') {
-                    return auction.status === 'ended' || (auction.end_time && new Date(auction.end_time) <= now);
-                }
-                return true;
-            });
         }
         
         if (filtered.length === 0) {
@@ -322,7 +380,6 @@
                 }
                 
                 if (isEnded) {
-                    // Style ended auction yang rapi
                     html += `
                         <div class="auction-card ended" data-auction-id="${auction.id}" data-auction='${JSON.stringify(auction).replace(/'/g, "&#39;")}'>
                             <div class="auction-card-image ended-image">
@@ -335,7 +392,7 @@
                                 <div class="card-price-row">
                                     <div class="price-with-logo">
                                         <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo">
-                                        <span style="font-size: 11px; color: var(--text-muted);">Start: ${formatNumber(startPrice)} TON</span>
+                                        <span style="font-size: 11px;">Start: ${formatNumber(startPrice)} TON</span>
                                     </div>
                                     <div class="based-on-text">${escapeHtml(basedOn)}</div>
                                 </div>
@@ -344,9 +401,7 @@
                         </div>
                     `;
                 } else {
-                    // Check if user has bid on this auction
                     const hasBid = auction.my_last_bid !== undefined && auction.my_last_bid > 0;
-                    const myBidAmount = auction.my_last_bid || 0;
                     
                     html += `
                         <div class="auction-card" data-auction-id="${auction.id}" data-auction='${JSON.stringify(auction).replace(/'/g, "&#39;")}'>
@@ -366,7 +421,7 @@
                                 </div>
                                 <div class="auction-card-timer" id="timer-${auction.id}">${timeRemaining}</div>
                                 <div class="auction-card-current-bid">Current: ${formatNumber(currentPrice)} TON</div>
-                                ${hasBid ? `<div style="font-size: 10px; color: var(--warning);">My Bid: ${formatNumber(myBidAmount)} TON</div>` : ''}
+                                ${hasBid ? `<div style="font-size: 10px; color: var(--warning);">My Bid: ${formatNumber(auction.my_last_bid)} TON</div>` : ''}
                                 <div class="auction-card-status">ON AUCTION</div>
                             </div>
                         </div>
@@ -376,21 +431,17 @@
             
             auctionsContainer.innerHTML = html;
             
-            // Attach click events
             document.querySelectorAll('.auction-card').forEach(card => {
                 card.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const auctionId = card.dataset.auctionId;
-                    if (auctionId) {
-                        showAuctionDetail(parseInt(auctionId));
-                    }
+                    if (auctionId) showAuctionDetail(parseInt(auctionId));
                 });
             });
             
             setTimeout(() => fetchAllAuctionAvatars(), 200);
             
         } else {
-            // List layout
             auctionsContainer.className = 'auctions-list';
             let html = '';
             
@@ -417,7 +468,7 @@
                                 <div class="auctions-list-username">@${escapeHtml(username)}</div>
                                 <div class="auctions-list-ended-info">
                                     <div>Start: ${formatNumber(startPrice)} TON</div>
-                                    <div>Based: ${escapeHtml(basedOn)}</div>
+                                    <div class="based-on-text">${escapeHtml(basedOn)}</div>
                                 </div>
                             </div>
                             <div class="auctions-list-status ended-status">ENDED</div>
@@ -435,7 +486,7 @@
                                 <div class="auctions-list-username">@${escapeHtml(username)}</div>
                                 <div class="auctions-list-ended-info">
                                     <div>Start: ${formatNumber(startPrice)} TON | Current: ${formatNumber(currentPrice)} TON</div>
-                                    <div>Based: ${escapeHtml(basedOn)}</div>
+                                    <div class="based-on-text">${escapeHtml(basedOn)}</div>
                                 </div>
                                 <div class="auctions-list-timer" id="timer-${auction.id}">Ends: ${timeRemaining}</div>
                                 ${hasBid ? `<div style="font-size: 10px; color: var(--warning);">My Bid: ${formatNumber(auction.my_last_bid)} TON</div>` : ''}
@@ -452,9 +503,7 @@
                 item.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const auctionId = item.dataset.auctionId;
-                    if (auctionId) {
-                        showAuctionDetail(parseInt(auctionId));
-                    }
+                    if (auctionId) showAuctionDetail(parseInt(auctionId));
                 });
             });
             
@@ -493,7 +542,7 @@
         if (!auctionsContainer) return;
         
         let emptyMessage = '';
-        if (currentActivityTab === 'my-bids') {
+        if (currentMarketTab === 'my-bids') {
             emptyMessage = 'Anda belum melakukan bid pada auction manapun';
         } else if (currentAuctionsFilter === 'active') {
             emptyMessage = 'Tidak ada auction aktif';
@@ -515,9 +564,7 @@
     }
     
     function startTimers() {
-        for (const id in auctionTimers) {
-            clearInterval(auctionTimers[id]);
-        }
+        for (const id in auctionTimers) clearInterval(auctionTimers[id]);
         auctionTimers = {};
         
         for (const auction of currentAuctions) {
@@ -542,10 +589,9 @@
     
     // ==================== TAB SWITCHING ====================
     
-    function switchActivityTab(tab) {
-        currentActivityTab = tab;
+    function switchMarketTab(tab) {
+        currentMarketTab = tab;
         
-        // Update active state pada tabs
         if (globalAuctionsTabBtn) {
             if (tab === 'global-auctions') {
                 globalAuctionsTabBtn.classList.add('active');
@@ -556,13 +602,11 @@
             }
         }
         
-        // Reset filter ke active untuk global auctions
         if (tab === 'global-auctions') {
             currentAuctionsFilter = 'active';
             updateFilterButtonText();
         }
         
-        // Reload auctions
         loadMarketAuctions();
         hapticLight();
     }
@@ -583,7 +627,6 @@
     // ==================== AUCTION DETAIL ====================
     
     async function showAuctionDetail(auctionId) {
-        // ... (sama seperti sebelumnya, fungsi ini tetap)
         if (!auctionId) {
             showToast('Invalid auction ID', 'error');
             return;
@@ -596,7 +639,7 @@
             const data = await response.json();
             
             if (!data.success) {
-                showToast(data.error || 'Gagal memuat detail auction', 'error');
+                showToast(data.error || 'Gagal memuat detail', 'error');
                 return;
             }
             
@@ -627,18 +670,6 @@
                 avatarUrl = "https://companel.shop/image/winedash-logo.png";
             }
             
-            let winnerInfo = '';
-            if (isEnded && auction.winner_id) {
-                const winnerName = auction.winner_name || auction.winner_username || 'Winner';
-                const winningBid = auction.winning_bid || auction.current_price || 0;
-                winnerInfo = `
-                    <div class="info-row winner-row">
-                        <span class="info-label">Winner</span>
-                        <span class="info-value price">${escapeHtml(winnerName)} - ${formatNumber(winningBid)} TON</span>
-                    </div>
-                `;
-            }
-            
             let bidHistoryHtml = '';
             if (bids && bids.length > 0) {
                 for (const bid of bids) {
@@ -646,15 +677,13 @@
                     const bidderPhoto = bid.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(bidderName)}&background=40a7e3&color=fff&size=40&rounded=true`;
                     const bidTime = new Date(bid.timestamp).toLocaleString('id-ID');
                     
-                    const isCurrentUserBid = telegramUser && bid.user_id === telegramUser.id;
-                    
                     bidHistoryHtml += `
                         <div class="bid-item">
                             <div class="bid-avatar">
                                 <img src="${bidderPhoto}" alt="${escapeHtml(bidderName)}" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                             </div>
                             <div class="bid-info">
-                                <div class="bid-user">${escapeHtml(bidderName)}${isCurrentUserBid ? ' (You)' : ''}</div>
+                                <div class="bid-user">${escapeHtml(bidderName)}</div>
                                 <div class="bid-amount">${formatNumber(bid.bid_amount)} TON</div>
                             </div>
                             <div class="bid-time">${bidTime}</div>
@@ -666,7 +695,6 @@
             }
             
             const userHasBid = bids.some(bid => bid.user_id === telegramUser?.id);
-            const userHighestBid = userHasBid ? Math.max(...bids.filter(b => b.user_id === telegramUser?.id).map(b => b.bid_amount)) : 0;
             const minNextBid = auction.current_price + auction.min_increment;
             
             auctionDetailPanel = document.createElement('div');
@@ -683,7 +711,7 @@
                         </div>
                         <div class="detail-username">@${escapeHtml(username)}</div>
                         ${isEnded ? '<div class="detail-ended-badge">ENDED</div>' : ''}
-                        ${userHasBid && !isEnded ? `<div class="detail-ended-badge" style="background: linear-gradient(135deg, var(--warning), #d97706); margin-top: 8px;">Your Bid: ${formatNumber(userHighestBid)} TON</div>` : ''}
+                        ${userHasBid && !isEnded ? `<div class="detail-ended-badge" style="background: linear-gradient(135deg, var(--warning), #d97706); margin-top: 8px;">Your Bid: ${formatNumber(auction.my_last_bid || 0)} TON</div>` : ''}
                     </div>
                     
                     <div class="info-grid">
@@ -713,7 +741,12 @@
                             <span class="info-value timer" id="detailTimer">${timeRemaining}</span>
                         </div>
                         ` : ''}
-                        ${winnerInfo}
+                        ${isEnded && auction.winner_id ? `
+                        <div class="info-row winner-row">
+                            <span class="info-label">Winner</span>
+                            <span class="info-value price">${escapeHtml(auction.winner_name || auction.winner_username || 'Winner')} - ${formatNumber(auction.winning_bid || auction.current_price)} TON</span>
+                        </div>
+                        ` : ''}
                     </div>
                     
                     <div class="bid-history-title">
@@ -758,34 +791,22 @@
                 detailTimerInterval = setInterval(updateDetailTimer, 1000);
             }
             
-            // Setup close buttons
             const detailCloseBtn = document.getElementById('detailCloseBtn');
             if (detailCloseBtn) {
                 const newDetailCloseBtn = detailCloseBtn.cloneNode(true);
                 detailCloseBtn.parentNode.replaceChild(newDetailCloseBtn, detailCloseBtn);
-                newDetailCloseBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (detailTimerInterval) clearInterval(detailTimerInterval);
-                    closeAuctionDetail();
-                });
+                newDetailCloseBtn.addEventListener('click', () => closeAuctionDetail());
             }
             
             const closeDetailBtn = document.getElementById('closeDetailBtn');
             if (closeDetailBtn) {
                 const newCloseDetailBtn = closeDetailBtn.cloneNode(true);
                 closeDetailBtn.parentNode.replaceChild(newCloseDetailBtn, closeDetailBtn);
-                newCloseDetailBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (detailTimerInterval) clearInterval(detailTimerInterval);
-                    closeAuctionDetail();
-                });
+                newCloseDetailBtn.addEventListener('click', () => closeAuctionDetail());
             }
             
             auctionDetailOverlay.addEventListener('click', (e) => {
-                if (e.target === auctionDetailOverlay) {
-                    if (detailTimerInterval) clearInterval(detailTimerInterval);
-                    closeAuctionDetail();
-                }
+                if (e.target === auctionDetailOverlay) closeAuctionDetail();
             });
             
             const placeBidBtn = document.getElementById('placeBidBtn');
@@ -794,14 +815,13 @@
                 placeBidBtn.parentNode.replaceChild(newPlaceBidBtn, placeBidBtn);
                 newPlaceBidBtn.addEventListener('click', async () => {
                     const minBid = auction.current_price + auction.min_increment;
-                    const bidAmount = prompt(`Enter your bid (min: ${minBid.toFixed(2)} TON):\n\nCurrent Price: ${auction.current_price} TON\nMin Increment: ${auction.min_increment} TON`, minBid.toFixed(2));
+                    const bidAmount = prompt(`Enter your bid (min: ${minBid.toFixed(2)} TON):`, minBid.toFixed(2));
                     if (bidAmount) {
                         const amount = parseFloat(bidAmount);
                         if (amount >= minBid) {
                             await placeBid(auction.id, amount);
                             closeAuctionDetail();
-                            setTimeout(() => showAuctionDetail(auction.id), 500);
-                            await loadMarketAuctions();
+                            setTimeout(() => loadMarketAuctions(), 500);
                         } else {
                             showToast(`Minimum bid is ${minBid.toFixed(2)} TON`, 'warning');
                         }
@@ -811,7 +831,7 @@
             
         } catch (error) {
             console.error('Error loading auction detail:', error);
-            showToast('Error loading auction detail: ' + (error.message || 'Unknown error'), 'error');
+            showToast('Error loading auction detail', 'error');
         } finally {
             showLoading(false);
         }
@@ -838,15 +858,12 @@
         hapticLight();
     }
     
-    // ==================== BID OPERATIONS ====================
-    
     async function placeBid(auctionId, bidAmount) {
         if (!telegramUser) {
             showToast('Login terlebih dahulu', 'warning');
             return;
         }
         
-        hapticMedium();
         showLoading(true);
         
         try {
@@ -862,7 +879,6 @@
             const data = await response.json();
             
             if (data.success) {
-                hapticSuccess();
                 showToast('Bid berhasil ditempatkan!', 'success');
                 await loadMarketAuctions();
             } else {
@@ -870,13 +886,13 @@
             }
         } catch (error) {
             console.error('Error placing bid:', error);
-            showToast('Error: ' + (error.message || 'Unknown error'), 'error');
+            showToast('Error placing bid', 'error');
         } finally {
             showLoading(false);
         }
     }
     
-    // ==================== FILTER DROPDOWN ====================
+    // ==================== EVENT LISTENERS ====================
     
     function setupFilterDropdown() {
         if (!filterBtn || !filterDropdown) return;
@@ -935,9 +951,7 @@
                 const filterValue = newItem.dataset.marketAuctionsFilter;
                 currentAuctionsFilter = filterValue;
                 
-                filterDropdown.querySelectorAll('[data-market-auctions-filter]').forEach(btn => {
-                    btn.classList.remove('active');
-                });
+                filterDropdown.querySelectorAll('[data-market-auctions-filter]').forEach(btn => btn.classList.remove('active'));
                 newItem.classList.add('active');
                 
                 updateFilterButtonText();
@@ -947,16 +961,9 @@
             });
         });
         
-        window.addEventListener('scroll', () => {
-            if (isOpen) positionDropdown();
-        });
-        
-        window.addEventListener('resize', () => {
-            if (isOpen) positionDropdown();
-        });
+        window.addEventListener('scroll', () => { if (isOpen) positionDropdown(); });
+        window.addEventListener('resize', () => { if (isOpen) positionDropdown(); });
     }
-    
-    // ==================== LAYOUT TOGGLE ====================
     
     function setupLayoutToggle() {
         if (!gridBtn || !listBtn) return;
@@ -1001,14 +1008,11 @@
         });
     }
     
-    // ==================== SEARCH ====================
-    
     function setupSearch() {
         if (searchApplyBtn) {
             const newBtn = searchApplyBtn.cloneNode(true);
             searchApplyBtn.parentNode.replaceChild(newBtn, searchApplyBtn);
             searchApplyBtn = newBtn;
-            
             searchApplyBtn.addEventListener('click', () => {
                 currentSearchTerm = searchInput?.value || '';
                 loadMarketAuctions();
@@ -1020,7 +1024,6 @@
             const newInput = searchInput.cloneNode(true);
             searchInput.parentNode.replaceChild(newInput, searchInput);
             searchInput = newInput;
-            
             searchInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     currentSearchTerm = searchInput.value;
@@ -1031,52 +1034,13 @@
         }
     }
     
-    // ==================== BALANCE & USER UI ====================
-    
-    async function loadMarketBalance() {
-        if (!telegramUser) return;
-        
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/winedash/user/${telegramUser.id}`);
-            const data = await response.json();
-            
-            if (data.success && data.user) {
-                const balanceCard = document.getElementById('marketAuctionsBalanceCard');
-                if (balanceCard) {
-                    const formattedBalance = parseFloat(data.user.balance).toFixed(2);
-                    balanceCard.innerHTML = `
-                        <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="balance-logo">
-                        <span class="balance-amount">${formattedBalance}</span>
-                    `;
-                }
-            }
-        } catch (error) {
-            console.error('Error loading balance:', error);
-        }
-    }
-    
-    function updateMarketUserUI() {
-        if (!telegramUser) return;
-        
-        const avatarContainer = document.getElementById('marketAuctionsUserAvatar');
-        if (avatarContainer) {
-            if (telegramUser.photo_url) {
-                avatarContainer.innerHTML = `<img src="${telegramUser.photo_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
-            } else {
-                const fullName = `${telegramUser.first_name || ''} ${telegramUser.last_name || ''}`.trim();
-                const nameForAvatar = encodeURIComponent(fullName || telegramUser.username || 'User');
-                const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2`;
-                avatarContainer.innerHTML = `<img src="${avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
-            }
-        }
-    }
-    
     // ==================== INITIALIZATION ====================
     
     async function init() {
         console.log('🏪 Market Auctions - Initializing...');
         
-        // Get DOM elements
+        initSafeArea();
+        
         auctionsContainer = document.getElementById('marketAuctionsContainer');
         searchInput = document.getElementById('marketAuctionsSearchInput');
         searchApplyBtn = document.getElementById('marketAuctionsSearchApplyBtn');
@@ -1094,7 +1058,6 @@
             return;
         }
         
-        // Setup back button to market place
         if (backToMarketBtn) {
             const newBackBtn = backToMarketBtn.cloneNode(true);
             backToMarketBtn.parentNode.replaceChild(newBackBtn, backToMarketBtn);
@@ -1103,7 +1066,6 @@
             });
         }
         
-        // Setup refresh button
         if (refreshBtn) {
             const newRefreshBtn = refreshBtn.cloneNode(true);
             refreshBtn.parentNode.replaceChild(newRefreshBtn, refreshBtn);
@@ -1113,24 +1075,18 @@
             });
         }
         
-        // Setup tabs
         if (globalAuctionsTabBtn) {
             const newGlobalBtn = globalAuctionsTabBtn.cloneNode(true);
             globalAuctionsTabBtn.parentNode.replaceChild(newGlobalBtn, globalAuctionsTabBtn);
-            newGlobalBtn.addEventListener('click', () => {
-                switchActivityTab('global-auctions');
-            });
+            newGlobalBtn.addEventListener('click', () => switchMarketTab('global-auctions'));
         }
         
         if (myBidsTabBtn) {
             const newMyBidsBtn = myBidsTabBtn.cloneNode(true);
             myBidsTabBtn.parentNode.replaceChild(newMyBidsBtn, myBidsTabBtn);
-            newMyBidsBtn.addEventListener('click', () => {
-                switchActivityTab('my-bids');
-            });
+            newMyBidsBtn.addEventListener('click', () => switchMarketTab('my-bids'));
         }
         
-        // Get Telegram user
         telegramUser = getTelegramUserFromWebApp();
         
         if (telegramUser) {
@@ -1142,12 +1098,10 @@
             auctionsContainer.innerHTML = '<div class="loading-placeholder">Silakan buka melalui Telegram</div>';
         }
         
-        // Setup event listeners
         setupFilterDropdown();
         setupSearch();
         setupLayoutToggle();
         
-        // Auto refresh expired auctions every minute
         setInterval(async () => {
             try {
                 await fetch(`${API_BASE_URL}/api/winedash/auctions/check-expired`, { method: 'POST' });
@@ -1160,14 +1114,10 @@
         console.log('✅ Market Auctions initialized');
     }
     
-    // Cleanup timers on page unload
     window.addEventListener('beforeunload', () => {
-        for (const id in auctionTimers) {
-            clearInterval(auctionTimers[id]);
-        }
+        for (const id in auctionTimers) clearInterval(auctionTimers[id]);
     });
     
-    // Start
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {

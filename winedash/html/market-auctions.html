@@ -1,4 +1,4 @@
-<!-- winedash/html/market-auctions.html - VERSI DIPERBAIKI -->
+<!-- winedash/html/market-auctions.html -->
 
 <!DOCTYPE html>
 <html lang="id">
@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="HandheldFriendly" content="true">
     <meta name="MobileOptimized" content="width">
-    <title>Winedash - Auctions Market</title>
+    <title>Winedash - Market Auctions</title>
     
     <!-- CSS -->
     <link rel="stylesheet" href="/winedash/css/web.css">
@@ -38,33 +38,19 @@
     <!-- Main Container -->
     <div class="storage-container">
 
-        <!-- Header dengan bottom navigation style -->
-        <div class="storage-bottom-nav" style="position: relative; margin-bottom: 20px;">
-            <div class="nav-circle" id="backToMarketBtn">
-                <i class="fas fa-store"></i>
+        <!-- Profile Header -->
+        <div class="storage-profile-header">
+            <div class="storage-profile-avatar" id="marketAuctionsUserAvatar">
+                <i class="fas fa-user"></i>
             </div>
-            <div class="nav-links-container">
-                <button class="nav-link active" data-market-activity-tab="global-auctions" id="globalAuctionsTabBtn">
-                    <i class="fas fa-globe"></i>
-                    <span>Global Auctions</span>
-                </button>
-                <button class="nav-link" data-market-activity-tab="my-bids" id="myBidsTabBtn">
-                    <i class="fas fa-history"></i>
-                    <span>My Bids</span>
-                </button>
+            <div class="storage-balance" id="marketAuctionsBalanceCard">
+                <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="balance-logo">
+                <span class="balance-amount">0.00</span>
             </div>
         </div>
 
-        <!-- HAPUS bagian title ini -->
-        <!-- <div style="text-align: center; margin-bottom: 16px;">
-            <h2 style="font-size: 20px; font-weight: 700;">
-                <i class="fas fa-gavel" style="color: var(--primary); margin-right: 8px;"></i>
-                Market Auctions
-            </h2>
-            <p style="font-size: 12px; color: var(--text-muted);">Bid on premium usernames</p>
-        </div> -->
-
-        <!-- Action Row untuk Auctions Market -->
+        <!-- HAPUS JUDUL LAMA -->
+        <!-- Action Row -->
         <div class="action-row">
             <button class="action-btn add-action-btn" id="refreshAuctionsBtn">
                 <i class="fas fa-sync-alt"></i>
@@ -93,19 +79,36 @@
         <!-- Filter Dropdown -->
         <div id="marketAuctionsFilterDropdown" class="status-dropdown" style="display: none; position: fixed; z-index: 1700;">
             <div class="status-dropdown-item active" data-market-auctions-filter="active">
-                <i class="fas fa-fire"></i> Active Auctions
+                <i class="fas fa-fire"></i> Active
             </div>
             <div class="status-dropdown-item" data-market-auctions-filter="all">
-                <i class="fas fa-list"></i> All Auctions
+                <i class="fas fa-list"></i> All
             </div>
             <div class="status-dropdown-item" data-market-auctions-filter="ended">
-                <i class="fas fa-check-circle"></i> Ended Auctions
+                <i class="fas fa-check-circle"></i> Ended
             </div>
         </div>
 
         <!-- Auctions Container -->
         <div id="marketAuctionsContainer" style="width: 100%; min-height: 400px;">
             <div class="loading-placeholder">Memuat auctions...</div>
+        </div>
+
+        <!-- BOTTOM NAVIGATION - SAMA SEPERTI STORAGE -->
+        <div class="storage-bottom-nav">
+            <div class="nav-circle market-icon" id="backToMarketBtn">
+                <i class="fas fa-store"></i>
+            </div>
+            <div class="nav-links-container">
+                <button class="nav-link active" data-market-tab="global-auctions" id="globalAuctionsTabBtn">
+                    <i class="fas fa-globe"></i>
+                    <span>Global</span>
+                </button>
+                <button class="nav-link" data-market-tab="my-bids" id="myBidsTabBtn">
+                    <i class="fas fa-history"></i>
+                    <span>My Bids</span>
+                </button>
+            </div>
         </div>
 
     </div>
@@ -122,7 +125,7 @@
                 const script = document.createElement('script');
                 script.src = '/winedash/js/debug-client.js';
                 document.head.appendChild(script);
-                console.log('[DEBUG] Debug mode enabled - logs will be sent to server');
+                console.log('[DEBUG] Debug mode enabled');
             }
         })();
     </script>
