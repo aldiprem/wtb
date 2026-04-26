@@ -1,0 +1,651 @@
+/* ============================================================
+   mc-global-patch.css  
+   Minecraft Theme — Global Background & Scroll Fix Patch
+   Import AFTER web.css / storage.css
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap');
+
+/* ==================== MINECRAFT ANIMATED BACKGROUND ==================== */
+
+html {
+    height: 100%;
+    overflow-x: hidden;
+}
+
+body {
+    min-height: 100%;
+    overflow-x: hidden;
+    /* Minecraft dark world - deep cave aesthetic */
+    background-color: #0a0806;
+    background-image:
+        /* Glowing torch spots */
+        radial-gradient(ellipse 120px 120px at 15% 25%,  rgba(255, 140, 0, 0.07) 0%, transparent 70%),
+        radial-gradient(ellipse 100px 100px at 85% 70%,  rgba(255, 140, 0, 0.06) 0%, transparent 70%),
+        radial-gradient(ellipse 80px 80px  at 50% 90%,  rgba(255, 180, 0, 0.05) 0%, transparent 70%),
+        radial-gradient(ellipse 60px 60px  at 5%  80%,  rgba(255, 120, 0, 0.04) 0%, transparent 70%),
+        radial-gradient(ellipse 90px 90px  at 95% 15%,  rgba(255, 160, 0, 0.05) 0%, transparent 70%),
+        /* Cool blue ambient from sky above */
+        radial-gradient(ellipse 200px 180px at 50% 0%, rgba(30, 50, 90, 0.35) 0%, transparent 70%),
+        /* Green from grass/slime */
+        radial-gradient(ellipse 150px 120px at 0% 100%, rgba(20, 60, 20, 0.2) 0%, transparent 70%),
+        radial-gradient(ellipse 120px 100px at 100% 60%, rgba(15, 50, 15, 0.15) 0%, transparent 70%),
+        /* Pixel grid - stone block pattern */
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 15px,
+            rgba(255, 255, 255, 0.012) 15px,
+            rgba(255, 255, 255, 0.012) 16px
+        ),
+        repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 15px,
+            rgba(255, 255, 255, 0.012) 15px,
+            rgba(255, 255, 255, 0.012) 16px
+        ),
+        /* Sub-grid 4px pixel detail */
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 3px,
+            rgba(255, 255, 255, 0.006) 3px,
+            rgba(255, 255, 255, 0.006) 4px
+        ),
+        repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 3px,
+            rgba(255, 255, 255, 0.006) 3px,
+            rgba(255, 255, 255, 0.006) 4px
+        ),
+        /* Base deep cave gradient */
+        linear-gradient(180deg,
+            #080a10 0%,
+            #0a0806 20%,
+            #090806 50%,
+            #060a06 80%,
+            #090606 100%
+        );
+    background-attachment: fixed;
+    image-rendering: pixelated;
+}
+
+/* Animated torch flicker using pseudo-element */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image:
+        radial-gradient(ellipse 80px 80px at 15% 25%, rgba(255, 120, 0, 0.04) 0%, transparent 70%),
+        radial-gradient(ellipse 60px 60px at 85% 70%, rgba(255, 140, 0, 0.035) 0%, transparent 70%);
+    animation: torchFlicker 3s steps(2) infinite;
+}
+
+body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image:
+        radial-gradient(ellipse 70px 70px at 15% 25%, rgba(255, 160, 0, 0.03) 0%, transparent 70%),
+        radial-gradient(ellipse 50px 50px at 85% 70%, rgba(255, 100, 0, 0.025) 0%, transparent 70%),
+        radial-gradient(ellipse 40px 40px at 50% 90%, rgba(255, 180, 0, 0.02) 0%, transparent 70%);
+    animation: torchFlicker2 2.3s steps(2) infinite 0.7s;
+}
+
+@keyframes torchFlicker {
+    0%, 100% { opacity: 1; }
+    33% { opacity: 0.7; }
+    66% { opacity: 1.3; }
+}
+
+@keyframes torchFlicker2 {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1.2; }
+}
+
+/* ==================== SCROLL FIX — MAIN CONTAINERS ==================== */
+
+/* Web page main container */
+.winedash-container {
+    position: relative;
+    z-index: 1;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    height: auto !important;
+    min-height: 100vh;
+    /* Enough bottom padding for bottom nav */
+    padding-bottom: 80px !important;
+}
+
+/* Storage page main container */
+.storage-container {
+    position: relative;
+    z-index: 1;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    height: auto !important;
+    min-height: 100vh;
+    padding-bottom: 80px !important;
+}
+
+/* Tab contents should allow natural height, not fixed */
+.tab-content {
+    overflow-y: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+}
+
+/* Scrollable tab contents when active */
+.tab-content.active {
+    overflow-y: visible !important;
+    height: auto !important;
+}
+
+/* Fix for body/html blocking scroll */
+html, body {
+    overflow: auto !important;
+    height: auto !important;
+    min-height: 100vh;
+    /* Allow scroll except when panel is explicitly open */
+}
+
+body.panel-open {
+    overflow: hidden !important;
+    position: fixed !important;
+}
+
+/* Remove any height:100vh that blocks scroll on containers */
+.winedash-container,
+.storage-container {
+    max-height: none !important;
+}
+
+/* ==================== SCROLLBAR MINECRAFT STYLE ==================== */
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(8, 6, 4, 0.95);
+    border-left: 1px solid #1a0c04;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #3a2208;
+    border: 1px solid #1a0c04;
+    border-top-color: #6b4520;
+    border-left-color: #6b4520;
+    border-radius: 0;
+    image-rendering: pixelated;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #5a3a18;
+    box-shadow: 0 0 6px rgba(255, 180, 60, 0.3);
+}
+
+/* ==================== MINECRAFT PANEL / OVERLAY FIXES ==================== */
+
+/* Ensure overlays and panels are above the background */
+.loading-overlay,
+.panel-overlay,
+.checkout-panel,
+.offer-detail-panel,
+.storage-bottom-nav,
+.tabs-container {
+    z-index: 1000;
+    position: fixed;
+}
+
+.storage-bottom-nav,
+.tabs-container {
+    z-index: 100;
+}
+
+/* Loading overlay */
+.loading-overlay {
+    z-index: 9999;
+    background: rgba(8, 6, 4, 0.97) !important;
+}
+
+.loading-spinner {
+    border-color: #3a2208 !important;
+    border-top-color: #ffd700 !important;
+    animation: mcSpin 0.8s steps(8) infinite !important;
+    border-radius: 0 !important;
+    border-width: 3px !important;
+    image-rendering: pixelated;
+}
+
+@keyframes mcSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 9px !important;
+    color: #ffd700 !important;
+    text-shadow: 1px 1px 0 #7a5800, 0 0 10px rgba(255, 215, 0, 0.5) !important;
+    letter-spacing: 2px;
+    animation: mcBlink 0.8s steps(1) infinite;
+    image-rendering: pixelated;
+}
+
+@keyframes mcBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* Toast */
+.toast-container {
+    z-index: 9998;
+    position: fixed;
+}
+
+/* ==================== MINECRAFT TOAST STYLE ==================== */
+
+.toast {
+    background: rgba(14, 10, 6, 0.96) !important;
+    border: 2px solid #3a2208 !important;
+    border-bottom-color: #1a0c04 !important;
+    border-right-color: #1a0c04 !important;
+    border-top-color: #6b4520 !important;
+    border-left-color: #6b4520 !important;
+    border-radius: 0 !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 8px !important;
+    color: #ffd700 !important;
+    text-shadow: 1px 1px 0 #7a5800 !important;
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.7) !important;
+    image-rendering: pixelated;
+}
+
+/* ==================== SECTION CARDS MINECRAFT STYLE ==================== */
+
+.section-card {
+    background: rgba(18, 12, 6, 0.9) !important;
+    border: 2px solid #3a2208 !important;
+    border-bottom-color: #1a0c04 !important;
+    border-right-color: #1a0c04 !important;
+    border-top-color: #6b4520 !important;
+    border-left-color: #6b4520 !important;
+    border-radius: 0 !important;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.6), 3px 3px 0 rgba(0,0,0,0.8) !important;
+    position: relative;
+    overflow: hidden;
+    image-rendering: pixelated;
+}
+
+/* Pixel texture on cards */
+.section-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 3px,
+            rgba(255,255,255,0.008) 3px,
+            rgba(255,255,255,0.008) 4px
+        ),
+        repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 3px,
+            rgba(255,255,255,0.008) 3px,
+            rgba(255,255,255,0.008) 4px
+        );
+    pointer-events: none;
+    z-index: 0;
+}
+
+.card-header {
+    position: relative;
+    z-index: 1;
+}
+
+.card-header h3 {
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 10px !important;
+    color: #ffd700 !important;
+    text-shadow: 1px 1px 0 #7a5800, 0 0 10px rgba(255, 215, 0, 0.4) !important;
+    image-rendering: pixelated;
+}
+
+.card-header i {
+    color: #ff8c00 !important;
+    text-shadow: 0 0 8px rgba(255, 140, 0, 0.6) !important;
+}
+
+/* ==================== PROFILE HEADER ==================== */
+
+.profile-header,
+.storage-profile-header {
+    position: relative;
+    z-index: 2;
+    background: transparent !important;
+    /* Torchlight glow above */
+}
+
+.profile-balance,
+.storage-balance {
+    background: rgba(18, 12, 6, 0.92) !important;
+    border: 2px solid #3a2208 !important;
+    border-bottom-color: #1a0c04 !important;
+    border-right-color: #1a0c04 !important;
+    border-top-color: #6b4520 !important;
+    border-left-color: #6b4520 !important;
+    border-radius: 0 !important;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.6), 2px 2px 0 rgba(0,0,0,0.8) !important;
+    image-rendering: pixelated;
+}
+
+.balance-amount {
+    font-family: 'VT323', monospace !important;
+    color: #ffd700 !important;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.6) !important;
+    letter-spacing: 2px;
+}
+
+.profile-avatar,
+.storage-profile-avatar {
+    border-radius: 0 !important;
+    border: 2px solid #1a3a1a !important;
+    border-bottom-color: #0a1a0a !important;
+    border-right-color: #0a1a0a !important;
+    border-top-color: #4a8a4a !important;
+    border-left-color: #4a8a4a !important;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.6) !important;
+    image-rendering: pixelated;
+}
+
+/* ==================== BOTTOM NAV MINECRAFT ==================== */
+
+.tabs-container {
+    background: rgba(10, 8, 4, 0.98) !important;
+    border-top: 3px solid #6b4520 !important;
+    border-radius: 0 !important;
+    box-shadow: 0 -3px 0 #1a0c04, 0 -4px 0 #3a2208, 0 -20px 40px rgba(0,0,0,0.8) !important;
+    image-rendering: pixelated;
+}
+
+.storage-bottom-nav {
+    background: rgba(10, 8, 4, 0.98) !important;
+    border-top: 3px solid #6b4520 !important;
+    border-radius: 0 !important;
+    box-shadow: 0 -3px 0 #1a0c04, 0 -4px 0 #3a2208 !important;
+    image-rendering: pixelated;
+}
+
+.tab-btn {
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 6px !important;
+    color: #7a6a4a !important;
+    border-radius: 0 !important;
+    transition: all 0.1s steps(1) !important;
+    image-rendering: pixelated;
+}
+
+.tab-btn.active,
+.tab-btn:hover {
+    color: #ffd700 !important;
+    text-shadow: 0 0 6px rgba(255, 215, 0, 0.5) !important;
+    background: rgba(30, 22, 10, 0.8) !important;
+}
+
+.tab-btn i {
+    font-size: 16px !important;
+}
+
+.tab-btn.active i {
+    color: #5dff5d !important;
+    text-shadow: 0 0 8px rgba(93, 255, 93, 0.6) !important;
+}
+
+.nav-link {
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 6px !important;
+    color: #7a6a4a !important;
+    border-radius: 0 !important;
+    image-rendering: pixelated;
+}
+
+.nav-link.active {
+    color: #ffd700 !important;
+    background: rgba(30, 22, 10, 0.8) !important;
+}
+
+/* ==================== ACTION BUTTONS ==================== */
+
+.action-btn,
+.action-row .action-btn {
+    background: rgba(20, 14, 8, 0.9) !important;
+    border: 2px solid #2a1a08 !important;
+    border-bottom-color: #0a0804 !important;
+    border-right-color: #0a0804 !important;
+    border-top-color: #5a3a18 !important;
+    border-left-color: #5a3a18 !important;
+    border-radius: 0 !important;
+    color: #d4c89a !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 7px !important;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.8) !important;
+    transition: all 0.1s steps(1) !important;
+    image-rendering: pixelated;
+}
+
+.action-btn:hover,
+.action-row .action-btn:hover {
+    background: rgba(35, 25, 12, 0.95) !important;
+    color: #ffd700 !important;
+    text-shadow: 0 0 6px rgba(255, 215, 0, 0.3) !important;
+}
+
+.action-btn:active,
+.action-row .action-btn:active {
+    border-top-color: #2a1a08 !important;
+    border-left-color: #2a1a08 !important;
+    border-bottom-color: #5a3a18 !important;
+    border-right-color: #5a3a18 !important;
+    transform: translate(1px, 1px) !important;
+    box-shadow: none !important;
+}
+
+.add-action-btn {
+    background: rgba(10, 30, 10, 0.9) !important;
+    border-color: #1a4a1a !important;
+    border-bottom-color: #0a1a0a !important;
+    border-right-color: #0a1a0a !important;
+    border-top-color: #3a8a3a !important;
+    border-left-color: #3a8a3a !important;
+    color: #5dff5d !important;
+    text-shadow: 0 0 6px rgba(93, 255, 93, 0.4) !important;
+}
+
+/* ==================== SEARCH CONTAINER ==================== */
+
+.search-container {
+    position: relative;
+    z-index: 2;
+}
+
+.search-input {
+    background: rgba(8, 6, 4, 0.92) !important;
+    border: 2px solid #2a1a08 !important;
+    border-bottom-color: #0a0804 !important;
+    border-right-color: #0a0804 !important;
+    border-top-color: #5a3a18 !important;
+    border-left-color: #5a3a18 !important;
+    border-radius: 0 !important;
+    color: #d4c89a !important;
+    font-family: 'VT323', monospace !important;
+    font-size: 15px !important;
+    letter-spacing: 1px;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.7) !important;
+    image-rendering: pixelated;
+}
+
+.search-input::placeholder {
+    color: #5a4a2a !important;
+    font-family: 'VT323', monospace !important;
+}
+
+.search-input:focus {
+    border-color: #3a6a3a !important;
+    border-top-color: #5aaa5a !important;
+    border-left-color: #5aaa5a !important;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.7), 0 0 10px rgba(58, 180, 58, 0.25) !important;
+    color: #5dff5d !important;
+}
+
+.search-apply-btn {
+    background: linear-gradient(180deg, #5a8a2a 0%, #3a5a18 50%, #2a4010 100%) !important;
+    border: 2px solid #2a4010 !important;
+    border-bottom-color: #1a2808 !important;
+    border-right-color: #1a2808 !important;
+    border-top-color: #8aba4a !important;
+    border-left-color: #8aba4a !important;
+    border-radius: 0 !important;
+    color: #e8ffb8 !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 7px !important;
+    text-shadow: 1px 1px 0 #1a2808 !important;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.8) !important;
+    transition: all 0.1s steps(1) !important;
+    image-rendering: pixelated;
+}
+
+.search-apply-btn:active {
+    border-top-color: #2a4010 !important;
+    border-left-color: #2a4010 !important;
+    border-bottom-color: #8aba4a !important;
+    border-right-color: #8aba4a !important;
+    transform: translate(1px, 1px) !important;
+    box-shadow: none !important;
+}
+
+/* ==================== LAYOUT TOGGLE ==================== */
+
+.layout-toggle {
+    background: rgba(12, 8, 4, 0.9) !important;
+    border: 2px solid #2a1a08 !important;
+    border-radius: 0 !important;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.6) !important;
+    image-rendering: pixelated;
+}
+
+.layout-btn {
+    background: transparent !important;
+    border-radius: 0 !important;
+    color: #7a6a4a !important;
+    font-size: 12px !important;
+    transition: all 0.1s steps(1) !important;
+    image-rendering: pixelated;
+}
+
+.layout-btn.active {
+    background: rgba(20, 14, 8, 0.9) !important;
+    border: 1px solid #3a2208 !important;
+    color: #ffd700 !important;
+    text-shadow: 0 0 5px rgba(255, 215, 0, 0.4) !important;
+}
+
+/* ==================== FILTER BUTTONS ==================== */
+
+.filter-action-btn {
+    background: rgba(18, 12, 6, 0.9) !important;
+    border: 2px solid #2a1a08 !important;
+    border-bottom-color: #0a0804 !important;
+    border-right-color: #0a0804 !important;
+    border-top-color: #5a3a18 !important;
+    border-left-color: #5a3a18 !important;
+    border-radius: 0 !important;
+    color: #a08858 !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 7px !important;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.8) !important;
+    white-space: nowrap;
+    transition: all 0.1s steps(1) !important;
+    image-rendering: pixelated;
+}
+
+.filter-action-btn:hover,
+.filter-action-btn.active {
+    color: #ffd700 !important;
+    background: rgba(30, 22, 10, 0.95) !important;
+    text-shadow: 0 0 5px rgba(255, 215, 0, 0.3) !important;
+}
+
+/* ==================== STATUS DROPDOWN ==================== */
+
+.status-dropdown {
+    background: rgba(14, 10, 6, 0.98) !important;
+    border: 2px solid #3a2208 !important;
+    border-bottom-color: #1a0c04 !important;
+    border-right-color: #1a0c04 !important;
+    border-top-color: #6b4520 !important;
+    border-left-color: #6b4520 !important;
+    border-radius: 0 !important;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.7) !important;
+    image-rendering: pixelated;
+}
+
+.status-dropdown-item {
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 8px !important;
+    color: #a08858 !important;
+    border-radius: 0 !important;
+    transition: all 0.1s steps(1) !important;
+    image-rendering: pixelated;
+}
+
+.status-dropdown-item:hover,
+.status-dropdown-item.active {
+    color: #5dff5d !important;
+    background: rgba(15, 35, 15, 0.9) !important;
+    text-shadow: 0 0 5px rgba(93, 255, 93, 0.4) !important;
+}
+
+/* ==================== LOADING PLACEHOLDER ==================== */
+
+.loading-placeholder {
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 8px !important;
+    color: #5a4a2a !important;
+    text-align: center;
+    padding: 40px 20px;
+    letter-spacing: 2px;
+    animation: mcBlink 0.8s steps(1) infinite !important;
+    image-rendering: pixelated;
+}
+
+/* ==================== NAV CIRCLE ==================== */
+
+.nav-circle {
+    background: rgba(18, 12, 6, 0.95) !important;
+    border: 2px solid #3a2208 !important;
+    border-bottom-color: #1a0c04 !important;
+    border-right-color: #1a0c04 !important;
+    border-top-color: #6b4520 !important;
+    border-left-color: #6b4520 !important;
+    border-radius: 0 !important;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.6), 2px 2px 0 rgba(0,0,0,0.8) !important;
+    image-rendering: pixelated;
+}
+
+.market-icon i {
+    color: #ffd700 !important;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.5) !important;
+}

@@ -1,4 +1,9 @@
-/* winedash/css/auctions-activity.css - Auction Activity Styles */
+/* winedash/css/auctions-activity.css - Auction Activity Styles — Minecraft Theme */
+
+/* ==================== MINECRAFT FONT IMPORT ==================== */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap');
+
+/* ==================== MC PIXEL PATTERN BACKGROUND ==================== */
 
 /* ==================== ACTIVITY CONTAINER ==================== */
 
@@ -6,6 +11,7 @@
     width: 100%;
     min-height: 400px;
     padding: 0 4px;
+    position: relative;
 }
 
 /* ==================== ACTIVITY HEADER ==================== */
@@ -16,84 +22,176 @@
 }
 
 .activity-header h3 {
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'Press Start 2P', monospace;
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--primary);
+    color: #ffd700;
+    text-shadow:
+        2px 2px 0 #7a5800,
+        0 0 12px rgba(255, 215, 0, 0.6);
+    letter-spacing: 1px;
+    image-rendering: pixelated;
 }
 
 /* ==================== ACTIVITY TABS ==================== */
 
 .activity-tabs {
     display: flex;
-    gap: 8px;
+    gap: 4px;
     margin-bottom: 16px;
-    background: var(--glass-bg);
-    border-radius: 20px;
+    background: rgba(20, 12, 8, 0.85);
+    border-radius: 0;
     padding: 4px;
+    border: 2px solid #5a3a1a;
+    border-bottom-color: #2a1a08;
+    border-right-color: #2a1a08;
+    border-top-color: #8b5e30;
+    border-left-color: #8b5e30;
+    box-shadow:
+        inset 0 0 20px rgba(0,0,0,0.6),
+        0 0 8px rgba(0,0,0,0.8);
+    position: relative;
+    overflow: hidden;
+}
+
+.activity-tabs::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 7px,
+            rgba(255,255,255,0.015) 7px,
+            rgba(255,255,255,0.015) 8px
+        ),
+        repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 7px,
+            rgba(255,255,255,0.015) 7px,
+            rgba(255,255,255,0.015) 8px
+        );
+    pointer-events: none;
 }
 
 .activity-tab-btn {
     flex: 1;
-    background: transparent;
-    border: none;
+    background: rgba(40, 24, 12, 0.9);
+    border: 2px solid #3a2208;
+    border-bottom-color: #1a0c04;
+    border-right-color: #1a0c04;
+    border-top-color: #6b3e18;
+    border-left-color: #6b3e18;
     padding: 8px 12px;
-    border-radius: 16px;
-    color: var(--text-secondary);
-    font-size: 12px;
-    font-weight: 500;
+    border-radius: 0;
+    color: #a0845a;
+    font-size: 8px;
+    font-family: 'Press Start 2P', monospace;
+    font-weight: 400;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.1s steps(1);
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
+    letter-spacing: 0.5px;
+    image-rendering: pixelated;
 }
 
 .activity-tab-btn i {
     font-size: 12px;
 }
 
+.activity-tab-btn:hover {
+    background: rgba(60, 40, 18, 0.95);
+    color: #d4a85a;
+}
+
 .activity-tab-btn.active {
-    background: var(--primary-glass);
-    color: var(--primary);
+    background: rgba(20, 60, 20, 0.95);
+    border: 2px solid #1a4a1a;
+    border-bottom-color: #0a2a0a;
+    border-right-color: #0a2a0a;
+    border-top-color: #3a8a3a;
+    border-left-color: #3a8a3a;
+    color: #5dff5d;
+    text-shadow: 0 0 8px rgba(93, 255, 93, 0.8), 0 0 20px rgba(93, 255, 93, 0.4);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
 }
 
 /* ==================== SEARCH BAR ==================== */
 
 .activity-search-container {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     margin-bottom: 16px;
 }
 
 .activity-search-input {
     flex: 1;
     padding: 10px 14px;
-    background: var(--surface-light);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    color: var(--text);
-    font-size: 12px;
+    background: rgba(10, 8, 6, 0.9);
+    border: 2px solid #2a1a08;
+    border-bottom-color: #0a0804;
+    border-right-color: #0a0804;
+    border-top-color: #5a3a18;
+    border-left-color: #5a3a18;
+    border-radius: 0;
+    color: #d4c89a;
+    font-size: 10px;
+    font-family: 'VT323', monospace;
+    letter-spacing: 1px;
     outline: none;
+    box-shadow: inset 0 0 12px rgba(0,0,0,0.7);
+    transition: all 0.1s steps(1);
+    image-rendering: pixelated;
+}
+
+.activity-search-input::placeholder {
+    color: #5a4a2a;
+    font-family: 'VT323', monospace;
 }
 
 .activity-search-input:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(64, 167, 227, 0.2);
+    border-color: #3a6a3a;
+    border-bottom-color: #1a3a1a;
+    border-right-color: #1a3a1a;
+    border-top-color: #5aaa5a;
+    border-left-color: #5aaa5a;
+    box-shadow: inset 0 0 12px rgba(0,0,0,0.7), 0 0 10px rgba(58, 180, 58, 0.3);
+    color: #5dff5d;
 }
 
 .activity-search-btn {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    border: none;
-    border-radius: 16px;
+    background: linear-gradient(180deg, #5a8a2a 0%, #3a5a18 50%, #2a4010 100%);
+    border: 2px solid #2a4010;
+    border-bottom-color: #1a2808;
+    border-right-color: #1a2808;
+    border-top-color: #8aba4a;
+    border-left-color: #8aba4a;
+    border-radius: 0;
     padding: 0 16px;
-    color: white;
-    font-size: 12px;
-    font-weight: 600;
+    color: #e8ffb8;
+    font-size: 8px;
+    font-family: 'Press Start 2P', monospace;
+    font-weight: 400;
     cursor: pointer;
+    text-shadow: 1px 1px 0 #1a2808;
+    transition: all 0.1s steps(1);
+    image-rendering: pixelated;
+}
+
+.activity-search-btn:active {
+    border-top-color: #2a4010;
+    border-left-color: #2a4010;
+    border-bottom-color: #8aba4a;
+    border-right-color: #8aba4a;
+    transform: translate(1px, 1px);
 }
 
 /* ==================== ACTIVITY ITEMS ==================== */
@@ -101,60 +199,102 @@
 .activity-items {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .activity-item {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px;
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    border-radius: 14px;
+    padding: 10px 12px;
+    background: rgba(20, 14, 8, 0.88);
+    border: 2px solid #3a2208;
+    border-bottom-color: #1a0c04;
+    border-right-color: #1a0c04;
+    border-top-color: #6b4520;
+    border-left-color: #6b4520;
+    border-radius: 0;
     position: relative;
     overflow: hidden;
-    border: none;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.1s steps(1);
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.5), 2px 2px 0 rgba(0,0,0,0.8);
+    image-rendering: pixelated;
 }
 
-.activity-item::after {
-    content: "";
+/* Minecraft stone texture overlay */
+.activity-item::before {
+    content: '';
     position: absolute;
     inset: 0;
-    border-radius: 14px;
-    padding: 1px;
-    background: linear-gradient(176deg, 
-        rgba(255, 255, 255, 0.4) 0%, 
-        rgba(255, 255, 255, 0) 30%,
-        rgba(255, 255, 255, 0) 70%, 
-        rgba(255, 255, 255, 0.4) 100%);
-    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
+    background-image:
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 3px,
+            rgba(255,255,255,0.012) 3px,
+            rgba(255,255,255,0.012) 4px
+        ),
+        repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 3px,
+            rgba(255,255,255,0.012) 3px,
+            rgba(255,255,255,0.012) 4px
+        );
+    pointer-events: none;
+}
+
+/* Torch glow on hover */
+.activity-item::after {
+    content: '🔦';
+    position: absolute;
+    right: -40px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    opacity: 0;
+    transition: all 0.2s;
+    filter: drop-shadow(0 0 8px #ff8c00);
     pointer-events: none;
 }
 
 .activity-item:hover {
-    background: rgba(255, 255, 255, 0.08);
-    transform: translateY(-1px);
+    background: rgba(35, 25, 12, 0.95);
+    border-color: #5a3818;
+    border-bottom-color: #2a1a08;
+    border-right-color: #2a1a08;
+    border-top-color: #8a6040;
+    border-left-color: #8a6040;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 0 0 12px rgba(255, 180, 60, 0.2), 2px 2px 0 rgba(0,0,0,0.8);
+}
+
+.activity-item:hover::after {
+    right: 10px;
+    opacity: 0.7;
 }
 
 .activity-avatar {
     width: 48px;
     height: 48px;
-    border-radius: 12px;
+    border-radius: 0;
     overflow: hidden;
     flex-shrink: 0;
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    background: linear-gradient(135deg, #2a5a2a, #1a3a1a);
+    border: 2px solid #1a3a1a;
+    border-bottom-color: #0a1a0a;
+    border-right-color: #0a1a0a;
+    border-top-color: #4a8a4a;
+    border-left-color: #4a8a4a;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.6);
+    image-rendering: pixelated;
 }
 
 .activity-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    image-rendering: pixelated;
 }
 
 .activity-info {
@@ -163,57 +303,75 @@
 }
 
 .activity-username {
-    font-size: 14px;
-    font-weight: 600;
-    font-family: monospace;
-    margin-bottom: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: 'Press Start 2P', monospace;
+    margin-bottom: 6px;
     word-break: break-all;
+    color: #ffd700;
+    text-shadow: 1px 1px 0 #7a5800;
+    image-rendering: pixelated;
 }
 
 .activity-details {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
 }
 
 .activity-bid-count {
-    font-size: 10px;
-    color: var(--text-secondary);
+    font-size: 11px;
+    color: #8a7a5a;
+    font-family: 'VT323', monospace;
+    letter-spacing: 1px;
 }
 
 .activity-bid-info {
-    font-size: 10px;
-    color: var(--text-secondary);
+    font-size: 11px;
+    color: #7a6a4a;
+    font-family: 'VT323', monospace;
+    letter-spacing: 1px;
 }
 
 .activity-timer {
-    font-size: 11px;
-    font-family: monospace;
-    color: var(--warning);
+    font-size: 13px;
+    font-family: 'VT323', monospace;
+    color: #ff8c00;
+    text-shadow: 0 0 6px rgba(255, 140, 0, 0.8), 0 0 12px rgba(255, 140, 0, 0.4);
+    letter-spacing: 2px;
 }
 
 .activity-winner {
-    font-size: 10px;
-    color: var(--success);
-    font-weight: 500;
+    font-size: 11px;
+    color: #5dff5d;
+    font-family: 'VT323', monospace;
+    font-weight: 400;
+    text-shadow: 0 0 6px rgba(93, 255, 93, 0.6);
+    letter-spacing: 1px;
 }
 
 .activity-winner.winner-me {
-    color: var(--warning);
-    font-weight: 600;
+    color: #ffd700;
+    text-shadow: 0 0 6px rgba(255, 215, 0, 0.8), 0 0 14px rgba(255, 215, 0, 0.4);
+    font-weight: 400;
 }
 
 .activity-winner-badge {
-    font-size: 10px;
-    color: var(--warning);
-    font-weight: 600;
+    font-size: 11px;
+    color: #ffd700;
+    font-family: 'VT323', monospace;
+    font-weight: 400;
     margin-top: 2px;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
+    letter-spacing: 1px;
 }
 
 .activity-basedon {
-    font-size: 9px;
-    color: var(--text-muted);
+    font-size: 10px;
+    color: #5a4a2a;
+    font-family: 'VT323', monospace;
     margin-top: 2px;
+    letter-spacing: 1px;
 }
 
 .activity-right {
@@ -225,43 +383,72 @@
 }
 
 .activity-status {
-    font-size: 10px;
-    padding: 3px 8px;
-    border-radius: 20px;
-    font-weight: 600;
+    font-size: 7px;
+    font-family: 'Press Start 2P', monospace;
+    padding: 4px 8px;
+    border-radius: 0;
+    font-weight: 400;
     white-space: nowrap;
+    image-rendering: pixelated;
 }
 
 .activity-status.active {
-    background: rgba(16, 185, 129, 0.15);
-    color: var(--success);
-    border: 1px solid rgba(16, 185, 129, 0.3);
+    background: rgba(10, 40, 10, 0.9);
+    color: #5dff5d;
+    border: 2px solid #1a5a1a;
+    border-bottom-color: #0a2a0a;
+    border-right-color: #0a2a0a;
+    border-top-color: #3a9a3a;
+    border-left-color: #3a9a3a;
+    text-shadow: 0 0 6px rgba(93, 255, 93, 0.8);
+    box-shadow: 0 0 8px rgba(93, 255, 93, 0.2);
 }
 
 .activity-status.ended {
-    background: rgba(239, 68, 68, 0.15);
-    color: var(--danger);
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: rgba(40, 10, 10, 0.9);
+    color: #ff4444;
+    border: 2px solid #5a1a1a;
+    border-bottom-color: #2a0a0a;
+    border-right-color: #2a0a0a;
+    border-top-color: #9a3a3a;
+    border-left-color: #9a3a3a;
+    text-shadow: 0 0 6px rgba(255, 68, 68, 0.8);
 }
 
 .activity-view-btn {
-    background: rgba(64, 167, 227, 0.15);
-    border: 1px solid rgba(64, 167, 227, 0.3);
-    border-radius: 20px;
-    padding: 4px 12px;
-    color: var(--primary);
-    font-size: 10px;
-    font-weight: 600;
+    background: rgba(10, 30, 50, 0.9);
+    border: 2px solid #0a2a4a;
+    border-bottom-color: #040e1a;
+    border-right-color: #040e1a;
+    border-top-color: #1a5a8a;
+    border-left-color: #1a5a8a;
+    border-radius: 0;
+    padding: 5px 10px;
+    color: #40a7e3;
+    font-size: 7px;
+    font-family: 'Press Start 2P', monospace;
+    font-weight: 400;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.1s steps(1);
     display: flex;
     align-items: center;
     gap: 4px;
+    text-shadow: 0 0 6px rgba(64, 167, 227, 0.6);
+    image-rendering: pixelated;
 }
 
 .activity-view-btn:hover {
-    background: rgba(64, 167, 227, 0.3);
-    transform: scale(1.02);
+    background: rgba(20, 50, 80, 0.95);
+    box-shadow: 0 0 10px rgba(64, 167, 227, 0.3);
+    color: #7ac7f3;
+}
+
+.activity-view-btn:active {
+    border-top-color: #0a2a4a;
+    border-left-color: #0a2a4a;
+    border-bottom-color: #1a5a8a;
+    border-right-color: #1a5a8a;
+    transform: translate(1px, 1px);
 }
 
 /* ==================== EMPTY STATE ==================== */
@@ -278,39 +465,62 @@
 
 .activity-empty-state i {
     font-size: 48px;
-    color: var(--text-muted);
+    color: #5a4a2a;
     margin-bottom: 16px;
-    opacity: 0.5;
+    opacity: 0.6;
+    filter: drop-shadow(0 0 8px rgba(90, 74, 42, 0.5));
 }
 
 .activity-empty-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 8px;
+    font-size: 9px;
+    font-family: 'Press Start 2P', monospace;
+    font-weight: 400;
+    color: #a08858;
+    margin-bottom: 10px;
+    text-shadow: 1px 1px 0 #3a2a10;
+    image-rendering: pixelated;
 }
 
 .activity-empty-subtitle {
-    font-size: 12px;
-    color: var(--text-muted);
+    font-size: 13px;
+    font-family: 'VT323', monospace;
+    color: #6a5a3a;
     margin-bottom: 20px;
+    letter-spacing: 1px;
 }
 
 .activity-back-btn {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    border: none;
-    border-radius: 28px;
+    background: linear-gradient(180deg, #5a8a2a 0%, #3a5a18 50%, #2a4010 100%);
+    border: 2px solid #2a4010;
+    border-bottom-color: #1a2808;
+    border-right-color: #1a2808;
+    border-top-color: #8aba4a;
+    border-left-color: #8aba4a;
+    border-radius: 0;
     padding: 10px 20px;
-    color: white;
-    font-size: 13px;
-    font-weight: 600;
+    color: #e8ffb8;
+    font-size: 8px;
+    font-family: 'Press Start 2P', monospace;
+    font-weight: 400;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    text-shadow: 1px 1px 0 #1a2808;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.8);
+    image-rendering: pixelated;
 }
 
-* Fullscreen header baru dengan profile avatar */
+.activity-back-btn:active {
+    border-top-color: #2a4010;
+    border-left-color: #2a4010;
+    border-bottom-color: #8aba4a;
+    border-right-color: #8aba4a;
+    transform: translate(1px, 1px);
+}
+
+/* ==================== FULLSCREEN HEADER ==================== */
+
 .fullscreen-page .storage-profile-header {
     display: flex;
     align-items: center;
@@ -323,57 +533,57 @@
 .fullscreen-page .storage-profile-avatar {
     width: 48px;
     height: 48px;
-    border-radius: 50%;
+    border-radius: 0;
     overflow: hidden;
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    background: linear-gradient(135deg, #2a5a2a, #1a3a1a);
+    border: 2px solid #1a3a1a;
+    border-bottom-color: #0a1a0a;
+    border-right-color: #0a1a0a;
+    border-top-color: #4a8a4a;
+    border-left-color: #4a8a4a;
     display: flex;
     align-items: center;
     justify-content: center;
+    image-rendering: pixelated;
 }
 
 .fullscreen-page .storage-balance {
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    border-radius: 20px;
+    background: rgba(20, 14, 8, 0.88);
+    border: 2px solid #3a2208;
+    border-bottom-color: #1a0c04;
+    border-right-color: #1a0c04;
+    border-top-color: #6b4520;
+    border-left-color: #6b4520;
+    border-radius: 0;
     padding: 8px 16px;
     display: flex;
     align-items: center;
     gap: 12px;
     position: relative;
     overflow: hidden;
-    border: none;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.1s steps(1);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 2px 2px 0 rgba(0,0,0,0.8);
 }
 
 .fullscreen-page .storage-balance::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 20px;
-    padding: 1px;
-    background: linear-gradient(170deg, 
-        rgba(255, 255, 255, 0.4) 0%, 
-        rgba(255, 255, 255, 0) 30%,
-        rgba(255, 255, 255, 0) 70%, 
-        rgba(255, 255, 255, 0.4) 100%);
-    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
+    content: none;
 }
 
 .fullscreen-page .balance-logo {
     width: 24px;
     height: 24px;
     object-fit: contain;
+    image-rendering: pixelated;
 }
 
 .fullscreen-page .balance-amount {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text);
+    font-size: 14px;
+    font-weight: 400;
+    font-family: 'VT323', monospace;
+    color: #ffd700;
+    text-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
+    letter-spacing: 2px;
 }
 
 .fullscreen-page .fullscreen-header {
@@ -387,22 +597,39 @@
 }
 
 .activity-back-btn-header {
-    background: var(--glass-bg);
-    border: 1px solid var(--border);
-    border-radius: 28px;
+    background: rgba(20, 14, 8, 0.85);
+    border: 2px solid #3a2208;
+    border-bottom-color: #1a0c04;
+    border-right-color: #1a0c04;
+    border-top-color: #6b4520;
+    border-left-color: #6b4520;
+    border-radius: 0;
     padding: 8px 16px;
-    color: var(--text-secondary);
-    font-size: 12px;
-    font-weight: 500;
+    color: #a08858;
+    font-size: 8px;
+    font-family: 'Press Start 2P', monospace;
+    font-weight: 400;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    transition: all 0.2s;
+    transition: all 0.1s steps(1);
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.8);
+    image-rendering: pixelated;
 }
 
 .activity-back-btn-header:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(35, 25, 12, 0.95);
+    color: #d4a85a;
+    box-shadow: 0 0 10px rgba(180, 130, 60, 0.2), 2px 2px 0 rgba(0,0,0,0.8);
+}
+
+.activity-back-btn-header:active {
+    border-top-color: #3a2208;
+    border-left-color: #3a2208;
+    border-bottom-color: #6b4520;
+    border-right-color: #6b4520;
+    transform: translate(1px, 1px);
 }
 
 /* ==================== RESPONSIVE ==================== */
@@ -426,7 +653,7 @@
     }
     
     .activity-username {
-        font-size: 13px;
+        font-size: 8px;
     }
     
     .activity-avatar {
@@ -443,6 +670,10 @@
     }
     
     .activity-tabs {
-        padding: 6px;
+        padding: 4px;
+    }
+
+    .activity-header h3 {
+        font-size: 9px;
     }
 }

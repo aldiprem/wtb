@@ -1,118 +1,164 @@
+/* offers.css - Minecraft Theme */
+
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap');
+
 /* ==================== OFFERS CARD ==================== */
 
 .offers-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 8px;
 }
 
-/* offers.css - Glassmorphism 2.0 untuk offers card */
-
 .offers-card {
-    background: rgba(26, 26, 26, 0.5);
-    backdrop-filter: blur(12px) saturate(180%);
-    -webkit-backdrop-filter: blur(12px) saturate(180%);
-    border-radius: 16px;
+    background: rgba(20, 14, 8, 0.92);
+    border: 2px solid #3a2208;
+    border-bottom-color: #1a0c04;
+    border-right-color: #1a0c04;
+    border-top-color: #6b4520;
+    border-left-color: #6b4520;
+    border-radius: 0;
     overflow: hidden;
-    transition: all 0.2s;
+    transition: all 0.1s steps(1);
     cursor: pointer;
     position: relative;
     display: flex;
     flex-direction: column;
     height: 180px;
     width: 100%;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.6), 3px 3px 0 rgba(0,0,0,0.8);
+    image-rendering: pixelated;
 }
 
-/* Specular highlight */
+/* Pixel scanline overlay */
 .offers-card::before {
     content: "";
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, 
-        transparent 0%, 
-        rgba(255, 255, 255, 0.4) 20%, 
-        rgba(255, 255, 255, 0.7) 50%, 
-        rgba(255, 255, 255, 0.4) 80%, 
-        transparent 100%);
+    height: 2px;
+    background: linear-gradient(90deg,
+        #3a2208 0%,
+        #8a5a30 20%,
+        #c8873e 50%,
+        #8a5a30 80%,
+        #3a2208 100%);
     pointer-events: none;
     z-index: 1;
+    image-rendering: pixelated;
 }
 
-/* Border gradient */
+/* Stone texture border */
 .offers-card::after {
     content: "";
     position: absolute;
     inset: 0;
-    border-radius: 16px;
-    padding: 1px;
-    background: linear-gradient(160deg, 
-        rgba(255, 255, 255, 0.3) 0%, 
-        rgba(255, 255, 255, 0) 25%,
-        rgba(255, 255, 255, 0) 75%, 
-        rgba(255, 255, 255, 0.3) 100%);
-    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
+    background-image:
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 3px,
+            rgba(255,255,255,0.01) 3px,
+            rgba(255,255,255,0.01) 4px
+        ),
+        repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 3px,
+            rgba(255,255,255,0.01) 3px,
+            rgba(255,255,255,0.01) 4px
+        );
     pointer-events: none;
+}
+
+.offers-card:hover {
+    border-color: #5a3818;
+    border-bottom-color: #2a1a08;
+    border-right-color: #2a1a08;
+    border-top-color: #8a6040;
+    border-left-color: #8a6040;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 0 0 14px rgba(255, 180, 60, 0.2), 3px 3px 0 rgba(0,0,0,0.8);
 }
 
 .offers-card-image {
     position: relative;
     width: 100%;
     height: 100px;
-    background-image: url('https://companel.shop/image/bg-storage-card.jpg');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+    /* Minecraft-style dark background with pixel pattern instead of external image */
+    background: linear-gradient(160deg, #0a1a0a 0%, #1a0a0a 50%, #0a0a1a 100%);
+    background-image:
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 7px,
+            rgba(40, 30, 10, 0.3) 7px,
+            rgba(40, 30, 10, 0.3) 8px
+        ),
+        repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 7px,
+            rgba(40, 30, 10, 0.3) 7px,
+            rgba(40, 30, 10, 0.3) 8px
+        ),
+        linear-gradient(160deg, #0f1f0f 0%, #1f0f0f 50%, #0f0f1f 100%);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    border-bottom: 2px solid #1a0c04;
+    box-shadow: 0 2px 0 #3a2208;
 }
 
 .offers-card-avatar {
     width: 50px;
     height: 50px;
-    background: linear-gradient(135deg, var(--bg), var(--bg));
-    border-radius: 25%;
+    background: linear-gradient(135deg, #1a3a1a, #0a1a0a);
+    border: 2px solid #1a3a1a;
+    border-bottom-color: #0a1a0a;
+    border-right-color: #0a1a0a;
+    border-top-color: #4a8a4a;
+    border-left-color: #4a8a4a;
+    border-radius: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 0 12px rgba(0,0,0,0.5), inset 0 0 8px rgba(0,0,0,0.6);
     flex-shrink: 0;
     margin-top: 0;
     margin-bottom: 15px;
     position: relative;
     z-index: 2;
+    image-rendering: pixelated;
 }
 
 .offers-card-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 25%;
+    border-radius: 0;
+    image-rendering: pixelated;
 }
 
 .offers-card-username {
-    font-size: 11px;
-    font-weight: 600;
-    font-family: monospace;
+    font-size: 9px;
+    font-weight: 400;
+    font-family: 'Press Start 2P', monospace;
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    background: var(--text);
-    padding: 4px 12px;
-    border-radius: 5px;
+    background: rgba(10, 8, 4, 0.95);
+    border: 2px solid #3a2208;
+    border-bottom-color: #1a0c04;
+    border-right-color: #1a0c04;
+    border-top-color: #6b4520;
+    border-left-color: #6b4520;
+    padding: 4px 10px;
+    border-radius: 0;
     margin-top: -10px;
     margin-bottom: -5px;
     margin-left: auto;
@@ -120,11 +166,13 @@
     position: relative;
     z-index: 2;
     width: auto;
-    max-width: calc(100% - 24px);
-    color: var(--bg);
+    max-width: calc(100% - 16px);
+    color: #ffd700;
     display: inline-block;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    line-height: 1.3;
+    text-shadow: 1px 1px 0 #7a5800;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.8), inset 0 0 6px rgba(0,0,0,0.5);
+    line-height: 1.4;
+    image-rendering: pixelated;
 }
 
 .offers-card-info {
@@ -132,9 +180,12 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    background: var(--surface-light);
+    background: rgba(14, 10, 6, 0.95);
     flex: 1;
-    border-top: 1px solid var(--border-light);
+    border-top: 2px solid #1a0c04;
+    box-shadow: inset 0 2px 0 #3a2208;
+    position: relative;
+    z-index: 1;
 }
 
 .offers-card-price-row {
@@ -154,54 +205,81 @@
     width: 16px;
     height: 16px;
     object-fit: contain;
+    image-rendering: pixelated;
 }
 
 .offers-card-price {
     font-size: 13px;
-    font-weight: 700;
-    color: var(--success);
+    font-weight: 400;
+    font-family: 'VT323', monospace;
+    color: #5dff5d;
     margin: 0;
+    text-shadow: 0 0 6px rgba(93, 255, 93, 0.7);
+    letter-spacing: 2px;
 }
 
 .offers-card-status {
-    font-size: 10px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-weight: 600;
+    font-size: 7px;
+    font-family: 'Press Start 2P', monospace;
+    padding: 3px 7px;
+    border-radius: 0;
+    font-weight: 400;
+    image-rendering: pixelated;
 }
 
 .offers-card-status.pending {
-    background: rgba(245, 158, 11, 0.15);
-    color: var(--warning);
-    border: 1px solid rgba(245, 158, 11, 0.3);
+    background: rgba(40, 25, 5, 0.9);
+    color: #ff8c00;
+    border: 2px solid #4a2a08;
+    border-bottom-color: #1a0e04;
+    border-right-color: #1a0e04;
+    border-top-color: #8a5a20;
+    border-left-color: #8a5a20;
+    text-shadow: 0 0 5px rgba(255, 140, 0, 0.5);
 }
 
 .offers-card-status.accepted {
-    background: rgba(16, 185, 129, 0.15);
-    color: var(--success);
-    border: 1px solid rgba(16, 185, 129, 0.3);
+    background: rgba(10, 30, 10, 0.9);
+    color: #5dff5d;
+    border: 2px solid #1a4a1a;
+    border-bottom-color: #0a1a0a;
+    border-right-color: #0a1a0a;
+    border-top-color: #3a8a3a;
+    border-left-color: #3a8a3a;
+    text-shadow: 0 0 5px rgba(93, 255, 93, 0.5);
 }
 
 .offers-card-status.rejected {
-    background: rgba(239, 68, 68, 0.15);
-    color: var(--danger);
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: rgba(40, 10, 10, 0.9);
+    color: #ff4444;
+    border: 2px solid #5a1a1a;
+    border-bottom-color: #2a0a0a;
+    border-right-color: #2a0a0a;
+    border-top-color: #9a3a3a;
+    border-left-color: #9a3a3a;
+    text-shadow: 0 0 5px rgba(255, 68, 68, 0.5);
 }
 
 .offers-card-status.cancelled {
-    background: rgba(100, 100, 100, 0.15);
-    color: var(--text-muted);
-    border: 1px solid rgba(100, 100, 100, 0.3);
+    background: rgba(20, 18, 14, 0.9);
+    color: #7a6a4a;
+    border: 2px solid #3a2a18;
+    border-bottom-color: #1a1208;
+    border-right-color: #1a1208;
+    border-top-color: #5a4a30;
+    border-left-color: #5a4a30;
 }
 
 .offers-card-user {
-    font-size: 10px;
-    color: var(--text-secondary);
+    font-size: 11px;
+    font-family: 'VT323', monospace;
+    color: #7a6a4a;
     margin-top: 4px;
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    letter-spacing: 1px;
 }
 
 /* ==================== OFFERS LIST LAYOUT ==================== */
@@ -209,7 +287,7 @@
 .offers-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .offers-list-item {
@@ -217,46 +295,67 @@
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(8px);
-    border-radius: 14px;
+    background: rgba(20, 14, 8, 0.88);
+    border: 2px solid #2a1a08;
+    border-bottom-color: #0a0804;
+    border-right-color: #0a0804;
+    border-top-color: #5a3a18;
+    border-left-color: #5a3a18;
+    border-radius: 0;
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.08);
     cursor: pointer;
+    transition: all 0.1s steps(1);
+    box-shadow: inset 0 0 12px rgba(0,0,0,0.5), 2px 2px 0 rgba(0,0,0,0.8);
+    image-rendering: pixelated;
+}
+
+.offers-list-item::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 3px,
+            rgba(255,255,255,0.01) 3px,
+            rgba(255,255,255,0.01) 4px
+        );
+    pointer-events: none;
 }
 
 .offers-list-item::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 14px;
-    padding: 1px;
-    background: linear-gradient(176deg, 
-        rgba(255, 255, 255, 0.4) 0%, 
-        rgba(255, 255, 255, 0) 30%,
-        rgba(255, 255, 255, 0) 70%, 
-        rgba(255, 255, 255, 0.4) 100%);
-    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
+    display: none;
+}
+
+.offers-list-item:hover {
+    background: rgba(35, 25, 12, 0.95);
+    border-color: #4a3010;
+    box-shadow: 0 0 10px rgba(180, 130, 60, 0.15), 2px 2px 0 rgba(0,0,0,0.8);
 }
 
 .offers-list-avatar {
     width: 44px;
     height: 44px;
-    border-radius: 12px;
+    border-radius: 0;
     overflow: hidden;
     flex-shrink: 0;
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    background: linear-gradient(135deg, #1a3a1a, #0a1a0a);
+    border: 2px solid #1a3a1a;
+    border-bottom-color: #0a1a0a;
+    border-right-color: #0a1a0a;
+    border-top-color: #4a8a4a;
+    border-left-color: #4a8a4a;
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.6);
+    image-rendering: pixelated;
 }
 
 .offers-list-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    image-rendering: pixelated;
 }
 
 .offers-list-info {
@@ -265,16 +364,21 @@
 }
 
 .offers-list-username {
-    font-size: 13px;
-    font-weight: 600;
-    font-family: monospace;
-    margin-bottom: 2px;
+    font-size: 9px;
+    font-weight: 400;
+    font-family: 'Press Start 2P', monospace;
+    margin-bottom: 4px;
     word-break: break-all;
+    color: #ffd700;
+    text-shadow: 1px 1px 0 #7a5800;
+    image-rendering: pixelated;
 }
 
 .offers-list-user {
-    font-size: 10px;
-    color: var(--text-secondary);
+    font-size: 12px;
+    font-family: 'VT323', monospace;
+    color: #7a6a4a;
+    letter-spacing: 1px;
 }
 
 .offers-list-price-wrapper {
@@ -285,37 +389,65 @@
 }
 
 .offers-list-price {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--success);
+    font-size: 14px;
+    font-weight: 400;
+    font-family: 'VT323', monospace;
+    color: #5dff5d;
+    text-shadow: 0 0 6px rgba(93, 255, 93, 0.6);
+    letter-spacing: 2px;
 }
 
 .offers-list-status {
-    font-size: 10px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-weight: 600;
+    font-size: 7px;
+    font-family: 'Press Start 2P', monospace;
+    padding: 4px 8px;
+    border-radius: 0;
+    font-weight: 400;
     flex-shrink: 0;
+    image-rendering: pixelated;
 }
 
 .offers-list-status.pending {
-    background: rgba(245, 158, 11, 0.15);
-    color: var(--warning);
+    background: rgba(40, 25, 5, 0.9);
+    color: #ff8c00;
+    border: 2px solid #4a2a08;
+    border-bottom-color: #1a0e04;
+    border-right-color: #1a0e04;
+    border-top-color: #8a5a20;
+    border-left-color: #8a5a20;
+    text-shadow: 0 0 5px rgba(255, 140, 0, 0.5);
 }
 
 .offers-list-status.accepted {
-    background: rgba(16, 185, 129, 0.15);
-    color: var(--success);
+    background: rgba(10, 30, 10, 0.9);
+    color: #5dff5d;
+    border: 2px solid #1a4a1a;
+    border-bottom-color: #0a1a0a;
+    border-right-color: #0a1a0a;
+    border-top-color: #3a8a3a;
+    border-left-color: #3a8a3a;
+    text-shadow: 0 0 5px rgba(93, 255, 93, 0.5);
 }
 
 .offers-list-status.rejected {
-    background: rgba(239, 68, 68, 0.15);
-    color: var(--danger);
+    background: rgba(40, 10, 10, 0.9);
+    color: #ff4444;
+    border: 2px solid #5a1a1a;
+    border-bottom-color: #2a0a0a;
+    border-right-color: #2a0a0a;
+    border-top-color: #9a3a3a;
+    border-left-color: #9a3a3a;
+    text-shadow: 0 0 5px rgba(255, 68, 68, 0.5);
 }
 
 .offers-list-status.cancelled {
-    background: rgba(100, 100, 100, 0.15);
-    color: var(--text-muted);
+    background: rgba(20, 18, 14, 0.9);
+    color: #7a6a4a;
+    border: 2px solid #3a2a18;
+    border-bottom-color: #1a1208;
+    border-right-color: #1a1208;
+    border-top-color: #5a4a30;
+    border-left-color: #5a4a30;
 }
 
 /* ==================== OFFERS DETAIL PANEL ==================== */
@@ -325,17 +457,21 @@
     bottom: 0;
     left: 0;
     right: 0;
-    background: var(--surface);
-    border-top-left-radius: 24px;
-    border-top-right-radius: 24px;
+    background: rgba(14, 10, 6, 0.98);
+    border-top: 4px solid #3a2208;
+    border-top-color: #6b4520;
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
     z-index: 1600;
     max-height: 85vh;
     display: flex;
     flex-direction: column;
     transform: translateY(100%);
-    transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+    transition: transform 0.2s steps(4);
     overflow: hidden;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 -4px 0 #3a2208, 0 -6px 0 #1a0c04, 0 -8px 30px rgba(0,0,0,0.8);
+    image-rendering: pixelated;
 }
 
 .offer-detail-panel.open {
@@ -345,78 +481,134 @@
 .offer-detail-panel .drag-handle {
     width: 40px;
     height: 4px;
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
+    background: #3a2208;
+    border: 1px solid #5a3a18;
+    border-radius: 0;
     margin: 12px auto 8px auto;
     cursor: grab;
+    image-rendering: pixelated;
 }
 
 .offer-detail-panel .panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border-light);
+    padding: 14px 20px;
+    border-bottom: 2px solid #1a0c04;
+    box-shadow: 0 2px 0 #3a2208;
+}
+
+.offer-detail-panel .panel-header h3 {
+    font-size: 10px;
+    font-family: 'Press Start 2P', monospace;
+    color: #ffd700;
+    text-shadow: 1px 1px 0 #7a5800;
+    image-rendering: pixelated;
 }
 
 .offer-detail-panel .panel-close {
-    background: var(--glass-bg);
-    border: none;
+    background: rgba(30, 10, 10, 0.9);
+    border: 2px solid #4a1010;
+    border-bottom-color: #1a0404;
+    border-right-color: #1a0404;
+    border-top-color: #8a3030;
+    border-left-color: #8a3030;
+    border-radius: 0;
     width: 36px;
     height: 36px;
-    border-radius: 50%;
-    font-size: 20px;
+    font-size: 18px;
     cursor: pointer;
-    color: var(--text-secondary);
+    color: #ff4444;
+    text-shadow: 0 0 6px rgba(255, 68, 68, 0.6);
+    transition: all 0.1s steps(1);
+    image-rendering: pixelated;
+}
+
+.offer-detail-panel .panel-close:active {
+    border-top-color: #4a1010;
+    border-left-color: #4a1010;
+    border-bottom-color: #8a3030;
+    border-right-color: #8a3030;
+    transform: translate(1px, 1px);
 }
 
 .offer-detail-panel .detail-avatar {
     position: relative;
     width: 100%;
     min-height: 180px;
-    background-image: url('https://companel.shop/image/bg-storage-card.jpg');
-    background-size: cover;
-    background-position: center;
+    background: linear-gradient(160deg, #0a1a0a 0%, #1a0a0a 50%, #0a0a1a 100%);
+    background-image:
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 7px,
+            rgba(40, 30, 10, 0.25) 7px,
+            rgba(40, 30, 10, 0.25) 8px
+        ),
+        repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 7px,
+            rgba(40, 30, 10, 0.25) 7px,
+            rgba(40, 30, 10, 0.25) 8px
+        ),
+        linear-gradient(160deg, #0f1f0f 0%, #1f0f0f 50%, #0f0f1f 100%);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: 30px 0 20px 0;
+    border-bottom: 2px solid #1a0c04;
 }
 
 .offer-detail-panel .detail-avatar-img {
     width: 70px;
     height: 70px;
-    background: linear-gradient(135deg, var(--bg), var(--bg));
-    border-radius: 25%;
+    background: linear-gradient(135deg, #1a3a1a, #0a1a0a);
+    border: 2px solid #1a3a1a;
+    border-bottom-color: #0a1a0a;
+    border-right-color: #0a1a0a;
+    border-top-color: #4a8a4a;
+    border-left-color: #4a8a4a;
+    border-radius: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border: 2px solid rgba(255, 255, 255, 0.6);
     margin-bottom: 10px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.6), inset 0 0 10px rgba(0,0,0,0.5);
+    image-rendering: pixelated;
 }
 
 .offer-detail-panel .detail-avatar-img img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    image-rendering: pixelated;
 }
 
 .offer-detail-panel .detail-username-badge {
-    background: var(--text);
-    padding: 5px 16px;
-    border-radius: 30px;
-    font-size: 12px;
-    font-weight: 600;
-    font-family: monospace;
-    color: var(--bg);
+    background: rgba(10, 8, 4, 0.95);
+    border: 2px solid #3a2208;
+    border-bottom-color: #1a0c04;
+    border-right-color: #1a0c04;
+    border-top-color: #6b4520;
+    border-left-color: #6b4520;
+    padding: 5px 14px;
+    border-radius: 0;
+    font-size: 9px;
+    font-weight: 400;
+    font-family: 'Press Start 2P', monospace;
+    color: #ffd700;
+    text-shadow: 1px 1px 0 #7a5800;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.5);
+    image-rendering: pixelated;
 }
 
 .offer-detail-panel .panel-content {
     flex: 1;
     overflow-y: auto;
-    padding: 20px 20px 80px 20px;
+    padding: 16px 20px 80px 20px;
 }
 
 .offer-detail-panel .detail-field {
@@ -424,27 +616,33 @@
     align-items: center;
     justify-content: space-between;
     padding: 10px 0;
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px solid rgba(42, 26, 8, 0.5);
 }
 
 .offer-detail-panel .detail-label {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text-muted);
+    font-size: 8px;
+    font-weight: 400;
+    font-family: 'Press Start 2P', monospace;
+    color: #5a4a2a;
     text-transform: uppercase;
+    image-rendering: pixelated;
 }
 
 .offer-detail-panel .detail-value {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 400;
+    font-family: 'VT323', monospace;
+    color: #a08858;
     text-align: right;
+    letter-spacing: 1px;
 }
 
 .offer-detail-panel .detail-value.price {
-    color: var(--success);
-    font-size: 16px;
-    font-weight: 700;
+    color: #5dff5d;
+    font-size: 18px;
+    font-weight: 400;
+    text-shadow: 0 0 8px rgba(93, 255, 93, 0.7);
+    letter-spacing: 2px;
 }
 
 .offer-detail-panel .detail-actions {
@@ -453,44 +651,76 @@
     left: 0;
     right: 0;
     display: flex;
-    gap: 10px;
-    padding: 12px 20px;
-    border-top: 1px solid var(--border-light);
-    background: var(--surface);
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 2px solid #1a0c04;
+    box-shadow: 0 -2px 0 #3a2208;
+    background: rgba(14, 10, 6, 0.98);
 }
 
 .offer-detail-panel .detail-action-btn {
     flex: 1;
-    background: var(--glass-bg);
-    border: 1px solid var(--border);
-    border-radius: 12px;
+    background: rgba(20, 14, 8, 0.9);
+    border: 2px solid #2a1a08;
+    border-bottom-color: #0a0804;
+    border-right-color: #0a0804;
+    border-top-color: #5a3a18;
+    border-left-color: #5a3a18;
+    border-radius: 0;
     padding: 12px;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 8px;
+    font-family: 'Press Start 2P', monospace;
+    font-weight: 400;
     cursor: pointer;
-    color: var(--text-secondary);
+    color: #a08858;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.8);
+    transition: all 0.1s steps(1);
+    image-rendering: pixelated;
+}
+
+.offer-detail-panel .detail-action-btn:active {
+    border-top-color: #2a1a08;
+    border-left-color: #2a1a08;
+    border-bottom-color: #5a3a18;
+    border-right-color: #5a3a18;
+    transform: translate(1px, 1px);
+    box-shadow: none;
 }
 
 .offer-detail-panel .detail-action-btn.accept-btn {
-    background: rgba(16, 185, 129, 0.15);
-    border-color: var(--success);
-    color: var(--success);
+    background: rgba(10, 30, 10, 0.9);
+    border: 2px solid #1a4a1a;
+    border-bottom-color: #0a1a0a;
+    border-right-color: #0a1a0a;
+    border-top-color: #3a8a3a;
+    border-left-color: #3a8a3a;
+    color: #5dff5d;
+    text-shadow: 0 0 6px rgba(93, 255, 93, 0.6);
 }
 
 .offer-detail-panel .detail-action-btn.reject-btn {
-    background: rgba(239, 68, 68, 0.15);
-    border-color: var(--danger);
-    color: var(--danger);
+    background: rgba(40, 10, 10, 0.9);
+    border: 2px solid #5a1a1a;
+    border-bottom-color: #2a0a0a;
+    border-right-color: #2a0a0a;
+    border-top-color: #9a3a3a;
+    border-left-color: #9a3a3a;
+    color: #ff4444;
+    text-shadow: 0 0 6px rgba(255, 68, 68, 0.6);
 }
 
 .offer-detail-panel .detail-action-btn.cancel-btn {
-    background: rgba(100, 100, 100, 0.15);
-    border-color: var(--text-muted);
-    color: var(--text-muted);
+    background: rgba(20, 18, 14, 0.9);
+    border: 2px solid #3a2a18;
+    border-bottom-color: #1a1208;
+    border-right-color: #1a1208;
+    border-top-color: #5a4a30;
+    border-left-color: #5a4a30;
+    color: #7a6a4a;
 }
 
 /* ==================== CREATE OFFER MODAL ==================== */
@@ -501,15 +731,35 @@
 
 .create-offer-modal .price-input {
     font-size: 20px;
-    font-weight: 700;
+    font-family: 'VT323', monospace;
+    font-weight: 400;
     text-align: center;
-    letter-spacing: 2px;
+    letter-spacing: 4px;
+    background: rgba(8, 6, 4, 0.95);
+    border: 2px solid #2a1a08;
+    border-bottom-color: #0a0804;
+    border-right-color: #0a0804;
+    border-top-color: #5a3a18;
+    border-left-color: #5a3a18;
+    color: #5dff5d;
+    text-shadow: 0 0 6px rgba(93, 255, 93, 0.5);
+    border-radius: 0;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.7);
+    image-rendering: pixelated;
 }
 
 .create-offer-modal .message-input {
     resize: none;
     min-height: 80px;
-    font-size: 13px;
+    font-size: 14px;
+    font-family: 'VT323', monospace;
+    background: rgba(8, 6, 4, 0.95);
+    border: 2px solid #2a1a08;
+    border-radius: 0;
+    color: #d4c89a;
+    letter-spacing: 1px;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.7);
+    image-rendering: pixelated;
 }
 
 /* ==================== EMPTY STATE ==================== */
@@ -528,40 +778,65 @@
     width: 100px;
     height: 100px;
     margin-bottom: 20px;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 0 10px rgba(93, 255, 93, 0.3));
 }
 
 .offers-empty-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 8px;
+    font-size: 9px;
+    font-family: 'Press Start 2P', monospace;
+    font-weight: 400;
+    color: #a08858;
+    margin-bottom: 10px;
+    text-shadow: 1px 1px 0 #3a2808;
+    image-rendering: pixelated;
 }
 
 .offers-empty-subtitle {
-    font-size: 12px;
-    color: var(--text-muted);
+    font-size: 14px;
+    font-family: 'VT323', monospace;
+    color: #6a5a3a;
     margin-bottom: 20px;
+    letter-spacing: 1px;
 }
 
 .offers-empty-btn {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    border: none;
-    border-radius: 28px;
-    padding: 10px 24px;
-    color: white;
-    font-size: 13px;
-    font-weight: 600;
+    background: linear-gradient(180deg, #5a8a2a 0%, #3a5a18 50%, #2a4010 100%);
+    border: 2px solid #2a4010;
+    border-bottom-color: #1a2808;
+    border-right-color: #1a2808;
+    border-top-color: #8aba4a;
+    border-left-color: #8aba4a;
+    border-radius: 0;
+    padding: 10px 22px;
+    color: #e8ffb8;
+    font-size: 8px;
+    font-family: 'Press Start 2P', monospace;
+    font-weight: 400;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    text-shadow: 1px 1px 0 #1a2808;
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.8);
+    transition: all 0.1s steps(1);
+    image-rendering: pixelated;
+}
+
+.offers-empty-btn:active {
+    border-top-color: #2a4010;
+    border-left-color: #2a4010;
+    border-bottom-color: #8aba4a;
+    border-right-color: #8aba4a;
+    transform: translate(1px, 1px);
+    box-shadow: none;
 }
 
 /* ==================== RESPONSIVE ==================== */
 
 @media (max-width: 480px) {
     .offers-grid {
-        gap: 8px;
+        gap: 6px;
     }
     
     .offers-card {
@@ -579,8 +854,8 @@
     }
     
     .offers-card-username {
-        font-size: 10px;
-        padding: 3px 10px;
+        font-size: 7px;
+        padding: 3px 8px;
     }
     
     .offers-card-info {
@@ -592,13 +867,13 @@
     }
     
     .offers-card-status {
-        font-size: 9px;
-        padding: 3px 8px;
+        font-size: 6px;
+        padding: 2px 6px;
     }
     
     .offers-action-row .offers-action-btn {
-        padding: 6px 12px;
-        font-size: 11px;
+        padding: 6px 10px;
+        font-size: 9px;
     }
     
     .offers-action-row .offers-action-btn i {
