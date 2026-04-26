@@ -522,18 +522,18 @@ body::after {
     box-shadow: 6px 6px 0 rgba(0,0,0,0.7), 0 0 12px var(--primary-glow);
 }
 
-/* Card Image Background - Minecraft stone texture */
+/* Card Image Background - pure CSS gradient, no file path */
 .username-card-image {
     position: relative;
     width: 100%;
     height: 120px;
     background:
         linear-gradient(135deg,
-            #0a2a4a 0%,
+            #071829 0%,
             #0d3258 25%,
             #0f3a68 50%,
             #0d3258 75%,
-            #0a2a4a 100%);
+            #071829 100%);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -620,6 +620,32 @@ body::after {
     background: rgba(8, 14, 28, 0.95);
     flex: 1;
     border-top: 2px solid var(--border-light);
+}
+
+/* Based-on badge di card info - mirip marketplace web */
+.card-basedon-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--primary-glass);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 2px 7px;
+    font-size: 9px;
+    color: var(--text-secondary);
+    font-family: monospace;
+    font-weight: 600;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+}
+
+.card-basedon-badge i {
+    font-size: 8px;
+    color: var(--primary);
+    flex-shrink: 0;
 }
 
 .card-price-row {
@@ -1609,6 +1635,17 @@ body::after {
     text-transform: uppercase;
 }
 
+/* Detail Info Card - border lengkap membungkus semua field detail */
+.detail-info-card {
+    background: rgba(8, 14, 28, 0.7);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0 12px;
+    margin-bottom: 8px;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
 /* Panel Content */
 .detail-panel .panel-content {
     flex: 1;
@@ -1767,7 +1804,7 @@ body::after {
     bottom: 0;
     background: rgba(0, 0, 0, 0.75);
     backdrop-filter: blur(4px);
-    z-index: 1550;
+    z-index: 1450;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease, visibility 0.2s ease;
@@ -1776,6 +1813,38 @@ body::after {
 .panel-overlay.active {
     opacity: 1;
     visibility: visible;
+}
+
+/* Override panel-box-overlay z-index agar tidak menutupi panel inbox */
+.panel-box-overlay {
+    z-index: 1450 !important;
+}
+
+/* Inbox panel harus di atas overlay */
+.inbox-panel {
+    z-index: 1600 !important;
+}
+
+/* Sort bar indicator - bar di bawah tombol sort (sama seperti status toggle) */
+.action-btn.sort-active {
+    background: rgba(92, 230, 255, 0.12);
+    border-color: var(--primary);
+    color: var(--primary);
+    box-shadow: 0 0 5px var(--primary-glow);
+    position: relative;
+}
+
+.action-btn.sort-active::after {
+    content: "";
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 3px;
+    background: var(--primary);
+    border-radius: 2px;
+    box-shadow: 0 0 4px var(--primary-glow);
 }
 
 body.panel-open,

@@ -1581,7 +1581,6 @@
                     verification_type: pendingRecord ? pendingRecord.verification_type : null
                 };
 
-                // PERBAIKAN: Tampilan berbeda untuk Pending dengan status bubble yang jelas
                 if (isPending) {
                     // Tentukan teks status pending yang lebih informatif
                     let pendingStatusText = 'PENDING';
@@ -1609,6 +1608,7 @@
                                     </div>
                                     <div class="card-status ${pendingStatusClass}">${pendingStatusText}</div>
                                 </div>
+                                ${usernameData.based_on ? `<div class="card-basedon-badge"><i class="fas fa-user"></i>${escapeHtml(usernameData.based_on)}</div>` : ''}
                                 <div class="pending-text">Menunggu Verifikasi</div>
                             </div>
                         </div>
@@ -1630,6 +1630,7 @@
                                     </div>
                                     <div class="card-status ${statusClass}">${statusText}</div>
                                 </div>
+                                ${usernameData.based_on ? `<div class="card-basedon-badge"><i class="fas fa-user"></i>${escapeHtml(usernameData.based_on)}</div>` : ''}
                             </div>
                         </div>
                     `;
@@ -2141,28 +2142,30 @@
                 <div class="detail-username-badge">@${escapeHtml(usernameStr)}</div>
             </div>
             <div class="panel-content">
-                <div class="detail-field">
-                    <div class="detail-label">Based On</div>
-                    <div class="detail-value">${escapeHtml(username.based_on || '-')}</div>
-                </div>
-                <div class="detail-field">
-                    <div class="detail-label">Harga</div>
-                    <div class="detail-value price">
-                        <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 4px;">
-                        ${formatNumber(username.price)}
+                <div class="detail-info-card">
+                    <div class="detail-field">
+                        <div class="detail-label">Based On</div>
+                        <div class="detail-value">${escapeHtml(username.based_on || '-')}</div>
                     </div>
-                </div>
-                <div class="detail-field">
-                    <div class="detail-label">Status</div>
-                    <div class="detail-status ${statusClass}">${statusText}</div>
-                </div>
-                <div class="detail-field">
-                    <div class="detail-label">ID Username</div>
-                    <div class="detail-value">#${username.id}</div>
-                </div>
-                <div class="detail-field">
-                    <div class="detail-label">Ditambahkan Pada</div>
-                    <div class="detail-value">${createdAt}</div>
+                    <div class="detail-field">
+                        <div class="detail-label">Harga</div>
+                        <div class="detail-value price">
+                            <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 4px;">
+                            ${formatNumber(username.price)}
+                        </div>
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-label">Status</div>
+                        <div class="detail-status ${statusClass}">${statusText}</div>
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-label">ID Username</div>
+                        <div class="detail-value">#${username.id}</div>
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-label">Ditambahkan Pada</div>
+                        <div class="detail-value">${createdAt}</div>
+                    </div>
                 </div>
             </div>
             <div class="detail-actions">
@@ -2318,10 +2321,11 @@
         const panel = document.getElementById('inboxPanel');
         if (!panel) return;
         
-        // Gunakan overlay dari panel-box
+        // Gunakan overlay dari panel-box dengan z-index LEBIH RENDAH dari panel
         if (!inboxOverlay) {
             inboxOverlay = document.createElement('div');
-            inboxOverlay.className = 'panel-box-overlay';  // PERBAIKAN: gunakan class panel-box-overlay
+            inboxOverlay.className = 'panel-box-overlay';
+            inboxOverlay.style.zIndex = '1450'; // selalu di bawah panel (z-index 1600)
             document.body.appendChild(inboxOverlay);
             
             // Klik overlay untuk menutup panel
@@ -2338,7 +2342,7 @@
         inboxOverlay.classList.add('active');
         
         // Prevent scroll pada body
-        document.body.classList.add('panel-open');  // PERBAIKAN: gunakan panel-open bukan inbox-open
+        document.body.classList.add('panel-open');
         
         // Tampilkan panel dengan animasi
         panel.style.display = 'flex';
@@ -2601,8 +2605,10 @@
             elements.sortBtn.addEventListener('click', () => {
                 if (elements.sortDropdown.style.display === 'none') {
                     elements.sortDropdown.style.display = 'block';
+                    elements.sortBtn.classList.add('sort-active');
                 } else {
                     elements.sortDropdown.style.display = 'none';
+                    elements.sortBtn.classList.remove('sort-active');
                 }
                 hapticLight();
             });
@@ -2613,6 +2619,7 @@
                 currentSort = elements.sortSelect.value;
                 filterAndRender();
                 elements.sortDropdown.style.display = 'none';
+                elements.sortBtn.classList.remove('sort-active');
                 hapticLight();
             });
         }
@@ -4189,6 +4196,7 @@
         let safeLeft = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-left')) || 0;
         let safeRight = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-right')) || 0;
         
+        // Gunakan safeAreaInset dari Telegram (Bot API 8.0+)
         if (tg.safeAreaInset) {
             safeTop = tg.safeAreaInset.top || safeTop;
             safeBottom = tg.safeAreaInset.bottom || safeBottom;
@@ -4196,22 +4204,30 @@
             safeRight = tg.safeAreaInset.right || safeRight;
         }
         
+        // contentSafeAreaInset adalah safe area untuk konten, bebas dari UI Telegram
         let contentTop = safeTop;
         let contentBottom = safeBottom;
+        let contentLeft = safeLeft;
+        let contentRight = safeRight;
         
         if (tg.contentSafeAreaInset) {
             contentTop = tg.contentSafeAreaInset.top || safeTop;
             contentBottom = tg.contentSafeAreaInset.bottom || safeBottom;
+            contentLeft = tg.contentSafeAreaInset.left || safeLeft;
+            contentRight = tg.contentSafeAreaInset.right || safeRight;
         }
         
-        // Padding yang lebih kecil untuk storage
-        const topPadding = Math.max(8, contentTop);
-        const bottomPadding = Math.max(20, contentBottom);
+        // Terapkan ke body (sama seperti web.js)
+        document.body.style.paddingTop = `${safeTop}px`;
+        document.body.style.paddingBottom = `${safeBottom}px`;
+        document.body.style.paddingLeft = `${safeLeft}px`;
+        document.body.style.paddingRight = `${safeRight}px`;
         
+        // Terapkan ke container utama
         const container = document.querySelector('.storage-container');
         if (container) {
-            container.style.paddingTop = `${topPadding}px`;
-            container.style.paddingBottom = `${bottomPadding + 70}px`;
+            container.style.paddingTop = `${Math.max(8, contentTop)}px`;
+            container.style.paddingBottom = `${Math.max(20, contentBottom) + 90}px`;
         }
         
         // Update bottom nav
@@ -4229,7 +4245,7 @@
             fullscreenPage.style.paddingRight = `${safeRight}px`;
         }
         
-        console.log('[STORAGE] Safe area applied:', { safeTop, safeBottom, topPadding });
+        console.log('[STORAGE] Safe area applied:', { safeTop, safeBottom, contentTop, contentBottom });
     }
 
     function initSafeArea() {
