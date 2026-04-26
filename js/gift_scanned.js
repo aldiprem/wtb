@@ -215,7 +215,7 @@ function closeModal() {
     } 
 }
 
-// ==================== TOGGLE LOTTIE PLAY/STOP (UNTUK SEMUA PLAYER TERMASUK FILTER) ====================
+// ==================== TOGGLE LOTTIE PLAY/STOP ====================
 function toggleLottiePlay() {
     state.lottiePlaying = !state.lottiePlaying;
     const btn = elements.togglePlayBtn;
@@ -232,30 +232,20 @@ function toggleLottiePlay() {
         btn.title = 'Play Lottie';
     }
 
-    // Update lottie player di halaman utama (gift cards)
-    document.querySelectorAll('.gift-card lottie-player').forEach(player => {
+    // ✅ Update hanya lottie yang TERLIHAT di viewport
+    document.querySelectorAll('lottie-player').forEach(player => {
         const rect = player.getBoundingClientRect();
         const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
         
         if (isVisible) {
             if (state.lottiePlaying) {
                 player.setAttribute('autoplay', '');
-                try { player.play(); } catch(e) {}
+                player.play?.();
             } else {
                 player.removeAttribute('autoplay');
-                try { player.stop(); player.seek(0); } catch(e) {}
+                player.stop?.();
+                player.seek?.(0);
             }
-        }
-    });
-    
-    // Update lottie player di filter panel
-    document.querySelectorAll('#filterList lottie-player').forEach(player => {
-        if (state.lottiePlaying) {
-            player.setAttribute('autoplay', '');
-            try { player.play(); } catch(e) {}
-        } else {
-            player.removeAttribute('autoplay');
-            try { player.stop(); player.seek(0); } catch(e) {}
         }
     });
 }
@@ -425,29 +415,7 @@ function collectAllNamesFromGifts() {
     return Array.from(names).sort();
 }
 
-// ==================== PRELOAD TGS FOR FILTER (DINONAKTIFKAN DULU) ====================
-async function preloadFilterTgs(names) {
-    const namesToPreload = names.slice(0, 2);
-    
-    for (let i = 0; i < namesToPreload.length; i++) {
-        const name = namesToPreload[i];
-        const tgsUrl = `/image/gifts/${name}.tgs`;
-        
-        // Delay 1 detik antar request
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3000);
-            await fetch(tgsUrl, { method: 'HEAD', signal: controller.signal });
-            clearTimeout(timeoutId);
-        } catch(e) {
-            // Ignore error
-        }
-    }
-}
-
-// ==================== LOAD ALL NAMES (TANPA PRELOAD OTOMATIS) ====================
+// ==================== LOAD ALL NAMES (GIFT NAMES) ====================
 async function loadAllNames() {
     try {
         console.log('🔄 Loading gift names from /gift-scam/api/names...');
@@ -455,6 +423,7 @@ async function loadAllNames() {
         
         if (!response.ok) {
             console.warn(`Names API returned ${response.status}`);
+            // Fallback: collect from gifts data
             if (state.allGifts && state.allGifts.length > 0) {
                 const namesMap = new Map();
                 state.allGifts.forEach(g => {
@@ -467,7 +436,6 @@ async function loadAllNames() {
                 state.nameCounts = Object.fromEntries(namesMap);
                 console.log(`✅ Fallback: Loaded ${state.allNames.length} unique gift names from gifts data`);
                 renderFilterChips();
-                // TIDAK panggil preloadFilterTgs di sini
             }
             return;
         }
@@ -477,10 +445,9 @@ async function loadAllNames() {
             state.allNames = data.names;
             state.nameCounts = data.name_counts || {};
             console.log(`✅ Loaded ${state.allNames.length} unique gift names from API`);
-            renderFilterChips();
-            // TIDAK panggil preloadFilterTgs di sini - biar user scroll yang load
         } else {
             console.warn('Names API returned empty or success=false, using fallback');
+            // Fallback: collect from gifts data
             if (state.allGifts && state.allGifts.length > 0) {
                 const namesMap = new Map();
                 state.allGifts.forEach(g => {
@@ -492,11 +459,11 @@ async function loadAllNames() {
                 state.allNames = Array.from(namesMap.keys()).sort();
                 state.nameCounts = Object.fromEntries(namesMap);
                 console.log(`✅ Fallback: Loaded ${state.allNames.length} unique gift names from gifts data`);
-                renderFilterChips();
             }
         }
     } catch (e) {
         console.error('Error loading names:', e);
+        // Fallback: collect from gifts data
         if (state.allGifts && state.allGifts.length > 0) {
             const namesMap = new Map();
             state.allGifts.forEach(g => {
@@ -508,169 +475,14 @@ async function loadAllNames() {
             state.allNames = Array.from(namesMap.keys()).sort();
             state.nameCounts = Object.fromEntries(namesMap);
             console.log(`✅ Fallback: Loaded ${state.allNames.length} unique gift names from gifts data`);
-            renderFilterChips();
         }
     }
-}
-
-// ==================== LAZY LOAD FILTER ITEMS SAAT SCROLL ====================
-function setupFilterLazyLoad() {
-    const filterList = document.getElementById('filterList');
-    if (!filterList) return;
     
-    let loadedCount = 0;
-    const BATCH_SIZE = 15;
-    
-    const loadMoreFilterItems = () => {
-        const items = document.querySelectorAll('#filterList .filter-list-item');
-        const unloadedItems = Array.from(items).slice(loadedCount, loadedCount + BATCH_SIZE);
-        
-        unloadedItems.forEach((item, index) => {
-            const animationContainer = item.querySelector('.filter-item-animation');
-            if (!animationContainer) return;
-            
-            const tgsUrl = animationContainer.getAttribute('data-tgs');
-            if (!tgsUrl) return;
-            
-            if (animationContainer.querySelector('lottie-player')) return;
-            
-            const uniqueId = Date.now() + '_' + loadedCount + '_' + index;
-            const placeholderId = `filter_placeholder_lazy_${uniqueId}`;
-            const playerId = `filter_player_lazy_${uniqueId}`;
-            
-            const oldPlaceholder = animationContainer.querySelector('.filter-lottie-placeholder');
-            if (oldPlaceholder) oldPlaceholder.remove();
-            
-            const placeholder = document.createElement('div');
-            placeholder.id = placeholderId;
-            placeholder.className = 'filter-lottie-placeholder';
-            placeholder.style.cssText = 'width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.03);border-radius:8px;';
-            placeholder.innerHTML = '<i class="fas fa-gift" style="font-size:20px;color:var(--primary-color);opacity:0.6;"></i>';
-            animationContainer.appendChild(placeholder);
-            
-            setTimeout(() => {
-                addToTGSQueue(animationContainer, tgsUrl, playerId, placeholderId);
-            }, 200 * (loadedCount + index));
-        });
-        
-        loadedCount += unloadedItems.length;
-    };
-    
-    // Observer untuk mendeteksi scroll di filter panel
-    const filterPanel = document.getElementById('filterPanel');
-    if (filterPanel) {
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    loadMoreFilterItems();
-                }
-            });
-        }, { rootMargin: '100px' });
-        
-        observer.observe(filterPanel);
-    }
-    
-    // Load batch pertama
-    setTimeout(loadMoreFilterItems, 500);
+    renderFilterChips();
 }
 
 function countGiftsByName(name) {
     return state.gifts.filter(g => g.name === name).length;
-}
-
-// ==================== TGS LOADING QUEUE (CEGAH RATE LIMIT) ====================
-const tgsLoadQueue = [];
-let isProcessingQueue = false;
-let activeRequests = 0;
-const MAX_CONCURRENT = 2;  // Kurangi jadi 2 request bersamaan
-const REQUEST_DELAY = 500; // 500ms delay antar request
-
-function addToTGSQueue(container, tgsUrl, playerId, placeholderId) {
-    tgsLoadQueue.push({ container, tgsUrl, playerId, placeholderId });
-    processTGSQueue();
-}
-
-function processTGSQueue() {
-    if (isProcessingQueue) return;
-    if (tgsLoadQueue.length === 0) return;
-    if (activeRequests >= MAX_CONCURRENT) return;
-    
-    isProcessingQueue = true;
-    
-    const processNext = () => {
-        if (tgsLoadQueue.length > 0 && activeRequests < MAX_CONCURRENT) {
-            const item = tgsLoadQueue.shift();
-            activeRequests++;
-            
-            loadSingleTGS(item.container, item.tgsUrl, item.playerId, item.placeholderId)
-                .finally(() => {
-                    activeRequests--;
-                    setTimeout(processNext, REQUEST_DELAY);
-                });
-        } else {
-            isProcessingQueue = false;
-            if (tgsLoadQueue.length > 0) {
-                setTimeout(processTGSQueue, REQUEST_DELAY);
-            }
-        }
-    };
-    
-    processNext();
-}
-
-async function loadSingleTGS(container, tgsUrl, playerId, placeholderId) {
-    return new Promise((resolve) => {
-        // Cek apakah sudah ada player
-        if (container.querySelector(`#${playerId}`)) {
-            resolve();
-            return;
-        }
-        
-        const player = document.createElement('lottie-player');
-        player.id = playerId;
-        player.setAttribute('src', tgsUrl);
-        player.setAttribute('background', 'transparent');
-        player.setAttribute('speed', '1');
-        player.setAttribute('loop', '');
-        player.setAttribute('style', 'width:36px;height:36px;');
-        
-        if (state.lottiePlaying) {
-            player.setAttribute('autoplay', '');
-        }
-        
-        const timeoutId = setTimeout(() => {
-            if (container.querySelector(`#${playerId}`) === player) {
-                player.remove();
-            }
-            const placeholder = document.getElementById(placeholderId);
-            if (placeholder) placeholder.style.display = 'flex';
-            resolve();
-        }, 8000);
-        
-        player.addEventListener('load', () => {
-            clearTimeout(timeoutId);
-            const placeholder = document.getElementById(placeholderId);
-            if (placeholder) placeholder.style.display = 'none';
-            player.style.display = 'block';
-            if (state.lottiePlaying) {
-                try { player.play(); } catch(e) {}
-            }
-            resolve();
-        });
-        
-        player.addEventListener('error', () => {
-            clearTimeout(timeoutId);
-            const placeholder = document.getElementById(placeholderId);
-            if (placeholder) {
-                placeholder.style.display = 'flex';
-            }
-            player.remove();
-            resolve();
-        });
-        
-        player.style.display = 'none';
-        container.appendChild(player);
-    });
 }
 
 // ==================== APPLY FILTER (PERBAIKI - PAKAI API FILTER) ====================
@@ -717,6 +529,7 @@ function resetFilter() {
     showToast('Filter direset', 'info');
 }
 
+// ==================== UPDATE FILTER CHIPS (MENGGUNAKAN PNG) ====================
 function renderFilterChips() {
     if (!elements.filterList) return;
     
@@ -731,7 +544,7 @@ function renderFilterChips() {
     names.forEach(name => {
         const isSelected = state.selectedFilterNames.includes(name);
         const count = state.nameCounts[name] || 0;
-        const tgsUrl = `/image/gifts/${name}.tgs`;
+        const imageUrl = `/api/gift-png/${name}`;
         
         html += `
             <div class="filter-list-item ${isSelected ? 'selected' : ''}" 
@@ -740,10 +553,14 @@ function renderFilterChips() {
                 <div class="filter-checkbox ${isSelected ? 'checked' : ''}">
                     ${isSelected ? '<i class="fas fa-check"></i>' : ''}
                 </div>
-                <div class="filter-item-animation" data-tgs="${escapeHtml(tgsUrl)}">
-                    <div class="filter-lottie-placeholder" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
-                        <i class="fas fa-gift" style="font-size:20px;color:var(--primary-color);opacity:0.6;"></i>
-                    </div>
+                <div class="filter-item-image">
+                    <img 
+                        src="${escapeHtml(imageUrl)}" 
+                        alt="${escapeHtml(name)}"
+                        loading="lazy"
+                        style="width:36px;height:36px;object-fit:cover;border-radius:8px;"
+                        onerror="this.src='/image/placeholder-gift.png';this.onerror=null;"
+                    >
                 </div>
                 <div class="filter-item-info">
                     <span class="filter-item-name">${escapeHtml(name)}</span>
@@ -754,52 +571,6 @@ function renderFilterChips() {
     });
     
     elements.filterList.innerHTML = html;
-    
-    setTimeout(() => {
-        setupFilterLazyLoad();
-    }, 200);
-}
-
-// ==================== INIT FILTER LOTTIE PLAYERS (DENGAN QUEUE DAN DELAY) ====================
-function initFilterLottiePlayers() {
-    const filterItems = document.querySelectorAll('#filterList .filter-list-item');
-    
-    // Hanya proses 10 item pertama, sisanya nanti saat scroll
-    const itemsToProcess = Array.from(filterItems).slice(0, 15);
-    
-    itemsToProcess.forEach((item, index) => {
-        const animationContainer = item.querySelector('.filter-item-animation');
-        if (!animationContainer) return;
-        
-        const tgsUrl = animationContainer.getAttribute('data-tgs');
-        if (!tgsUrl) return;
-        
-        // Cek apakah sudah memiliki lottie player
-        const existingPlayer = animationContainer.querySelector('lottie-player');
-        if (existingPlayer) return;
-        
-        // Buat ID unik
-        const uniqueId = Date.now() + '_' + index + '_' + Math.random().toString(36).substr(2, 6);
-        const placeholderId = `filter_placeholder_${uniqueId}`;
-        const playerId = `filter_player_${uniqueId}`;
-        
-        // Sembunyikan placeholder lama jika ada
-        const oldPlaceholder = animationContainer.querySelector('.filter-lottie-placeholder');
-        if (oldPlaceholder) oldPlaceholder.remove();
-        
-        // Buat placeholder baru
-        const placeholder = document.createElement('div');
-        placeholder.id = placeholderId;
-        placeholder.className = 'filter-lottie-placeholder';
-        placeholder.style.cssText = 'width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.03);border-radius:8px;';
-        placeholder.innerHTML = '<i class="fas fa-gift" style="font-size:20px;color:var(--primary-color);opacity:0.6;"></i>';
-        animationContainer.appendChild(placeholder);
-        
-        // Delay loading dengan jarak yang lebih besar (300ms per item)
-        setTimeout(() => {
-            addToTGSQueue(animationContainer, tgsUrl, playerId, placeholderId);
-        }, 300 + (index * 200));
-    });
 }
 
 function toggleSelectAll() {
@@ -1414,26 +1185,19 @@ function createGiftCard(gift, index) {
     card.className = 'gift-card';
     const msgLink = `https://t.me/listgiftkotor/${gift.message_id}`;
     
-    const lottieUrl = gift.lottie_url || `https://nft.fragment.com/gift/${gift.slug}.lottie.json`;
-    
-    // Tambahkan ID unik untuk lottie player
-    const lottieId = `lottie_${gift.slug.replace(/[^a-zA-Z0-9]/g, '_')}_${index}`;
+    // Gunakan endpoint PNG
+    const imageUrl = `/api/gift-png/${gift.name}`;
     
     card.innerHTML = `
         <div class="card-lottie-wrapper">
-            <div class="card-lottie-border" id="border_${lottieId}">
-                <div class="lottie-placeholder" id="placeholder_${lottieId}" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.03);border-radius:10px;">
-                    <!-- Kosongkan - hanya border kosong, tidak ada emoji -->
-                </div>
-                <lottie-player 
-                    id="${lottieId}"
-                    data-src="${escapeHtml(lottieUrl)}" 
-                    background="transparent" 
-                    speed="1"
-                    style="width:100%;height:100%;display:none;" 
-                    loop 
-                    mode="normal">
-                </lottie-player>
+            <div class="card-image-border" style="aspect-ratio:1/1;background:var(--bg-card);border-radius:14px;overflow:hidden;">
+                <img 
+                    src="${escapeHtml(imageUrl)}" 
+                    alt="${escapeHtml(gift.name)}"
+                    loading="lazy"
+                    style="width:100%;height:100%;object-fit:cover;"
+                    onerror="this.src='/image/placeholder-gift.png';this.onerror=null;"
+                >
             </div>
         </div>
         <div class="card-info">
@@ -1446,49 +1210,6 @@ function createGiftCard(gift, index) {
             </a>
         </div>
     `;
-    
-    // Load lottie dengan cara yang benar
-    const lottiePlayer = card.querySelector(`#${lottieId}`);
-    const placeholder = card.querySelector(`#placeholder_${lottieId}`);
-    
-    if (lottiePlayer && placeholder) {
-        // Set src langsung
-        lottiePlayer.setAttribute('src', lottieUrl);
-        
-        // Sembunyikan placeholder
-        placeholder.style.display = 'none';
-        
-        // Set autoplay jika mode play aktif
-        if (state.lottiePlaying) {
-            lottiePlayer.setAttribute('autoplay', '');
-            setTimeout(() => {
-                try { 
-                    lottiePlayer.play(); 
-                } catch(e) { 
-                    console.log('Play error:', e);
-                }
-            }, 100);
-        } else {
-            lottiePlayer.removeAttribute('autoplay');
-        }
-        
-        // Tambahkan event listener untuk error
-        lottiePlayer.addEventListener('error', (e) => {
-            console.log('Lottie error for', gift.slug, e);
-            placeholder.style.display = 'flex';
-            lottiePlayer.style.display = 'none';
-        });
-        
-        // Tambahkan event listener untuk load
-        lottiePlayer.addEventListener('load', () => {
-            console.log('Lottie loaded for', gift.slug);
-            lottiePlayer.style.display = 'block';
-            placeholder.style.display = 'none';
-            if (state.lottiePlaying) {
-                try { lottiePlayer.play(); } catch(e) {}
-            }
-        });
-    }
     
     card.addEventListener('click', () => loadGiftDetail(gift.slug));
     return card;
@@ -1511,30 +1232,24 @@ async function loadGiftDetail(slug) {
     }
 }
 
-// ==================== SHOW DETAIL MODAL (DENGAN SAME MESSAGE SLUGS) ====================
+// ==================== UPDATE MODAL DETAIL (MENGGUNAKAN PNG) ====================
 function showDetailModal(gift) {
     if (!elements.modalTitle || !elements.modalBody) return;
 
     elements.modalTitle.textContent = `🎁 ${gift.name}`;
     const msgLink = `https://t.me/listgiftkotor/${gift.message_id}`;
-    const lottieUrl = gift.lottie_url || `https://nft.fragment.com/gift/${gift.slug}.lottie.json`;
-    const lottieModalId = `modal_lottie_${gift.slug.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const imageUrl = `/api/gift-png/${gift.name}`;
 
     const formatRarity = (val) => val ? `${(val / 10).toFixed(1)}%` : '-';
 
     elements.modalBody.innerHTML = `
-        <div class="detail-lottie-wrapper" id="modal_wrapper_${lottieModalId}">
-            <div id="modal_placeholder_${lottieModalId}" style="width:200px;height:200px;margin:0 auto;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border-radius:20px;">
-                <i class="fas fa-gift" style="font-size:60px;color:var(--primary-color);opacity:0.5;"></i>
-            </div>
-            <lottie-player 
-                id="${lottieModalId}"
-                src="${escapeHtml(lottieUrl)}" 
-                background="transparent" 
-                speed="1"
-                style="width:200px;height:200px;margin:0 auto;display:none;" 
-                loop>
-            </lottie-player>
+        <div class="detail-image-wrapper" style="text-align:center;margin-bottom:20px;">
+            <img 
+                src="${escapeHtml(imageUrl)}" 
+                alt="${escapeHtml(gift.name)}"
+                style="width:200px;height:200px;object-fit:cover;border-radius:20px;background:var(--bg-card);"
+                onerror="this.src='/image/placeholder-gift.png';this.onerror=null;"
+            >
         </div>
 
         <div class="detail-info-card">
@@ -1588,15 +1303,6 @@ function showDetailModal(gift) {
                 </div>
             </div>
             ` : ''}
-            ${gift.availability_total ? `
-            <div class="detail-info-row">
-                <div class="detail-info-icon"><i class="fas fa-chart-bar"></i></div>
-                <div class="detail-info-content">
-                    <div class="detail-info-label">Availability</div>
-                    <div class="detail-info-value">${gift.availability_issued} / ${gift.availability_total}</div>
-                </div>
-            </div>
-            ` : ''}
             <div class="detail-info-row">
                 <div class="detail-info-icon"><i class="fas fa-link"></i></div>
                 <div class="detail-info-content">
@@ -1614,7 +1320,7 @@ function showDetailModal(gift) {
             </a>
         </div>
 
-        <!-- ✅ AUTO-LOAD: Semua slug dari message_id yang sama -->
+        <!-- Same Message Section -->
         <div class="same-message-section" id="sameMessageSection">
             <div class="same-message-header">
                 <span class="same-message-title">
@@ -1636,60 +1342,39 @@ function showDetailModal(gift) {
     `;
 
     openModal();
-    
-    // Load lottie di modal setelah modal terbuka
-    setTimeout(() => {
-        const modalLottie = document.getElementById(lottieModalId);
-        const modalPlaceholder = document.getElementById(`modal_placeholder_${lottieModalId}`);
-        
-        if (modalLottie && modalPlaceholder) {
-            modalLottie.style.display = 'block';
-            modalPlaceholder.style.display = 'none';
-            
-            if (state.lottiePlaying) {
-                modalLottie.setAttribute('autoplay', '');
-                try { modalLottie.play(); } catch(e) {}
-            }
-        }
-    }, 100);
-    
-    // Load same message slugs (FIX: panggil function ini)
     loadSameMessageSlugs(gift.message_id);
 }
 
-// ==================== LOAD SAME MESSAGE SLUGS (FIX) ====================
+// ==================== UPDATE SAME MESSAGE SLUGS (MENGGUNAKAN PNG) ====================
 async function loadSameMessageSlugs(messageId) {
     const container = document.getElementById('sameMsgSlugs');
     const loadingEl = document.getElementById('sameMsgLoading');
     
-    if (!container || !loadingEl) {
-        console.log('Elements not found for same message slugs');
-        return;
-    }
-    
-    console.log(`🔄 Loading same message slugs for message_id: ${messageId}`);
+    if (!container || !loadingEl) return;
     
     try {
         const response = await fetch(`/gift-scam/api/by-message/${messageId}`);
         const data = await response.json();
         
-        console.log(`📡 Response:`, data);
-        
         if (data.success && data.data && data.data.length > 0) {
             loadingEl.style.display = 'none';
-            
-            // Clear container
             container.innerHTML = '';
             
             data.data.forEach(gift => {
+                const imageUrl = `/api/gift-png/${gift.name}`;
+                
                 const miniCard = document.createElement('div');
                 miniCard.className = 'same-message-card';
                 miniCard.title = `${gift.slug}\nKlik untuk detail`;
                 miniCard.innerHTML = `
-                    <div class="same-message-lottie">
-                        <lottie-player src="${escapeHtml(gift.lottie_url)}" background="transparent" speed="1"
-                            style="width:45px;height:45px;margin:0 auto;" loop>
-                        </lottie-player>
+                    <div class="same-message-image">
+                        <img 
+                            src="${escapeHtml(imageUrl)}" 
+                            alt="${escapeHtml(gift.name)}"
+                            loading="lazy"
+                            style="width:45px;height:45px;object-fit:cover;border-radius:8px;"
+                            onerror="this.src='/image/placeholder-gift.png';this.onerror=null;"
+                        >
                     </div>
                     <div class="same-message-name">${escapeHtml(gift.name)}</div>
                     <div class="same-message-number">#${gift.number || ''}</div>
@@ -1698,28 +1383,22 @@ async function loadSameMessageSlugs(messageId) {
                 miniCard.addEventListener('click', (e) => {
                     e.stopPropagation();
                     closeModal();
-                    setTimeout(() => {
-                        loadGiftDetail(gift.slug);
-                    }, 300);
+                    setTimeout(() => loadGiftDetail(gift.slug), 300);
                 });
                 
                 container.appendChild(miniCard);
             });
             
-            // Update count di header
             const header = document.querySelector('.same-message-title');
             if (header) {
                 header.innerHTML = `<i class="fas fa-list"></i> Semua Gift dari Msg.ID ${messageId} (${data.data.length})`;
             }
         } else {
             loadingEl.innerHTML = '<i class="fas fa-info-circle"></i> Tidak ada gift lain dari message ID ini';
-            console.log('No other gifts found for this message_id');
         }
     } catch (error) {
         console.error('Error loading same message slugs:', error);
-        if (loadingEl) {
-            loadingEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Gagal memuat data gift lain';
-        }
+        loadingEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Gagal memuat data gift lain';
     }
 }
 

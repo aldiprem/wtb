@@ -1579,6 +1579,159 @@ def gift_scam_senders():
         print(f"Error in /gift-scam/api/senders: {e}")
         return jsonify({'success': False, 'error': str(e), 'senders': [], 'sender_counts': {}}), 500
 
+# ==================== GIFT PNG SERVICE ====================
+
+@app.route('/api/gift-png/<slug>', methods=['GET'])
+def get_gift_png(slug):
+    """Mengambil gambar PNG gift dari database uploaded_gifts"""
+    try:
+        # Ekstrak nama gift dari slug (hapus nomor)
+        gift_name = slug.split('-')[0] if '-' in slug else slug
+        
+        # Cari di database uploaded_gifts
+        conn = get_gift_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database tidak tersedia'}), 500
+        
+        cur = conn.cursor()
+        
+        # Cek apakah tabel uploaded_gifts ada
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='uploaded_gifts'")
+        if not cur.fetchone():
+            conn.close()
+            return jsonify({'error': 'Tabel uploaded_gifts tidak ditemukan'}), 404
+        
+        # Cari berdasarkan title (case insensitive)
+        cur.execute("""
+            SELECT image_path, gift_id, title, saved_at 
+            FROM uploaded_gifts 
+            WHERE LOWER(title) = LOWER(?) OR LOWER(title) LIKE ?
+            ORDER BY saved_at DESC
+            LIMIT 1
+        """, (gift_name, f"%{gift_name}%"))
+        
+        row = cur.fetchone()
+        conn.close()
+        
+        if not row:
+            return jsonify({'error': f'Gambar untuk {gift_name} tidak ditemukan'}), 404
+        
+        image_path = row[0]
+        
+        if not image_path or not os.path.exists(image_path):
+            return jsonify({'error': 'File gambar tidak ditemukan'}), 404
+        
+        # Kirim file dengan cache headers
+        response = send_file(
+            image_path,
+            mimetype='image/jpeg',
+            as_attachment=False,
+            download_name=f'{gift_name}.jpg'
+        )
+        response.headers['Cache-Control'] = 'public, max-age=3600'
+        response.headers['ETag'] = str(os.path.getmtime(image_path))
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error in get_gift_png: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/gift-png/batch', methods=['POST'])
+def get_gift_png_batch():
+    """Mengambil banyak gambar PNG sekaligus (batch)"""
+    try:
+        data = request.get_json()
+        if not data or 'slugs' not in data:
+            return jsonify({'error': 'Parameter slugs diperlukan'}), 400
+        
+        slugs = data.get('slugs', [])
+        if not slugs:
+            return jsonify({'error': 'Slugs kosong'}), 400
+        
+        conn = get_gift_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database tidak tersedia'}), 500
+        
+        cur = conn.cursor()
+        
+        # Cek tabel
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='uploaded_gifts'")
+        if not cur.fetchone():
+            conn.close()
+            return jsonify({'error': 'Tabel uploaded_gifts tidak ditemukan'}), 404
+        
+        results = {}
+        for slug in slugs:
+            gift_name = slug.split('-')[0] if '-' in slug else slug
+            
+            cur.execute("""
+                SELECT image_path, gift_id, title 
+                FROM uploaded_gifts 
+                WHERE LOWER(title) = LOWER(?)
+                LIMIT 1
+            """, (gift_name,))
+            row = cur.fetchone()
+            
+            if row and row[0] and os.path.exists(row[0]):
+                results[slug] = {
+                    'exists': True,
+                    'image_url': f'/api/gift-png/{slug}',
+                    'title': row[2]
+                }
+            else:
+                results[slug] = {'exists': False}
+        
+        conn.close()
+        return jsonify({'success': True, 'data': results})
+        
+    except Exception as e:
+        logger.error(f"Error in get_gift_png_batch: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/uploaded-gifts', methods=['GET'])
+def get_uploaded_gifts_list():
+    """Mendapatkan daftar semua gift yang sudah di-upload PNG-nya"""
+    try:
+        conn = get_gift_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database tidak tersedia'}), 500
+        
+        cur = conn.cursor()
+        
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='uploaded_gifts'")
+        if not cur.fetchone():
+            conn.close()
+            return jsonify({'success': True, 'data': [], 'total': 0})
+        
+        cur.execute("""
+            SELECT gift_id, title, saved_at 
+            FROM uploaded_gifts 
+            ORDER BY title ASC
+        """)
+        rows = cur.fetchall()
+        conn.close()
+        
+        gifts = []
+        for row in rows:
+            gifts.append({
+                'gift_id': row[0],
+                'title': row[1],
+                'saved_at': row[2],
+                'image_url': f'/api/gift-png/{row[1]}'
+            })
+        
+        return jsonify({
+            'success': True,
+            'total': len(gifts),
+            'data': gifts
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in get_uploaded_gifts_list: {e}")
+        return jsonify({'error': str(e)}), 500
+
 # ==================== MAIN ====================
 
 if __name__ == '__main__':
