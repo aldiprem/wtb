@@ -1417,143 +1417,39 @@ function showDetailModal(gift) {
     loadSameMessageSlugs(gift.message_id);
 }
 
-// ==================== UPDATE FILTER CHIPS (MENGGUNAKAN PNG DARI STAR_GIFTS.DB) ====================
-async function renderFilterChips() {
-    if (!elements.filterList) return;
-    
-    // Tampilkan loading
-    elements.filterList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Memuat daftar gift...</div>';
-    
-    const names = state.allNames.length > 0 ? state.allNames : [];
-    
-    if (names.length === 0) {
-        elements.filterList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Belum ada data gift, jalankan /scan terlebih dahulu</div>';
-        return;
-    }
-    
-    // Siapkan array untuk menyimpan data gift info
-    const giftInfoMap = new Map();
-    let loadedCount = 0;
-    
-    // Fungsi untuk memuat gambar dan info setiap gift secara async
-    async function loadGiftInfo(name, index) {
-        try {
-            const response = await fetch(`/gift-scam/api/star-gift-info/${encodeURIComponent(name)}`);
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success && data.data) {
-                    giftInfoMap.set(name, data.data);
-                }
-            }
-        } catch (e) {
-            console.log(`Gagal memuat info untuk ${name}:`, e);
-        }
-        loadedCount++;
-        
-        // Update render setelah beberapa item selesai
-        if (loadedCount % 5 === 0 || loadedCount === names.length) {
-            renderFilterList();
-        }
-    }
-    
-    // Fungsi render ulang filter list
-    async function renderFilterList() {
-        let html = '';
-        
-        for (const name of names) {
-            const isSelected = state.selectedFilterNames.includes(name);
-            const count = state.nameCounts[name] || 0;
-            const giftInfo = giftInfoMap.get(name);
-            const imageUrl = giftInfo?.image_url || `/gift-scam/api/star-gift-png/${encodeURIComponent(name)}`;
-            const emoji = giftInfo?.emoji || '🎁';
-            const isLimited = giftInfo?.is_limited ? '✨' : '';
-            
-            html += `
-                <div class="filter-list-item ${isSelected ? 'selected' : ''}" 
-                     data-name="${escapeHtml(name)}"
-                     onclick="selectFilterChip('${escapeHtml(name).replace(/'/g, "\\'")}')">
-                    <div class="filter-checkbox ${isSelected ? 'checked' : ''}">
-                        ${isSelected ? '<i class="fas fa-check"></i>' : ''}
-                    </div>
-                    <div class="filter-item-image">
-                        <img 
-                            src="${escapeHtml(imageUrl)}" 
-                            alt="${escapeHtml(name)}"
-                            loading="lazy"
-                            class="filter-gift-img"
-                            onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23252525%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 font-size=%2240%22>${emoji}</text></svg>';"
-                        >
-                    </div>
-                    <div class="filter-item-info">
-                        <span class="filter-item-name">${escapeHtml(name)} ${isLimited}</span>
-                        <span class="filter-item-count">${count}</span>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // Tambahkan Select All button di atas
-        const selectAllHtml = `
-            <div class="filter-select-all" id="filterSelectAll" onclick="toggleSelectAll()">
-                <i class="fas fa-check-double"></i> Select All
-            </div>
-        `;
-        
-        elements.filterList.innerHTML = selectAllHtml + html;
-        
-        // Re-attach event listener untuk select all
-        const selectAllBtn = document.getElementById('filterSelectAll');
-        if (selectAllBtn) {
-            // Hapus listener lama (kalau ada yang bentrok)
-            const newSelectAll = selectAllBtn.cloneNode(true);
-            selectAllBtn.parentNode.replaceChild(newSelectAll, selectAllBtn);
-            newSelectAll.onclick = toggleSelectAll;
-        }
-    }
-    
-    // Mulai load gambar untuk semua item (batasi concurrent requests)
-    const batchSize = 5;
-    for (let i = 0; i < names.length; i += batchSize) {
-        const batch = names.slice(i, i + batchSize);
-        await Promise.all(batch.map((name, idx) => loadGiftInfo(name, i + idx)));
-    }
-    
-    // Pastikan render terakhir
-    renderFilterList();
-}
-
-
-// ==================== UPDATE SAME MESSAGE SECTION (MENGGUNAKAN PNG) ====================
+// ==================== LOAD SAME MESSAGE SLUGS (FIX) ====================
 async function loadSameMessageSlugs(messageId) {
     const container = document.getElementById('sameMsgSlugs');
     const loadingEl = document.getElementById('sameMsgLoading');
     
-    if (!container || !loadingEl) return;
+    if (!container || !loadingEl) {
+        console.log('Elements not found for same message slugs');
+        return;
+    }
+    
+    console.log(`🔄 Loading same message slugs for message_id: ${messageId}`);
     
     try {
         const response = await fetch(`/gift-scam/api/by-message/${messageId}`);
         const data = await response.json();
         
+        console.log(`📡 Response:`, data);
+        
         if (data.success && data.data && data.data.length > 0) {
             loadingEl.style.display = 'none';
+            
+            // Clear container
             container.innerHTML = '';
             
-            for (const gift of data.data) {
-                const imageUrl = `/gift-scam/api/star-gift-png/${encodeURIComponent(gift.name)}`;
-                const emoji = '🎁';
-                
+            data.data.forEach(gift => {
                 const miniCard = document.createElement('div');
                 miniCard.className = 'same-message-card';
                 miniCard.title = `${gift.slug}\nKlik untuk detail`;
                 miniCard.innerHTML = `
-                    <div class="same-message-image">
-                        <img 
-                            src="${escapeHtml(imageUrl)}" 
-                            alt="${escapeHtml(gift.name)}"
-                            loading="lazy"
-                            class="same-message-img"
-                            onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23252525%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 font-size=%2240%22>${emoji}</text></svg>';"
-                        >
+                    <div class="same-message-lottie">
+                        <lottie-player src="${escapeHtml(gift.lottie_url)}" background="transparent" speed="1"
+                            style="width:45px;height:45px;margin:0 auto;" loop>
+                        </lottie-player>
                     </div>
                     <div class="same-message-name">${escapeHtml(gift.name)}</div>
                     <div class="same-message-number">#${gift.number || ''}</div>
@@ -1562,22 +1458,28 @@ async function loadSameMessageSlugs(messageId) {
                 miniCard.addEventListener('click', (e) => {
                     e.stopPropagation();
                     closeModal();
-                    setTimeout(() => loadGiftDetail(gift.slug), 300);
+                    setTimeout(() => {
+                        loadGiftDetail(gift.slug);
+                    }, 300);
                 });
                 
                 container.appendChild(miniCard);
-            }
+            });
             
+            // Update count di header
             const header = document.querySelector('.same-message-title');
             if (header) {
                 header.innerHTML = `<i class="fas fa-list"></i> Semua Gift dari Msg.ID ${messageId} (${data.data.length})`;
             }
         } else {
             loadingEl.innerHTML = '<i class="fas fa-info-circle"></i> Tidak ada gift lain dari message ID ini';
+            console.log('No other gifts found for this message_id');
         }
     } catch (error) {
         console.error('Error loading same message slugs:', error);
-        loadingEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Gagal memuat data gift lain';
+        if (loadingEl) {
+            loadingEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Gagal memuat data gift lain';
+        }
     }
 }
 
