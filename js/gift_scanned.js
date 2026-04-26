@@ -485,30 +485,11 @@ function countGiftsByName(name) {
     return state.gifts.filter(g => g.name === name).length;
 }
 
-// ==================== APPLY FILTER (PERBAIKI) ====================
+// ==================== APPLY FILTER (PERBAIKI - PAKAI API FILTER) ====================
 function applyFilter() {
     if (state.selectedFilterNames.length > 0) {
-        // Filter secara client-side (LANGSUNG dari data yang sudah ada)
-        // Ini lebih cepat dan tidak perlu API call
-        const filtered = state.allGifts.filter(gift => 
-            state.selectedFilterNames.includes(gift.name)
-        );
-        
-        state.gifts = filtered;
-        state.allLoaded = true;
-        state.totalGifts = filtered.length;
-        
-        if (filtered.length === 0) {
-            showEmpty();
-        } else {
-            renderGifts(filtered);
-            updateTotalCount(filtered.length);
-        }
-        
-        const filterText = state.selectedFilterNames.length > 0 
-            ? `${state.selectedFilterNames.length} gift terpilih` 
-            : 'Semua';
-        showToast(`Filter: ${filterText}`, 'info');
+        // Panggil API filter seperti kode sebelumnya
+        loadFilteredGifts();
     } else {
         // Reset ke semua data
         resetFilter();
