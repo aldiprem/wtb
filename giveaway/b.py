@@ -47,6 +47,372 @@ from telethon.tl.functions.channels import GetParticipantRequest
 from telethon.tl.types import ChannelParticipantAdmin, ChannelParticipantCreator, ChannelParticipantBanned, ChannelParticipantLeft
 from telethon.tl.functions.messages import ExportChatInviteRequest
 from telethon import errors
+from giveaway.services.battle_service import set_battle_bot_client
+
+# ============================================================
+# BATTLE GAME HANDLER  (digabung dari battle_bot_handler.py)
+# ============================================================
+
+battle_state = {}
+battle_timers: dict = {}   # {group_id: {battle_id: datetime}}
+
+# -------- menu utama battle --------
+async def battle_menu_handler(event):
+    """Handle tombol inline 'Battle Game'"""
+    user_id = event.sender_id
+    battle_state[user_id] = {
+        'step': None,
+        'data': {
+            'prizes': [],
+            'group': None,
+            'deadline_minutes': 5,
+            'captcha': False
+        }
+    }
+    await event.answer()
+    await event.respond(
+        "⚔️ **BATTLE GAME** ⚔️\n\n"
+        "Pilih menu pengaturan Battle Game:\n\n"
+        "Pesan terakhir di grup = pemenang!\n"
+        "Jika tidak ada pesan selama batas waktu → winner ditentukan!",
+        buttons=[
+            [Button.inline("🎁 Edit Hadiah", b'battle_set_prizes')],
+            [Button.inline("👥 Group / Comset", b'battle_set_group')],
+            [Button.inline("⏱ Deadline (menit)", b'battle_set_deadline')],
+            [Button.inline("🛡 Captcha", b'battle_toggle_captcha')],
+            [Button.inline("▶️ Mulai Battle", b'battle_start')],
+            [Button.inline("❌ Batal", b'battle_cancel')]
+        ]
+    )
+
+async def show_battle_menu(event, user_id):
+    data = battle_state.get(user_id, {}).get('data', {})
+    prizes   = data.get('prizes', [])
+    group    = data.get('group')
+    deadline = data.get('deadline_minutes', 5)
+    captcha  = data.get('captcha', False)
+    summary  = (
+        f"🎁 Hadiah: {len(prizes)} item\n"
+        f"👥 Group: {group['title'] if group else 'Belum dipilih'}\n"
+        f"⏱ Deadline: {deadline} menit\n"
+        f"🛡 Captcha: {'On' if captcha else 'Off'}"
+    )
+    await event.respond(
+        f"⚔️ **BATTLE GAME**\n\n{summary}\n\nPilih menu:",
+        buttons=[
+            [Button.inline("🎁 Edit Hadiah", b'battle_set_prizes')],
+            [Button.inline("👥 Group / Comset", b'battle_set_group')],
+            [Button.inline("⏱ Deadline (menit)", b'battle_set_deadline')],
+            [Button.inline("🛡 Captcha", b'battle_toggle_captcha')],
+            [Button.inline("▶️ Mulai Battle", b'battle_start')],
+            [Button.inline("❌ Batal", b'battle_cancel')]
+        ]
+    )
+
+async def battle_set_prizes(event):
+    user_id = event.sender_id
+    if user_id not in battle_state:
+        battle_state[user_id] = {'step': None, 'data': {'prizes': [], 'group': None, 'deadline_minutes': 5, 'captcha': False}}
+    battle_state[user_id]['step'] = 'prizes'
+    await event.answer()
+    await event.respond(
+        "🎁 **Masukkan Hadiah Battle**\n\n"
+        "Ketik hadiah, satu per baris.\n"
+        "Contoh:\n"
+        "`Plush Pepe\nNFT Username\nTelegram Premium`\n\n"
+        "Jumlah hadiah = jumlah pemenang.",
+        parse_mode='markdown'
+    )
+
+async def battle_set_group(event):
+    user_id = event.sender_id
+    if user_id not in battle_state:
+        battle_state[user_id] = {'step': None, 'data': {'prizes': [], 'group': None, 'deadline_minutes': 5, 'captcha': False}}
+    battle_state[user_id]['step'] = 'group'
+    await event.answer()
+    from telethon.tl.types import KeyboardButtonRequestPeer, RequestPeerTypeChat
+    await event.respond(
+        "👥 **Pilih Group / Comset Target**\n\n"
+        "Ketuk tombol di bawah untuk memilih group, atau ketik username/ID group.\n"
+        "Contoh: `@mygroupusername` atau `-1001234567890`",
+        buttons=[
+            [KeyboardButtonRequestPeer(
+                text="📌 Pilih Group",
+                button_id=102,
+                peer_type=RequestPeerTypeChat(has_username=False, is_forum=None, bot_participant=None, user_admin_rights=None, bot_admin_rights=None),
+                max_quantity=1
+            )],
+            [Button.inline("❌ Batal Pilih", b'battle_menu_back')]
+        ]
+    )
+
+async def battle_set_deadline(event):
+    user_id = event.sender_id
+    if user_id not in battle_state:
+        battle_state[user_id] = {'step': None, 'data': {'prizes': [], 'group': None, 'deadline_minutes': 5, 'captcha': False}}
+    battle_state[user_id]['step'] = 'deadline'
+    await event.answer()
+    await event.respond(
+        "⏱ **Atur Deadline Battle**\n\n"
+        "Berapa menit tanpa pesan baru = Battle berakhir?\n\n"
+        "Ketik angka menit (1-60):\n"
+        "Contoh: `5` (artinya 5 menit tanpa pesan = selesai)",
+        parse_mode='markdown'
+    )
+
+async def battle_toggle_captcha(event):
+    user_id = event.sender_id
+    if user_id not in battle_state:
+        battle_state[user_id] = {'step': None, 'data': {'prizes': [], 'group': None, 'deadline_minutes': 5, 'captcha': False}}
+    current = battle_state[user_id]['data']['captcha']
+    battle_state[user_id]['data']['captcha'] = not current
+    status = "✅ Aktif" if not current else "❌ Nonaktif"
+    await event.answer(f"Captcha sekarang: {status}")
+    await event.edit(
+        f"🛡 **Captcha:** {status}\n\nPilih menu pengaturan Battle Game:",
+        buttons=[
+            [Button.inline("🎁 Edit Hadiah", b'battle_set_prizes')],
+            [Button.inline("👥 Group / Comset", b'battle_set_group')],
+            [Button.inline("⏱ Deadline (menit)", b'battle_set_deadline')],
+            [Button.inline("🛡 Captcha", b'battle_toggle_captcha')],
+            [Button.inline("▶️ Mulai Battle", b'battle_start')],
+            [Button.inline("❌ Batal", b'battle_cancel')]
+        ]
+    )
+
+async def battle_menu_back(event):
+    user_id = event.sender_id
+    if user_id in battle_state:
+        battle_state[user_id]['step'] = None
+    await event.answer()
+    await show_battle_menu(event, user_id)
+
+async def battle_cancel(event):
+    user_id = event.sender_id
+    if user_id in battle_state:
+        del battle_state[user_id]
+    await event.answer("Battle dibatalkan")
+    await event.delete()
+
+async def battle_start(event):
+    user_id = event.sender_id
+    state   = battle_state.get(user_id, {})
+    data    = state.get('data', {})
+    prizes  = data.get('prizes', [])
+    group   = data.get('group')
+    deadline = data.get('deadline_minutes', 5)
+
+    if not prizes:
+        await event.answer("❌ Hadiah belum diatur!", alert=True)
+        return
+    if not group:
+        await event.answer("❌ Group belum dipilih!", alert=True)
+        return
+
+    await event.answer("⏳ Membuat Battle...")
+    sender = await event.get_sender()
+    payload = {
+        'user_id': user_id,
+        'username': getattr(sender, 'username', '') or '',
+        'first_name': getattr(sender, 'first_name', '') or '',
+        'last_name': getattr(sender, 'last_name', '') or '',
+        'prizes': prizes,
+        'group': group,
+        'deadline_minutes': deadline,
+        'captcha': data.get('captcha', False)
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post('http://localhost:5050/api/battle/create', json=payload) as resp:
+                result = await resp.json()
+
+        if result.get('success'):
+            battle_code = result['battle_code']
+            battle_id   = result['battle_id']
+            if user_id in battle_state:
+                del battle_state[user_id]
+            await event.respond(
+                f"✅ **BATTLE BERHASIL DIBUAT!**\n\n"
+                f"⚔️ Battle ID: `{battle_id}`\n"
+                f"🔑 Battle Code: `{battle_code}`\n"
+                f"🎁 Hadiah: {len(prizes)} item\n"
+                f"⏱ Deadline: {deadline} menit\n\n"
+                f"🔗 **Link MiniApp:**\n"
+                f"https://t.me/freebiestbot/giveaway?startapp=battle_{battle_code}"
+            )
+        else:
+            await event.respond(f"❌ Gagal membuat Battle: {result.get('error', 'Unknown error')}")
+    except Exception as e:
+        await event.respond(f"❌ Error: {str(e)[:200]}")
+
+async def handle_battle_text_input(event):
+    """Tangani input teks untuk alur battle (prizes / group / deadline)"""
+    user_id = event.sender_id
+    state   = battle_state.get(user_id)
+    if not state or not state.get('step'):
+        return  # bukan dalam alur battle
+
+    step = state['step']
+    text = event.text.strip()
+
+    if step == 'prizes':
+        prizes = [p.strip() for p in text.split('\n') if p.strip()]
+        battle_state[user_id]['data']['prizes'] = prizes
+        battle_state[user_id]['step'] = None
+        await event.respond(
+            f"✅ **{len(prizes)} hadiah disimpan:**\n" +
+            '\n'.join([f"{i+1}. {p}" for i, p in enumerate(prizes)]) +
+            "\n\nKetuk /battle untuk kembali ke menu.",
+            buttons=[[Button.inline("🔙 Kembali ke Menu", b'battle_menu_back')]]
+        )
+
+    elif step == 'group':
+        chat_input = text
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    'http://localhost:5050/api/giveaway/validate-chat',
+                    json={'chat_input': chat_input, 'user_id': user_id}
+                ) as resp:
+                    result = await resp.json()
+
+            if result.get('success') and result.get('has_access'):
+                battle_state[user_id]['data']['group'] = {
+                    'chat_id': result['chat_id'],
+                    'title': result.get('chat_title', chat_input),
+                    'username': result.get('username', '')
+                }
+                battle_state[user_id]['step'] = None
+                await event.respond(
+                    f"✅ Group **{result.get('chat_title', chat_input)}** dipilih!",
+                    buttons=[[Button.inline("🔙 Kembali ke Menu", b'battle_menu_back')]]
+                )
+            else:
+                await event.respond(f"❌ Group tidak ditemukan: {result.get('error', 'Tidak bisa diakses')}")
+        except Exception as e:
+            await event.respond(f"❌ Error validasi group: {str(e)[:200]}")
+
+    elif step == 'deadline':
+        try:
+            minutes = int(text)
+            if minutes < 1 or minutes > 1440:
+                await event.respond("❌ Masukkan angka antara 1-1440 menit")
+                return
+            battle_state[user_id]['data']['deadline_minutes'] = minutes
+            battle_state[user_id]['step'] = None
+            await event.respond(
+                f"✅ Deadline diatur ke **{minutes} menit**!",
+                buttons=[[Button.inline("🔙 Kembali ke Menu", b'battle_menu_back')]]
+            )
+        except ValueError:
+            await event.respond("❌ Masukkan angka yang valid")
+
+
+async def monitor_group_messages(event):
+    """Pantau pesan di group — jika ada battle aktif, catat pesan"""
+    chat_id = event.chat_id
+    sender  = await event.get_sender()
+    if not sender or getattr(sender, 'bot', False):
+        return
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f'http://localhost:5050/api/battle/active-by-group/{abs(chat_id)}'
+            ) as resp:
+                result = await resp.json()
+
+        battles_in_group = result.get('battles', [])
+        if not battles_in_group:
+            return
+
+        user_id    = sender.id
+        username   = getattr(sender, 'username', '') or ''
+        first_name = getattr(sender, 'first_name', '') or ''
+        last_name  = getattr(sender, 'last_name', '') or ''
+        sent_at    = event.date.isoformat() if event.date else datetime.now().isoformat()
+
+        # Ambil photo url (avatar)
+        photo_url = ''
+        try:
+            if username:
+                photo_url = f"https://t.me/i/userpic/320/{username}.jpg"
+        except:
+            pass
+
+        for battle in battles_in_group:
+            battle_id = battle['battle_id']
+
+            async with aiohttp.ClientSession() as session:
+                await session.post('http://localhost:5050/api/battle/record-message', json={
+                    'battle_id': battle_id,
+                    'user_id': user_id,
+                    'username': username,
+                    'first_name': first_name,
+                    'last_name': last_name,
+                    'photo_url': photo_url,
+                    'message_id': event.id,
+                    'message_text': event.text[:200] if event.text else '',
+                    'sent_at': sent_at
+                })
+
+            if chat_id not in battle_timers:
+                battle_timers[chat_id] = {}
+            battle_timers[chat_id][battle_id] = datetime.now()
+
+    except Exception as e:
+        logger.error(f"[BattleMonitor] Error: {e}")
+
+
+async def announce_battle_winners(group_id: int, battle_id: str, winners: list):
+    """Umumkan pemenang battle ke group"""
+    if not winners:
+        await bot.send_message(group_id, "⚔️ **Battle berakhir!**\nTidak ada pesan — tidak ada pemenang.")
+        return
+    lines = ["🏆 **BATTLE BERAKHIR!** 🏆\n"]
+    for w in winners:
+        name  = (w.get('first_name', '') + ' ' + (w.get('last_name') or '')).strip()
+        uname = f"@{w['username']}" if w.get('username') else f"[{name}](tg://user?id={w['user_id']})"
+        lines.append(f"#{w['rank']} {uname} — 🎁 {w['prize']}")
+    await bot.send_message(group_id, '\n'.join(lines), link_preview=False)
+
+
+async def check_battle_deadlines():
+    """Cek setiap 30 detik apakah ada battle yang deadlinenya habis"""
+    await asyncio.sleep(5)
+    while True:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get('http://localhost:5050/api/battle/recent?limit=50') as resp:
+                    result = await resp.json()
+
+            for battle in result.get('battles', []):
+                if battle['status'] != 'active':
+                    continue
+                bid = battle.get('battle_id') or battle.get('battle_code')
+                for group_id, timers in list(battle_timers.items()):
+                    if bid in timers:
+                        last_msg_time = timers[bid]
+                        deadline_min  = battle.get('deadline_minutes', 5)
+                        elapsed = (datetime.now() - last_msg_time).total_seconds() / 60
+                        if elapsed >= deadline_min:
+                            logger.info(f"[BattleDeadline] Ending battle {bid} after {elapsed:.1f} min silence")
+                            async with aiohttp.ClientSession() as session:
+                                async with session.post(
+                                    f'http://localhost:5050/api/battle/end/{bid}'
+                                ) as resp:
+                                    end_result = await resp.json()
+                            if end_result.get('success'):
+                                winners = end_result.get('winners', [])
+                                await announce_battle_winners(group_id, bid, winners)
+                            del battle_timers[group_id][bid]
+                        break
+        except Exception as e:
+            logger.error(f"[BattleDeadlineChecker] Error: {e}")
+        await asyncio.sleep(30)
+
+# ============================================================
+# END BATTLE GAME HANDLER
+# ============================================================
 
 # Logging seperti fragment_bot.py
 logging.basicConfig(
@@ -950,7 +1316,8 @@ __Bot ini adalah bot create giveaway, anda dapat membuat giveaway disini dan den
     """
     
     buttons = [
-        [Button.inline("🎁 Buat Giveaway", data="create_giveaway")],
+        [Button.inline("🎁 Buat Giveaway", data="create_giveaway"),
+         Button.inline("⚔️ Battle Game", data="battle_game")],
         [Button.inline("📊 Statistik", data="stats"),
          Button.inline("👤 Profil", data="profil")]
     ]
@@ -2611,6 +2978,62 @@ https://t.me/freebiestbot/giveaway?startapp={giveaway_codes[0] if giveaway_codes
     
     await event.respond(success_msg)
 
+# ============================================================
+# BATTLE GAME — REGISTRASI EVENT HANDLERS
+# ============================================================
+
+@bot.on(events.CallbackQuery(pattern=b"^battle_game$"))
+async def _battle_game(event):
+    await battle_menu_handler(event)
+
+@bot.on(events.CallbackQuery(pattern=b"^battle_set_prizes$"))
+async def _battle_set_prizes(event):
+    await battle_set_prizes(event)
+
+@bot.on(events.CallbackQuery(pattern=b"^battle_set_group$"))
+async def _battle_set_group(event):
+    await battle_set_group(event)
+
+@bot.on(events.CallbackQuery(pattern=b"^battle_set_deadline$"))
+async def _battle_set_deadline(event):
+    await battle_set_deadline(event)
+
+@bot.on(events.CallbackQuery(pattern=b"^battle_toggle_captcha$"))
+async def _battle_toggle_captcha(event):
+    await battle_toggle_captcha(event)
+
+@bot.on(events.CallbackQuery(pattern=b"^battle_menu_back$"))
+async def _battle_menu_back(event):
+    await battle_menu_back(event)
+
+@bot.on(events.CallbackQuery(pattern=b"^battle_cancel$"))
+async def _battle_cancel(event):
+    await battle_cancel(event)
+
+@bot.on(events.CallbackQuery(pattern=b"^battle_start$"))
+async def _battle_start(event):
+    await battle_start(event)
+
+@bot.on(events.NewMessage(func=lambda e: e.is_private))
+async def _handle_battle_text(event):
+    """Tangani input teks battle (prizes / group / deadline) dari private chat"""
+    user_id = event.sender_id
+    state   = battle_state.get(user_id)
+    if not state or not state.get('step'):
+        return
+    if event.raw_text and event.raw_text.startswith('/'):
+        return
+    await handle_battle_text_input(event)
+
+@bot.on(events.NewMessage(func=lambda e: not e.is_private))
+async def _monitor_group_messages(event):
+    """Pantau semua pesan di group untuk battle aktif"""
+    await monitor_group_messages(event)
+
+# ============================================================
+# END BATTLE GAME — REGISTRASI EVENT HANDLERS
+# ============================================================
+
 async def main():
     logger.info("🚀 Starting Giveaway Bot...")
     
@@ -2628,7 +3051,10 @@ async def main():
     except Exception as e:
         logger.warning(f"Failed to register bot to Flask: {e}")
     
+    set_battle_bot_client(bot)
+
     # Start monitoring
+    asyncio.create_task(check_battle_deadlines())
     asyncio.create_task(check_on_giveaway_expired())
     asyncio.create_task(check_pending_membership())
     asyncio.create_task(cleanup_invalid_giveaways())
