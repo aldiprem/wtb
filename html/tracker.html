@@ -176,20 +176,19 @@
 </div>
 
 <script>
-    // ==================== IP2Location.io API (SOLUSI FINAL) ====================
+    // ==================== IP2Location.io API via CORS PROXY ====================
     const IP2LOCATION_KEY = "6EB4A091A2076236C36962F2FB51E969";
-        
+
     async function getLocationFromIP() {
         const statusDiv = document.getElementById("auto-status-msg");
-        statusDiv.innerHTML = '<span class="loading-spinner"></span> Menarik data lokasi...';
+        statusDiv.innerHTML = '<span class="loading-spinner"></span> Menarik data lokasi via CORS proxy...';
         statusDiv.className = "status-badge";
         
         try {
-            // Panggil proxy PHP di server sendiri (CORS friendly)
-            const response = await fetch('/proxy-ip.php', {
-                cache: "no-store",
-                headers: { 'Accept': 'application/json' }
-            });
+            // Pake CORS proxy gratis (all-cors - sudah saya test work)
+            const proxyUrl = 'https://api.allorigins.win/raw?url=';
+            const targetUrl = `https://api.ip2location.io/?key=${IP2LOCATION_KEY}&format=json&security=true`;
+            const response = await fetch(proxyUrl + encodeURIComponent(targetUrl));
             
             const data = await response.json();
             
@@ -198,12 +197,14 @@
                 
                 if (data.latitude && data.longitude) {
                     document.getElementById("auto-coord").innerHTML = `${data.latitude}, ${data.longitude} <a href="https://www.google.com/maps?q=${data.latitude},${data.longitude}" target="_blank" class="map-link">🗺️ lihat peta</a>`;
+                } else {
+                    document.getElementById("auto-coord").innerText = "Tidak tersedia";
                 }
                 
                 let cityName = data.city_name || data.city || "-";
                 let regionName = data.region_name || data.region || "";
                 let fullLocation = cityName;
-                if (regionName && regionName !== cityName) {
+                if (regionName && regionName !== cityName && regionName !== "-") {
                     fullLocation += `, ${regionName}`;
                 }
                 document.getElementById("auto-city").innerText = fullLocation;
@@ -211,18 +212,20 @@
                 document.getElementById("auto-isp").innerText = data.isp || data.asn || "-";
                 
                 let isProxy = data.is_proxy === true || data.proxy === true;
-                document.getElementById("auto-proxy").innerHTML = isProxy ? "⚠️ Proxy/VPN terdeteksi" : "✅ Clean";
-                document.getElementById("auto-accuracy").innerHTML = `IP2Location via proxy - ${data.country_code}`;
+                document.getElementById("auto-proxy").innerHTML = isProxy ? "⚠️ Proxy/VPN terdeteksi" : "✅ Clean (bukan proxy publik)";
+                document.getElementById("auto-accuracy").innerHTML = `IP2Location - Akurasi tingkat kota`;
                 
-                statusDiv.innerHTML = `✅ Auto tracking sukses! Koordinat dari IP ${data.ip}`;
+                statusDiv.innerHTML = `✅ AUTO TRACK SUKSES! Koordinat dari IP ${data.ip} (${data.country_code})`;
                 statusDiv.className = "status-badge success";
                 return true;
             } else {
-                throw new Error("Data tidak lengkap");
+                throw new Error("Respons API tidak valid");
             }
         } catch (error) {
-            console.error("Error:", error);
-            statusDiv.innerHTML = `❌ Error: ${error.message}. Klik tombol GPS manual untuk lokasi presisi.`;
+            console.error("IP2Location error:", error);
+            document.getElementById("auto-ip").innerText = "Gagal ambil";
+            document.getElementById("auto-coord").innerText = "Gunakan GPS manual";
+            statusDiv.innerHTML = `❌ Gagal auto track. ${error.message}. Silakan klik tombol GPS manual untuk lokasi presisi.`;
             statusDiv.className = "status-badge error";
             return false;
         }
