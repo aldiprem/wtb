@@ -3,15 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Tracker Pro Max | IP2Location Auto GPS by IP</title>
+    <title>Tracker Pro Max | Auto GPS by IP (Multi Source)</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Inter', sans-serif;
             background: radial-gradient(circle at 20% 30%, #0a0f1e, #03050b);
@@ -19,17 +14,8 @@
             padding: 24px 16px;
             color: #eef5ff;
         }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        /* Header */
-        .glow-header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .glow-header { text-align: center; margin-bottom: 40px; }
         .glow-header h1 {
             font-size: 2.8rem;
             font-weight: 800;
@@ -37,33 +23,22 @@
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
-            text-shadow: 0 0 15px rgba(96,165,250,0.3);
             letter-spacing: -0.5px;
         }
-        .glow-header p {
-            color: #8b9bcf;
-            margin-top: 8px;
-        }
-
-        /* Banner Peringatan */
         .warning-banner {
             background: rgba(255, 200, 100, 0.1);
             border-left: 5px solid #facc15;
             padding: 14px 20px;
             border-radius: 16px;
             margin-bottom: 30px;
-            backdrop-filter: blur(4px);
             font-size: 0.85rem;
         }
-
-        /* Grid Cards */
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
             gap: 24px;
             margin-bottom: 24px;
         }
-
         .card {
             background: rgba(15, 25, 45, 0.65);
             backdrop-filter: blur(12px);
@@ -71,13 +46,8 @@
             padding: 22px;
             border: 1px solid rgba(96, 165, 250, 0.25);
             transition: all 0.25s ease;
-            box-shadow: 0 12px 28px -8px rgba(0,0,0,0.4);
         }
-        .card:hover {
-            border-color: #60a5fa;
-            transform: translateY(-4px);
-        }
-
+        .card:hover { border-color: #60a5fa; transform: translateY(-4px); }
         .card h3 {
             font-size: 1.35rem;
             font-weight: 600;
@@ -88,7 +58,6 @@
             align-items: center;
             gap: 10px;
         }
-
         .info-row {
             display: flex;
             justify-content: space-between;
@@ -97,10 +66,7 @@
             border-bottom: 1px solid rgba(255,255,255,0.06);
             font-size: 0.9rem;
         }
-        .info-label {
-            color: #9ca8cf;
-            font-weight: 500;
-        }
+        .info-label { color: #9ca8cf; font-weight: 500; }
         .info-value {
             font-weight: 600;
             text-align: right;
@@ -109,7 +75,6 @@
             font-family: monospace;
             font-size: 0.85rem;
         }
-
         button {
             background: linear-gradient(95deg, #1e2a5e, #2d3a6e);
             border: none;
@@ -122,18 +87,9 @@
             margin-top: 14px;
             font-size: 0.9rem;
             transition: 0.2s;
-            border: 1px solid rgba(255,255,255,0.1);
         }
-        button:hover {
-            background: linear-gradient(95deg, #2d3a7e, #3e4e8e);
-            transform: scale(0.98);
-        }
-
-        .location-btn {
-            background: linear-gradient(135deg, #d946ef, #f43f5e);
-            box-shadow: 0 4px 14px rgba(217,70,239,0.3);
-        }
-
+        button:hover { background: linear-gradient(95deg, #2d3a7e, #3e4e8e); transform: scale(0.98); }
+        .location-btn { background: linear-gradient(135deg, #d946ef, #f43f5e); }
         .status-badge {
             padding: 8px 12px;
             border-radius: 36px;
@@ -144,15 +100,8 @@
         }
         .status.success { background: rgba(34,197,94,0.2); color: #86efac; border-left: 3px solid #22c55e; }
         .status.error { background: rgba(239,68,68,0.2); color: #fca5a5; border-left: 3px solid #ef4444; }
-        .status.warning { background: rgba(234,179,8,0.2); color: #fde047; }
-
-        .map-link {
-            color: #7aa2f7;
-            text-decoration: none;
-            font-weight: 500;
-        }
+        .map-link { color: #7aa2f7; text-decoration: none; }
         .map-link:hover { text-decoration: underline; }
-
         @media (max-width: 700px) {
             .info-value { max-width: 55%; font-size: 0.75rem; }
             .card h3 { font-size: 1.2rem; }
@@ -163,51 +112,30 @@
 <div class="container">
     <div class="glow-header">
         <h1>🛸 ANGKASA TRACKER PRO</h1>
-        <p>Auto Coordinate Lock by IP | IP2Location Engine + GPS Fallback</p>
+        <p>Auto Coordinate Lock by IP | Multi Source (ip-api.com + ipwho.is + IP2Location)</p>
     </div>
 
     <div class="warning-banner">
-        ⚡ <strong>POWER MODE:</strong> Koordinat (Lat/Long) dari IP otomatis terdeteksi via IP2Location.io API — tanpa perlu izin GPS. Presisi akurasi tingkat kota.  
-        📍 GPS manual untuk akurasi street-level (izin diperlukan).
+        ⚡ <strong>POWER MODE:</strong> Koordinat (Lat/Long) dari IP otomatis terdeteksi — tanpa perlu izin GPS.<br>
+        📍 GPS manual untuk akurasi street-level (izin diperlukan). | 🌐 Auto tracking dari 3 sumber gratis.
     </div>
 
     <div class="grid">
-        <!-- CARD 1: IP + KOORDINAT OTOMATIS (IP2LOCATION) -->
+        <!-- CARD 1: AUTO TRACK IP -->
         <div class="card">
             <h3>🌍 AUTO TRACK (IP → Koordinat)</h3>
-            <div class="info-row">
-                <span class="info-label">🌐 IP Publik</span>
-                <span class="info-value" id="auto-ip">🔍 scanning...</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">📌 Latitude / Longitude</span>
-                <span class="info-value" id="auto-coord">-</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">🏙️ Kota / Region</span>
-                <span class="info-value" id="auto-city">-</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">🇮🇩 Negara / Kode</span>
-                <span class="info-value" id="auto-country">-</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">📡 ISP / ASN</span>
-                <span class="info-value" id="auto-isp">-</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">🕵️ Proxy/VPN detect</span>
-                <span class="info-value" id="auto-proxy">🔎 check...</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">🗺️ Akurasi data</span>
-                <span class="info-value" id="auto-accuracy">IP Geolocation (city level)</span>
-            </div>
+            <div class="info-row"><span class="info-label">🌐 IP Publik</span><span class="info-value" id="auto-ip">🔍 scanning...</span></div>
+            <div class="info-row"><span class="info-label">📌 Latitude / Longitude</span><span class="info-value" id="auto-coord">-</span></div>
+            <div class="info-row"><span class="info-label">🏙️ Kota / Region</span><span class="info-value" id="auto-city">-</span></div>
+            <div class="info-row"><span class="info-label">🇮🇩 Negara / Kode</span><span class="info-value" id="auto-country">-</span></div>
+            <div class="info-row"><span class="info-label">📡 ISP / ASN</span><span class="info-value" id="auto-isp">-</span></div>
+            <div class="info-row"><span class="info-label">🕵️ Proxy/VPN detect</span><span class="info-value" id="auto-proxy">🔎 check...</span></div>
+            <div class="info-row"><span class="info-label">🗺️ Akurasi data</span><span class="info-value" id="auto-accuracy">IP Geolocation (city level)</span></div>
             <button id="refresh-auto-track">⟳ Refresh Auto Track IP</button>
             <div id="auto-status-msg" class="status-badge"></div>
         </div>
 
-        <!-- CARD 2: Perangkat & Browser (sama seperti sebelumnya) -->
+        <!-- CARD 2: Device Info -->
         <div class="card">
             <h3>📱 PERANGKAT & BROWSER</h3>
             <div class="info-row"><span class="info-label">Device Type</span><span class="info-value" id="device-type">-</span></div>
@@ -219,7 +147,7 @@
             <div class="info-row"><span class="info-label">Touch / Cookies</span><span class="info-value" id="features">-</span></div>
         </div>
 
-        <!-- CARD 3: GPS MANUAL (presisi tinggi) -->
+        <!-- CARD 3: GPS Manual -->
         <div class="card">
             <h3>📍 GPS PRESISI (Manual Izin)</h3>
             <div class="info-row"><span class="info-label">Status Izin</span><span class="info-value" id="gps-status">Belum diminta</span></div>
@@ -235,80 +163,92 @@
 </div>
 
 <script>
-    // --------------------------------------------------------------
-    // 1. FUNGSI PALING AMPUH: IP2Location.io API -> auto dapat koordinat
-    // --------------------------------------------------------------
-    // GANTI DENGAN API KEY ASLI ANDA dari https://ip2location.io (free signup)
-    const IP2LOCATION_API_KEY = "6EB4A091A2076236C36962F2FB51E969";
+    // ==================== MULTI SOURCE IP GEOLOCATION ====================
+    // API Key IP2Location (jika nanti sudah aktif)
+    const IP2LOCATION_KEY = "6EB4A091A2076236C36962F2FB51E969";
     
-    async function getAccurateLocationFromIP() {
+    async function getLocationFromIP_MultiSource() {
         const statusDiv = document.getElementById("auto-status-msg");
-        statusDiv.innerHTML = "⏳ Menarik data dari IP2Location...";
+        statusDiv.innerHTML = "⏳ Mengambil data IP dari multi source...";
         statusDiv.className = "status-badge";
-
-        // Fallback jika API key belum diisi
-        if (!IP2LOCATION_API_KEY || IP2LOCATION_API_KEY === "6EB4A091A2076236C36962F2FB51E969") {
-            document.getElementById("auto-ip").innerText = "⚠️ API key required";
-            document.getElementById("auto-coord").innerText = "Set API key IP2Location.io";
-            statusDiv.innerHTML = "❌ Ganti 6EB4A091A2076236C36962F2FB51E969 dengan API key dari ip2location.io (free)";
-            statusDiv.className = "status-badge error";
-            return;
-        }
-
+        
+        // Source 1: ip-api.com (gratis, tanpa API key, paling stabil)
         try {
-            // Endpoint IP2Location.io dengan parameter lengkap: ip, latitude, longitude, security (proxy), dll
-            const url = `https://api.ip2location.io/?key=${IP2LOCATION_API_KEY}&format=json&security=true`;
-            const response = await fetch(url, { cache: "no-store" });
-            const data = await response.json();
-
-            if (data && data.ip) {
-                // Tampilkan IP
-                document.getElementById("auto-ip").innerText = data.ip;
+            const res = await fetch('http://ip-api.com/json/?fields=status,country,countryCode,region,regionName,city,lat,lon,isp,org,as,query,proxy', { cache: 'no-store' });
+            const data = await res.json();
+            
+            if (data && data.status === 'success') {
+                document.getElementById("auto-ip").innerText = data.query;
                 
-                // Koordinat!
-                let lat = data.latitude ? data.latitude : (data.location?.latitude || null);
-                let lng = data.longitude ? data.longitude : (data.location?.longitude || null);
-                if (lat && lng) {
-                    document.getElementById("auto-coord").innerHTML = `${lat}, ${lng} <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" class="map-link">🗺️ peta</a>`;
+                if (data.lat && data.lon) {
+                    document.getElementById("auto-coord").innerHTML = `${data.lat}, ${data.lon} <a href="https://www.google.com/maps?q=${data.lat},${data.lon}" target="_blank" class="map-link">🗺️ peta</a>`;
                 } else {
                     document.getElementById("auto-coord").innerText = "Tidak tersedia";
                 }
                 
-                // City & Region
-                let cityName = data.city_name || data.city || "-";
-                let region = data.region_name || data.region || "";
-                document.getElementById("auto-city").innerText = region ? `${cityName}, ${region}` : cityName;
-                
-                // Negara
-                document.getElementById("auto-country").innerText = `${data.country_name || '-'} (${data.country_code || '-'})`;
-                
-                // ISP / ASN
-                let ispText = data.isp || data.asn || "-";
-                document.getElementById("auto-isp").innerText = ispText;
-                
-                // Proxy/VPN detection dari IP2Location (security)
-                let isProxy = false;
-                if (data.security && data.security.is_proxy) isProxy = true;
-                if (data.proxy === true) isProxy = true;
-                document.getElementById("auto-proxy").innerHTML = isProxy ? "⚠️ Proxy/VPN/TOR terdeteksi" : "✅ Clean (bukan proxy publik)";
-                
-                statusDiv.innerHTML = `✅ Auto tracking sukses (${data.country_code || ''}) | Koordinat dari IP`;
+                let cityRegion = data.city;
+                if (data.regionName) cityRegion += `, ${data.regionName}`;
+                document.getElementById("auto-city").innerText = cityRegion || "-";
+                document.getElementById("auto-country").innerText = `${data.country || '-'} (${data.countryCode || '-'})`;
+                document.getElementById("auto-isp").innerText = data.isp || data.org || "-";
+                document.getElementById("auto-proxy").innerHTML = data.proxy ? "⚠️ Proxy/VPN terdeteksi" : "✅ Clean (bukan proxy publik)";
+                statusDiv.innerHTML = `✅ Auto tracking sukses (${data.countryCode}) via ip-api.com`;
                 statusDiv.className = "status-badge success";
-            } else {
-                throw new Error("Respons API tidak valid");
+                return;
             }
-        } catch (error) {
-            console.error("IP2Location error:", error);
-            document.getElementById("auto-ip").innerText = "Gagal ambil";
-            document.getElementById("auto-coord").innerText = "error";
-            statusDiv.innerHTML = "❌ Gagal konek ke IP2Location.io. Cek API key / koneksi.";
-            statusDiv.className = "status-badge error";
+        } catch(e) { console.log("ip-api.com error:", e); }
+        
+        // Source 2: ipwho.is (backup)
+        try {
+            const res = await fetch('https://ipwho.is/', { cache: 'no-store' });
+            const data = await res.json();
+            if (data && data.success) {
+                document.getElementById("auto-ip").innerText = data.ip;
+                if (data.latitude && data.longitude) {
+                    document.getElementById("auto-coord").innerHTML = `${data.latitude}, ${data.longitude} <a href="https://www.google.com/maps?q=${data.latitude},${data.longitude}" target="_blank" class="map-link">🗺️ peta</a>`;
+                }
+                let cityRegion = data.city || "";
+                if (data.region) cityRegion += cityRegion ? `, ${data.region}` : data.region;
+                document.getElementById("auto-city").innerText = cityRegion || "-";
+                document.getElementById("auto-country").innerText = `${data.country || '-'} (${data.country_code || '-'})`;
+                document.getElementById("auto-isp").innerText = data.connection?.isp || "-";
+                document.getElementById("auto-proxy").innerHTML = data.security?.proxy ? "⚠️ Proxy/VPN terdeteksi" : "✅ Clean";
+                statusDiv.innerHTML = `✅ Auto tracking sukses (${data.country_code}) via ipwho.is`;
+                statusDiv.className = "status-badge success";
+                return;
+            }
+        } catch(e) { console.log("ipwho.is error:", e); }
+        
+        // Source 3: IP2Location.io (pakai key Anda, jika sudah aktif)
+        if (IP2LOCATION_KEY && IP2LOCATION_KEY !== "6EB4A091A2076236C36962F2FB51E969") {
+            try {
+                const url = `https://api.ip2location.io/?key=${IP2LOCATION_KEY}&format=json&security=true`;
+                const res = await fetch(url, { cache: 'no-store' });
+                const data = await res.json();
+                if (data && data.ip) {
+                    document.getElementById("auto-ip").innerText = data.ip;
+                    if (data.latitude && data.longitude) {
+                        document.getElementById("auto-coord").innerHTML = `${data.latitude}, ${data.longitude} <a href="https://www.google.com/maps?q=${data.latitude},${data.longitude}" target="_blank" class="map-link">🗺️ peta</a>`;
+                    }
+                    document.getElementById("auto-city").innerText = data.city_name || data.city || "-";
+                    document.getElementById("auto-country").innerText = `${data.country_name || '-'} (${data.country_code || '-'})`;
+                    document.getElementById("auto-isp").innerText = data.isp || "-";
+                    let isProxy = (data.security && data.security.is_proxy) || data.proxy === true;
+                    document.getElementById("auto-proxy").innerHTML = isProxy ? "⚠️ Proxy/VPN terdeteksi" : "✅ Clean";
+                    statusDiv.innerHTML = `✅ Auto tracking via IP2Location.io`;
+                    statusDiv.className = "status-badge success";
+                    return;
+                }
+            } catch(e) { console.log("IP2Location error:", e); }
         }
+        
+        // Gagal semua source
+        statusDiv.innerHTML = "❌ Gagal mengambil data lokasi dari semua source. Cek koneksi internet.";
+        statusDiv.className = "status-badge error";
+        document.getElementById("auto-ip").innerText = "Gagal ambil";
     }
-
-    // --------------------------------------------------------------
-    // 2. DEVICE INFO (lengkap)
-    // --------------------------------------------------------------
+    
+    // Device Info
     function updateDeviceInfo() {
         const ua = navigator.userAgent;
         let device = "Desktop";
@@ -345,10 +285,8 @@
         const cookies = navigator.cookieEnabled ? "Cookies ON" : "Cookies OFF";
         document.getElementById("features").innerText = `${touch} | ${cookies}`;
     }
-
-    // --------------------------------------------------------------
-    // 3. GPS MANUAL (izin user)
-    // --------------------------------------------------------------
+    
+    // GPS Manual
     function initGPS() {
         const btn = document.getElementById("get-gps-btn");
         const gpsStatusSpan = document.getElementById("gps-status");
@@ -392,20 +330,16 @@
             );
         });
     }
-
-    // --------------------------------------------------------------
-    // 4. Refresh Manual Auto Track
-    // --------------------------------------------------------------
+    
+    // Event refresh
     document.getElementById("refresh-auto-track").addEventListener("click", () => {
-        getAccurateLocationFromIP();
+        getLocationFromIP_MultiSource();
     });
-
-    // --------------------------------------------------------------
-    // 5. EKSEKUSI AWAL
-    // --------------------------------------------------------------
+    
+    // Eksekusi awal
     updateDeviceInfo();
     initGPS();
-    getAccurateLocationFromIP();   // <-- Auto track koordinat via IP saat load halaman
+    getLocationFromIP_MultiSource();
 </script>
 </body>
 </html>
