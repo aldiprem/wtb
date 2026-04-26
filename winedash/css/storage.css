@@ -1770,16 +1770,16 @@ body::after {
 
 body.panel-open,
 body.modal-open {
-    overflow: hidden !important;
-    position: fixed !important;
-    width: 100% !important;
-    height: 100% !important;
+    overflow: hidden;
+    touch-action: none;
 }
 
 body:not(.panel-open):not(.modal-open) {
-    overflow-y: auto !important;
-    position: relative !important;
-    height: auto !important;
+    overflow-y: auto;
+    overflow-x: hidden;
+    touch-action: auto;
+    position: relative;
+    height: auto;
 }
 
 /* Status Dropdown */

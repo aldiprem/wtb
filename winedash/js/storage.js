@@ -725,7 +725,7 @@
         inboxOverlay.classList.add('active');
         
         // Prevent scroll pada body
-        document.body.classList.add('inbox-open');
+        document.body.classList.add('panel-open');
         
         // Tampilkan panel dengan animasi
         panel.style.display = 'flex';
