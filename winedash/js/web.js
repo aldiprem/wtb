@@ -2210,7 +2210,6 @@
             filterOverlay.className = 'filter-overlay';
             document.body.appendChild(filterOverlay);
             
-            // Klik overlay untuk menutup panel - PERBAIKAN
             filterOverlay.addEventListener('click', (e) => {
                 e.stopPropagation();
                 closeFilterPanel();
@@ -2227,58 +2226,66 @@
         
         if (type === 'sort') {
             contentHtml = `
-                <div class="filter-section">
-                    <div class="filter-section-title">Sort By</div>
-                    <div class="filter-options">
-                        <button class="filter-option ${tempSort === 'default' ? 'active' : ''}" data-sort="default">
-                            <i class="fas fa-clock"></i> Default
-                        </button>
-                        <button class="filter-option ${tempSort === 'price_asc' ? 'active' : ''}" data-sort="price_asc">
-                            <i class="fas fa-arrow-up"></i> Price ↑
-                        </button>
-                        <button class="filter-option ${tempSort === 'price_desc' ? 'active' : ''}" data-sort="price_desc">
-                            <i class="fas fa-arrow-down"></i> Price ↓
-                        </button>
-                        <button class="filter-option ${tempSort === 'name_asc' ? 'active' : ''}" data-sort="name_asc">
-                            <i class="fas fa-sort-alpha-down"></i> Name A-Z
-                        </button>
+                <div class="panel-box-section">
+                    <div class="panel-box-section-title">Sort By</div>
+                    <div class="panel-box-options">
+                        <div class="panel-box-option ${tempSort === 'default' ? 'active' : ''}" data-sort="default">
+                            <i class="fas fa-clock"></i>
+                            <span>Default</span>
+                        </div>
+                        <div class="panel-box-option ${tempSort === 'price_asc' ? 'active' : ''}" data-sort="price_asc">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>Price: Low to High</span>
+                        </div>
+                        <div class="panel-box-option ${tempSort === 'price_desc' ? 'active' : ''}" data-sort="price_desc">
+                            <i class="fas fa-arrow-down"></i>
+                            <span>Price: High to Low</span>
+                        </div>
+                        <div class="panel-box-option ${tempSort === 'name_asc' ? 'active' : ''}" data-sort="name_asc">
+                            <i class="fas fa-sort-alpha-down"></i>
+                            <span>Name: A to Z</span>
+                        </div>
                     </div>
                 </div>
             `;
         } else if (type === 'price') {
             contentHtml = `
-                <div class="filter-section">
-                    <div class="filter-section-title">Price Range (TON)</div>
-                    <div class="price-range-container">
-                        <div class="price-inputs">
-                            <div class="price-input-group">
+                <div class="panel-box-section">
+                    <div class="panel-box-section-title">Price Range (TON)</div>
+                    <div class="panel-box-price-range">
+                        <div class="panel-box-price-inputs">
+                            <div class="panel-box-price-group">
                                 <label>Min</label>
-                                <input type="number" id="filterPriceMin" class="filter-price-input" value="${tempPriceFilter.min}" min="0" step="0.1" placeholder="0">
+                                <input type="number" id="filterPriceMin" class="panel-box-price-input" value="${tempPriceFilter.min}" min="0" step="0.1" placeholder="0">
                             </div>
-                            <div class="price-input-group">
+                            <div class="panel-box-price-group">
                                 <label>Max</label>
-                                <input type="number" id="filterPriceMax" class="filter-price-input" value="${tempPriceFilter.max >= 9999 ? '' : tempPriceFilter.max}" min="0" step="0.1" placeholder="∞">
+                                <input type="number" id="filterPriceMax" class="panel-box-price-input" value="${tempPriceFilter.max >= 9999 ? '' : tempPriceFilter.max}" min="0" step="0.1" placeholder="∞">
                             </div>
                         </div>
                     </div>
                 </div>
             `;
         } else if (type === 'basedon') {
-            let basedOnOptions = '<button class="filter-option active" data-basedon="all"><i class="fas fa-globe"></i> All</button>';
+            let basedOnOptions = `
+                <div class="panel-box-option ${tempBasedOnFilter === 'all' ? 'active' : ''}" data-basedon="all">
+                    <i class="fas fa-globe"></i>
+                    <span>All</span>
+                </div>
+            `;
             if (availableBasedOnList.length > 0) {
                 basedOnOptions += availableBasedOnList.map(b => `
-                    <button class="filter-option ${tempBasedOnFilter === b ? 'active' : ''}" data-basedon="${escapeHtml(b)}">
-                        <i class="fas fa-user-tag"></i> ${escapeHtml(b.length > 20 ? b.slice(0, 20) + '...' : b)}
-                    </button>
+                    <div class="panel-box-option ${tempBasedOnFilter === b ? 'active' : ''}" data-basedon="${escapeHtml(b)}">
+                        <i class="fas fa-user-tag"></i>
+                        <span>${escapeHtml(b.length > 20 ? b.slice(0, 20) + '...' : b)}</span>
+                    </div>
                 `).join('');
-            } else {
-                basedOnOptions = '<div class="loading-placeholder">Loading options...</div>';
             }
             
             contentHtml = `
-                <div class="filter-section">
-                    <div class="filter-section-title">Based On</div>
-                    <div class="filter-options filter-options-scroll" id="basedOnFilterOptions">
+                <div class="panel-box-section">
+                    <div class="panel-box-section-title">Based On</div>
+                    <div class="panel-box-options" id="basedOnFilterOptions">
                         ${basedOnOptions}
                     </div>
                 </div>
@@ -2286,19 +2293,19 @@
         }
         
         const panel = document.createElement('div');
-        panel.className = 'filter-panel-modern';
+        panel.className = 'panel-box';
         panel.innerHTML = `
             <div class="filter-drag-handle"></div>
-            <div class="filter-header">
+            <div class="panel-header">
                 <h3><i class="fas fa-filter"></i> ${type === 'sort' ? 'Sort By' : type === 'price' ? 'Price Range' : 'Based On'}</h3>
-                <button class="filter-close">&times;</button>
+                <button class="panel-close">&times;</button>
             </div>
-            <div class="filter-content">
+            <div class="panel-content">
                 ${contentHtml}
             </div>
-            <div class="filter-actions">
-                <button class="filter-reset">Reset</button>
-                <button class="filter-apply">Apply</button>
+            <div class="filter-actions" style="display: flex; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--border); background: var(--surface);">
+                <button class="filter-reset" style="flex: 1; background: var(--glass-bg); border: 1px solid var(--border); border-radius: 30px; padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer; color: var(--text-secondary);">Reset</button>
+                <button class="filter-apply" style="flex: 1; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); border: none; border-radius: 30px; padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer; color: white;">Apply</button>
             </div>
         `;
         
@@ -2307,13 +2314,11 @@
         filterOverlay.classList.add('active');
         document.body.classList.add('filter-open');
         
-        // Trigger animation
         setTimeout(() => panel.classList.add('open'), 10);
         
-        // Setup event listeners
-        const closeBtn = panel.querySelector('.filter-close');
+        // Setup close button
+        const closeBtn = panel.querySelector('.panel-close');
         if (closeBtn) {
-            // Hapus listener lama dengan clone
             const newCloseBtn = closeBtn.cloneNode(true);
             closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
             newCloseBtn.addEventListener('click', (e) => {
@@ -2322,12 +2327,13 @@
             });
         }
         
+        // Setup option handlers
         if (type === 'sort') {
-            panel.querySelectorAll('[data-sort]').forEach(btn => {
+            panel.querySelectorAll('.panel-box-option[data-sort]').forEach(btn => {
                 const newBtn = btn.cloneNode(true);
                 btn.parentNode.replaceChild(newBtn, btn);
                 newBtn.addEventListener('click', () => {
-                    panel.querySelectorAll('[data-sort]').forEach(b => b.classList.remove('active'));
+                    panel.querySelectorAll('.panel-box-option[data-sort]').forEach(b => b.classList.remove('active'));
                     newBtn.classList.add('active');
                     tempSort = newBtn.dataset.sort;
                 });
@@ -2351,11 +2357,11 @@
                 });
             }
         } else if (type === 'basedon') {
-            panel.querySelectorAll('[data-basedon]').forEach(btn => {
+            panel.querySelectorAll('.panel-box-option[data-basedon]').forEach(btn => {
                 const newBtn = btn.cloneNode(true);
                 btn.parentNode.replaceChild(newBtn, btn);
                 newBtn.addEventListener('click', () => {
-                    panel.querySelectorAll('[data-basedon]').forEach(b => b.classList.remove('active'));
+                    panel.querySelectorAll('.panel-box-option[data-basedon]').forEach(b => b.classList.remove('active'));
                     newBtn.classList.add('active');
                     tempBasedOnFilter = newBtn.dataset.basedon;
                 });
@@ -2370,8 +2376,9 @@
             newResetBtn.addEventListener('click', () => {
                 if (currentFilterType === 'sort') {
                     tempSort = 'default';
-                    panel.querySelectorAll('[data-sort]').forEach(b => b.classList.remove('active'));
-                    panel.querySelector('[data-sort="default"]').classList.add('active');
+                    panel.querySelectorAll('.panel-box-option[data-sort]').forEach(b => b.classList.remove('active'));
+                    const defaultOpt = panel.querySelector('.panel-box-option[data-sort="default"]');
+                    if (defaultOpt) defaultOpt.classList.add('active');
                 } else if (currentFilterType === 'price') {
                     tempPriceFilter = { min: 0, max: 9999 };
                     const priceMinInput = panel.querySelector('#filterPriceMin');
@@ -2380,8 +2387,9 @@
                     if (priceMaxInput) priceMaxInput.value = '';
                 } else if (currentFilterType === 'basedon') {
                     tempBasedOnFilter = 'all';
-                    panel.querySelectorAll('[data-basedon]').forEach(b => b.classList.remove('active'));
-                    panel.querySelector('[data-basedon="all"]').classList.add('active');
+                    panel.querySelectorAll('.panel-box-option[data-basedon]').forEach(b => b.classList.remove('active'));
+                    const allOpt = panel.querySelector('.panel-box-option[data-basedon="all"]');
+                    if (allOpt) allOpt.classList.add('active');
                 }
             });
         }
@@ -2404,7 +2412,7 @@
             });
         }
         
-        // Drag to close - PERBAIKAN DRAG HANDLER
+        // Drag to close
         const dragHandle = panel.querySelector('.filter-drag-handle');
         if (dragHandle) {
             let startY = 0, currentY = 0, isDragging = false;
@@ -2436,10 +2444,8 @@
                 }
             };
             
-            // Hapus listener lama
             const newDragHandle = dragHandle.cloneNode(true);
             dragHandle.parentNode.replaceChild(newDragHandle, dragHandle);
-            
             newDragHandle.addEventListener('touchstart', onTouchStart);
             newDragHandle.addEventListener('touchmove', onTouchMove);
             newDragHandle.addEventListener('touchend', onTouchEnd);

@@ -845,35 +845,6 @@ button:disabled {
     border-radius: 4px;
 }
 
-/* Responsive */
-@media (max-width: 480px) {
-    .winedash-container {
-        padding: 12px;
-        padding-bottom: 90px;
-    }
-    
-    .profile-name {
-        font-size: 14px;
-    }
-    
-    .profile-avatar {
-        width: 42px;
-        height: 42px;
-    }
-    
-    .balance-amount {
-        font-size: 12px;
-    }
-    
-    .username-name {
-        font-size: 13px;
-    }
-    
-    .username-price {
-        font-size: 14px;
-    }
-}
-
 /* ==================== PERBAIKAN MARKETPLACE GRID SPACING ==================== */
 .marketplace-grid {
     display: grid !important;
@@ -1056,31 +1027,6 @@ button:disabled {
 
 .card-telegram-btn-wrapper {
     margin-top: 4px;
-}
-
-/* Responsive untuk mobile */
-@media (max-width: 480px) {
-    .marketplace-grid {
-        gap: 8px !important;
-    }
-    
-    .card-telegram-btn {
-        padding: 4px 8px;
-        font-size: 9px;
-    }
-    
-    .card-telegram-btn i {
-        font-size: 10px;
-    }
-    
-    .marketplace-telegram-btn {
-        width: 32px;
-        height: 32px;
-    }
-    
-    .marketplace-telegram-btn i {
-        font-size: 16px;
-    }
 }
 
 /* Border 3D dengan gradient */
@@ -1518,50 +1464,6 @@ button:disabled {
     transform: scale(1.02);
 }
 
-/* Responsive */
-@media (max-width: 480px) {
-    .wallet-card-header-horizontal {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-    }
-    
-    .wallet-right-section {
-        width: 100%;
-        align-items: flex-start;
-    }
-    
-    .ton-connect-right {
-        width: 100%;
-        justify-content: flex-start;
-    }
-    
-    .ton-connect-right ton-connect-button,
-    .ton-connect-right button {
-        width: 100%;
-        min-width: unset;
-    }
-    
-    .wallet-card-actions {
-        width: 100%;
-        justify-content: space-between;
-    }
-    
-    .wallet-action-btn {
-        flex: 1;
-        padding: 8px 12px;
-    }
-    
-    .balance-amount-large {
-        font-size: 24px;
-    }
-    
-    .balance-logo-large {
-        width: 40px;
-        height: 40px;
-    }
-}
-
 /* ==================== WALLET PANEL STYLES ==================== */
 
 .wallet-panel {
@@ -1883,32 +1785,6 @@ body.wallet-panel-open {
 .price-range-values span {
     color: var(--primary);
     font-weight: 600;
-}
-
-/* Responsive */
-@media (max-width: 480px) {
-    .balance-amount-large {
-        font-size: 28px;
-    }
-    
-    .balance-logo-large {
-        width: 24px;
-        height: 24px;
-    }
-    
-    .wallet-action-btn {
-        padding: 10px 16px;
-        font-size: 13px;
-    }
-    
-    .quick-amount-btn {
-        padding: 8px 0;
-        font-size: 12px;
-    }
-    
-    .amount-input {
-        font-size: 22px;
-    }
 }
 
 /* Empty state untuk marketplace - di dalam section-card */
@@ -3085,4 +2961,461 @@ body {
     overscroll-behavior: contain !important;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y !important;
+}
+
+/* Panel Box Select Styles */
+.panel-box .panel-select {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    color: var(--text);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    outline: none;
+    margin-bottom: 16px;
+}
+
+.panel-box .panel-select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(64, 167, 227, 0.2);
+}
+
+.panel-box .panel-select option {
+    background: var(--surface);
+    color: var(--text);
+    padding: 10px;
+}
+
+/* Panel Box Options List (vertical) */
+.panel-box-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.panel-box-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.panel-box-option i {
+    width: 20px;
+    font-size: 14px;
+    color: var(--primary);
+}
+
+.panel-box-option:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(4px);
+}
+
+.panel-box-option.active {
+    background: var(--primary-glass);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.panel-box-option.active i {
+    color: var(--primary);
+}
+
+/* Text input dalam panel box */
+.panel-box-input {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.panel-box-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(64, 167, 227, 0.2);
+}
+
+.panel-box-input::placeholder {
+    color: var(--text-muted);
+}
+
+/* Panel Box Section */
+.panel-box-section {
+    margin-bottom: 20px;
+}
+
+.panel-box-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+}
+
+/* ==================== PERBAIKAN CONSISTENCY ==================== */
+
+/* Konsistensi font */
+body, .winedash-container, .tab-btn, .action-btn, .filter-action-btn, 
+.marketplace-card, .username-item, .toast, .modal-content {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Action Bar - Style blur seperti storage */
+.action-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    width: 100%;
+}
+
+.action-row::-webkit-scrollbar {
+    height: 3px;
+}
+
+.action-row::-webkit-scrollbar-track {
+    background: var(--border-light);
+    border-radius: 3px;
+}
+
+.action-row::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 3px;
+}
+
+.action-row .action-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 6px 14px;
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.action-row .action-btn i {
+    font-size: 12px;
+}
+
+.action-row .action-btn.add-action-btn {
+    background: linear-gradient(135deg, var(--success), #0d9488);
+    border-color: var(--success);
+    color: white;
+}
+
+.action-row .action-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Filter Action Button */
+.filter-action-btn {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 6px 14px;
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.filter-action-btn i {
+    font-size: 12px;
+}
+
+.filter-action-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.filter-action-btn.active {
+    background: var(--primary-glass);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* Container padding - samakan dengan storage */
+.winedash-container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 0 12px;
+    padding-bottom: 90px;
+    min-height: 100vh;
+    background: transparent;
+    position: relative;
+    z-index: 1;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+    padding-top: max(8px, env(safe-area-inset-top, 0px));
+    width: 100%;
+}
+
+/* Marketplace Grid - Jarak antar card */
+.marketplace-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+    margin-bottom: 20px !important;
+    border-radius: 16px;
+    overflow: visible;
+}
+
+/* Marketplace List Layout - Jarak antar item */
+.marketplace-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.marketplace-list .marketplace-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border-light);
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 0;
+}
+
+.marketplace-list .marketplace-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
+}
+
+/* Marketplace Card - perbaikan jarak */
+.marketplace-grid .marketplace-card {
+    margin-bottom: 0 !important;
+    border-radius: 16px;
+    height: 180px;
+}
+
+/* Profile Header padding */
+.profile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding: 8px 0;
+}
+
+/* Search Container */
+.search-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    align-items: center;
+}
+
+.search-input {
+    flex: 1;
+    padding: 12px 16px;
+    font-size: 15px;
+    color: var(--text);
+    outline: none;
+    transition: all 0.3s ease;
+    border-radius: 20px;
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+}
+
+.search-apply-btn {
+    background: rgba(64, 167, 227, 0.2);
+    backdrop-filter: blur(4px);
+    border-radius: 20px;
+    padding: 10px 24px;
+    color: var(--primary);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.1s;
+    white-space: nowrap;
+    position: relative;
+    overflow: hidden;
+    height: auto;
+    min-width: 80px;
+    border: none;
+}
+
+/* Layout Toggle */
+.layout-toggle {
+    display: flex;
+    gap: 4px;
+    background: var(--glass-bg);
+    border-radius: 20px;
+    padding: 3px;
+}
+
+.layout-btn {
+    background: transparent;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 16px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.layout-btn.active {
+    background: var(--primary-glass);
+    color: var(--primary);
+}
+
+@media (max-width: 768px) {
+    .winedash-container {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+}
+
+/* ==================== RESPONSIVE (Mobile) ==================== */
+
+@media (max-width: 480px) {
+    /* Container */
+    .winedash-container {
+        padding: 12px;
+        padding-bottom: 90px;
+    }
+    
+    /* Profile */
+    .profile-name {
+        font-size: 14px;
+    }
+    
+    .profile-avatar {
+        width: 42px;
+        height: 42px;
+    }
+    
+    .balance-amount {
+        font-size: 12px;
+    }
+    
+    /* Username */
+    .username-name {
+        font-size: 13px;
+    }
+    
+    .username-price {
+        font-size: 14px;
+    }
+    
+    /* Marketplace Grid */
+    .marketplace-grid {
+        gap: 8px !important;
+    }
+    
+    /* Telegram Buttons */
+    .card-telegram-btn {
+        padding: 4px 8px;
+        font-size: 9px;
+    }
+    
+    .card-telegram-btn i {
+        font-size: 10px;
+    }
+    
+    .marketplace-telegram-btn {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .marketplace-telegram-btn i {
+        font-size: 16px;
+    }
+    
+    /* Wallet Card */
+    .wallet-card-header-horizontal {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .wallet-right-section {
+        width: 100%;
+        align-items: flex-start;
+    }
+    
+    .ton-connect-right {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .ton-connect-right ton-connect-button,
+    .ton-connect-right button {
+        width: 100%;
+        min-width: unset;
+    }
+    
+    .wallet-card-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .wallet-action-btn {
+        flex: 1;
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+    
+    /* Balance */
+    .balance-amount-large {
+        font-size: 24px;
+    }
+    
+    .balance-logo-large {
+        width: 40px;
+        height: 40px;
+    }
+    
+    /* Quick Amount & Input */
+    .quick-amount-btn {
+        padding: 8px 0;
+        font-size: 12px;
+    }
+    
+    .amount-input {
+        font-size: 22px;
+    }
 }
