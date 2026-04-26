@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Force Mode Bot - Update Fitur Terbaru</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a0f1e 0%, #0c1222 50%, #0a0f1e 100%);
+            color: #eef2ff;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            overflow: hidden;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 30%, rgba(79, 70, 229, 0.15) 0%, transparent 50%);
+            animation: pulse 8s ease-in-out infinite;
+        }
+
+        .bg-animation::after {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 80% 70%, rgba(6, 182, 212, 0.1) 0%, transparent 50%);
+            animation: pulse 10s ease-in-out infinite reverse;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translate(-10%, -10%) scale(1); opacity: 0.5; }
+            50% { transform: translate(0%, 0%) scale(1.1); opacity: 0.8; }
+        }
+
+        /* Particles Effect */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(99, 102, 241, 0.3);
+            border-radius: 50%;
+            animation: float 15s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.5; }
+            90% { opacity: 0.5; }
+            100% { transform: translateY(-20vh) rotate(360deg); opacity: 0; }
+        }
+
+        /* Container */
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header / Hero Section */
+        .hero {
+            text-align: center;
+            margin-bottom: 4rem;
+            position: relative;
+        }
+
+        .badge {
+            display: inline-block;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(6, 182, 212, 0.2));
+            backdrop-filter: blur(10px);
+            padding: 0.5rem 1.25rem;
+            border-radius: 100px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            margin-bottom: 1.5rem;
+            letter-spacing: 0.5px;
+        }
+
+        .badge i {
+            margin-right: 0.5rem;
+            color: #6366f1;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff 0%, #a5b4fc 50%, #67e8f9 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+        }
+
+        .hero .version {
+            font-size: 1rem;
+            color: #94a3b8;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero .version span {
+            background: #1e293b;
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-family: monospace;
+        }
+
+        .hero p {
+            max-width: 700px;
+            margin: 0 auto;
+            color: #cbd5e1;
+            font-size: 1.1rem;
+        }
+
+        /* Featured Card (3 Fitur) */
+        .featured-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 5rem;
+        }
+
+        .feature-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border-radius: 2rem;
+            padding: 1.8rem;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(99, 102, 241, 0.5);
+            box-shadow: 0 20px 35px -15px rgba(0, 0, 0, 0.5);
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #6366f1, #06b6d4);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .feature-card h3 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-card p {
+            color: #94a3b8;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+        }
+
+        .feature-tag {
+            display: inline-block;
+            background: rgba(99, 102, 241, 0.2);
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #a5b4fc;
+        }
+
+        /* Detail Section (Penjelasan Lengkap) */
+        .detail-section {
+            background: rgba(10, 15, 30, 0.5);
+            backdrop-filter: blur(8px);
+            border-radius: 2rem;
+            padding: 2.5rem;
+            margin-bottom: 3rem;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+        }
+
+        .detail-section h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .detail-section h2 i {
+            background: linear-gradient(135deg, #6366f1, #06b6d4);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .feature-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .feature-block {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            border-left: 4px solid #6366f1;
+        }
+
+        .feature-block h3 {
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            color: #e2e8f0;
+        }
+
+        .feature-block ul, .feature-block p {
+            color: #94a3b8;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-block li {
+            margin-left: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .grid-2col {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .info-card {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 1.2rem;
+            padding: 1.2rem;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .info-card strong {
+            color: #a5b4fc;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .badge-hukuman {
+            display: inline-block;
+            background: #1e293b;
+            padding: 0.2rem 0.6rem;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            margin-right: 0.5rem;
+            margin-bottom: 0.3rem;
+            color: #cbd5e1;
+        }
+
+        /* Tabel */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        th {
+            background: rgba(99, 102, 241, 0.2);
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        td {
+            color: #94a3b8;
+        }
+
+        /* Cara Pakai */
+        .steps {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: space-between;
+            margin: 2rem 0;
+        }
+
+        .step {
+            flex: 1;
+            min-width: 180px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #6366f1, #06b6d4);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-weight: 700;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding-top: 3rem;
+            margin-top: 3rem;
+            border-top: 1px solid rgba(99, 102, 241, 0.2);
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .button-glow {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, #6366f1, #06b6d4);
+            padding: 0.75rem 2rem;
+            border-radius: 50px;
+            font-weight: 600;
+            color: white;
+            text-decoration: none;
+            margin-top: 1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .button-glow:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.5);
+        }
+
+        hr {
+            border-color: rgba(99, 102, 241, 0.2);
+            margin: 2rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            .hero h1 {
+                font-size: 2rem;
+            }
+            .detail-section {
+                padding: 1.5rem;
+            }
+            .steps {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="bg-animation"></div>
+<div class="particles" id="particles"></div>
+
+<div class="container">
+    <!-- Hero -->
+    <div class="hero">
+        <div class="badge">
+            <i class="fas fa-code-branch"></i> UPDATE TERBARU · FORCE UBOT (FBOT)
+        </div>
+        <h1>NEW UPDATING VERSI PENGEMBANGAN!</h1>
+        <div class="version">
+            <span>🚀 rilis v3.0 · 27 April 2026</span>
+        </div>
+        <p>
+            Fitur ini sedang dalam pengembangan, saya mohon kepada semua orang dan saya harap untuk semua pengguna bot 
+            bisa memberikan support dan bantuan pada fitur-fitur tersebut yang baru saja saya rilis. 
+            Penjelasan lengkap di bawah ini — semoga kalian dapat mudah memahaminya.
+        </p>
+        <a href="https://t.me/forcemodebot" class="button-glow" target="_blank">
+            <i class="fab fa-telegram"></i> Coba Bot Sekarang
+        </a>
+    </div>
+
+    <!-- 3 Fitur Utama (Card) -->
+    <div class="featured-grid">
+        <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+            <h3>📊 Limit Harian</h3>
+            <p>Deteksi pesan berulang/spam & batasi maksimal kiriman per hari (per user / per pesan). Monitor 24 jam otomatis.</p>
+            <span class="feature-tag"><i class="fas fa-robot"></i> Anti Spam & Userbot</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-hourglass-half"></i></div>
+            <h3>⏱️ Force Delay</h3>
+            <p>Batasi jeda waktu antar pesan. Cegah flooding, banjir chat, kiriman cepat bertubi-tubi. Hukuman otomatis + release.</p>
+            <span class="feature-tag"><i class="fas fa-shield-alt"></i> Anti Flood & Spam Kilat</span>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-calendar-check"></i></div>
+            <h3>📋 Verif Absen</h3>
+            <p>Wajibkan semua member melakukan absen harian via bot. Kirim notifikasi + pinned message, lepas hukuman otomatis.</p>
+            <span class="feature-tag"><i class="fas fa-user-check"></i> Keamanan & Verifikasi</span>
+        </div>
+    </div>
+
+    <!-- PENJELASAN DETAIL: LIMIT HARIAN -->
+    <div class="detail-section">
+        <h2><i class="fas fa-chart-simple"></i> 1. Limit Harian — Monitor 24 Jam Grup Anda</h2>
+        <div class="feature-content">
+            <p><strong>Fungsi utama:</strong> Mendeteksi dan membatasi aktivitas pengiriman pesan di grup — sangat cocok untuk memantau userbot / akun promosi yang terus menerus mengirim pesan dalam jumlah besar.</p>
+            <div class="grid-2col">
+                <div class="info-card">
+                    <strong>🎯 Mode Deteksi (2 Pilihan)</strong>
+                    <ul style="margin-top: 0.5rem;">
+                        <li><i class="fas fa-user-circle" style="color:#6366f1;"></i> <strong>Detect Akun</strong> → Hitung jumlah pesan per user ID.</li>
+                        <li><i class="fas fa-comment-dots" style="color:#06b6d4;"></i> <strong>Detect Pesan</strong> → Identifikasi pesan YANG SAMA dan kelompokkan per pengirim.</li>
+                    </ul>
+                </div>
+                <div class="info-card">
+                    <strong>⚙️ Batas Maksimal & Reset</strong>
+                    <p>Atur limit berapa kali per hari (contoh: 200x). Reset otomatis setiap pukul <strong>00:00 WIB (Asia/Jakarta)</strong> tanpa perlu intervensi.</p>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr><th>Jenis Hukuman</th><th>Keterangan</th><th>Durasi?</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>🔇 Mute</td><td>Membisukan user di grup</td><td>Permanen / durasi (detik, menit, jam, hari)</td></tr>
+                        <tr><td>👢 Kick</td><td>Mengeluarkan user dari grup</td><td>Langsung (tanpa durasi)</td></tr>
+                        <tr><td>🚫 Ban</td><td>Melarang user join kembali</td><td>Permanen / durasi (auto unban)</td></tr>
+                        <tr><td>🗑️ Delete</td><td>Menghapus pesan user</td><td>Delete Lasted (pesan terakhir) / Delete All (semua pesan hari ini)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="info-card">
+                <strong>📊 Statistik Real-time</strong>
+                <p>Menampilkan daftar user yang melanggar limit, jumlah pelanggaran per hari, dan status hukuman. Data tetap tersimpan hingga reset harian.</p>
+                <strong>📝 Custom Text Notifikasi</strong>
+                <p>Buat pesan kustom dengan template: <code>{MENTION}, {FULLNAME}, {USERNAME}, {GROUPNAME}</code> dan lainnya.</p>
+            </div>
+         </div>
+    </div>
+
+    <!-- FORCE DELAY -->
+    <div class="detail-section">
+        <h2><i class="fas fa-stopwatch"></i> 2. Force Delay — Jeda Waktu Wajib Antar Pesan</h2>
+        <div class="feature-content">
+            <p><strong>Cara kerja:</strong> Admin menentukan jeda minimal (contoh: 3 menit). Bot mencatat waktu pesan pertama. Jika user mengirim pesan kedua sebelum jeda habis → hukuman diberikan. Hukuman dilepas otomatis setelah waktu jeda terlewati.</p>
+            <div class="grid-2col">
+                <div class="info-card">
+                    <strong>⏰ Format Input Jeda</strong>
+                    <ul>
+                        <li><code>10 detik / 10s</code></li>
+                        <li><code>5 menit / 5m</code></li>
+                        <li><code>2 jam / 2h</code></li>
+                        <li><code>1 hari / 1d</code></li>
+                    </ul>
+                </div>
+                <div class="info-card">
+                    <strong>⚖️ Jenis Hukuman</strong>
+                    <ul>
+                        <li>🔇 Mute (durasi/permanen)</li>
+                        <li>🚫 Ban (durasi/permanen + auto unban)</li>
+                        <li>👢 Kick</li>
+                        <li>🗑️ Delete (Lasted / All — hapus 1 atau 2 pesan terakhir)</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="info-card">
+                <strong>📝 2 Jenis Pesan Kustom:</strong>
+                <ul>
+                    <li><strong>Pesan Hukum</strong> → Dikirim saat bot menghukum user (mendukung template <code>{RELEASE_TIME}</code>).</li>
+                    <li><strong>Pesan Bebas</strong> → Dikirim saat hukuman dilepas (template <code>{MENTION}, {FULLNAME}</code> dll).</li>
+                </ul>
+                <p>Setiap pesan bisa diaktifkan/nonaktifkan secara terpisah dengan tombol toggle. Jika nonaktif, bot menggunakan pesan default.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- VERIF ABSEN -->
+    <div class="detail-section">
+        <h2><i class="fas fa-clipboard-list"></i> 3. Verif Absen — Wajib Absen Setiap Hari</h2>
+        <div class="feature-content">
+            <p><strong>Konsep:</strong> Semua anggota grup WAJIB melakukan absen ke bot pada jam yang ditentukan. Tanpa absen → tidak bisa mengirim pesan (kena hukuman).</p>
+            <div class="grid-2col">
+                <div class="info-card">
+                    <strong>⏰ Pengaturan Jam Absen</strong>
+                    <p>Admin input jam <code>HH:MM</code> (contoh: <code>07:00</code> atau <code>00:30</code>). Jam absen yang diubah akan berlaku mulai besuk (tidak mengganggu absen hari ini).</p>
+                    <strong>🔗 Link Unik Absen</strong>
+                    <p>Format: <code>https://t.me/namabot?start=absen_KODE_CHATID</code>. Link ditampilkan langsung di menu pengaturan.</p>
+                </div>
+                <div class="info-card">
+                    <strong>📢 Notifikasi & Pinned Message</strong>
+                    <p>Pada jam yang ditentukan, bot akan mengirim pesan + memin-nya di grup. Klik link → user langsung tercatat absen dan hukuman dilepas.</p>
+                    <strong>Hukuman (bagi yang belum absen)</strong>
+                    <p>Mute / Ban / Kick / Delete. Sama seperti fitur lainnya, support durasi & permanen.</p>
+                </div>
+            </div>
+            <div class="info-card">
+                <strong>📝 Custom Text (2 Jenis)</strong>
+                <ul>
+                    <li><strong>Text Info</strong> → Dikirim saat notifikasi absen (mendukung <code>{ABSEN_LINK}</code>, <code>{GROUPNAME}</code>).</li>
+                    <li><strong>Text Hukum</strong> → Dikirim saat user dihukum karena belum absen (template <code>{MENTION}, {ABSEN_LINK}</code>).</li>
+                </ul>
+                <p>Statistik absen menampilkan siapa saja yang sudah absen hari ini lengkap dengan waktu.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cara Mengaktifkan & Catatan Penting -->
+    <div class="detail-section">
+        <h2><i class="fas fa-play-circle"></i> Cara Mengaktifkan & Menggunakan</h2>
+        <div class="steps">
+            <div class="step"><div class="step-number">1</div> <strong>/settings</strong><br>di grup (bot harus admin)</div>
+            <div class="step"><div class="step-number">2</div> Klik <strong>🤖 FORCE UBOT</strong></div>
+            <div class="step"><div class="step-number">3</div> Pilih fitur: Limit Harian / Force Delay / Verif Absen</div>
+            <div class="step"><div class="step-number">4</div> Klik tombol <strong>⏻ Aktifkan</strong></div>
+            <div class="step"><div class="step-number">5</div> Konfigurasi Hukuman, Buat Text, Edit Limit/Jeda/Jam</div>
+        </div>
+        <hr>
+        <div class="grid-2col">
+            <div class="info-card">
+                <strong><i class="fas fa-crown" style="color:#fbbf24;"></i> Premium User</strong>
+                <p>User premium tidak akan terkena hukuman di semua fitur di atas.</p>
+            </div>
+            <div class="info-card">
+                <strong><i class="fas fa-database"></i> Reset Data</strong>
+                <p>Limit Harian reset pukul 00:00 WIB. Absen direset per hari.</p>
+            </div>
+            <div class="info-card">
+                <strong><i class="fas fa-check-circle"></i> Prasyarat Bot</strong>
+                <p>Admin grup + izin: Delete message, Ban user, Pin message (khusus absen).</p>
+            </div>
+            <div class="info-card">
+                <strong><i class="fas fa-chart-simple"></i> Statistik</strong>
+                <p>Menampilkan user_id & jumlah pelanggaran, bukan konten pesan (privasi terjaga).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pesan Dukungan -->
+    <div class="detail-section" style="text-align: center; background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(6,182,212,0.05));">
+        <h2 style="justify-content: center;"><i class="fas fa-headset"></i> Dukungan & Bantuan</h2>
+        <p>Jika mengalami kendala / bug pada fitur-fitur di atas, segera laporkan ke group support atau owner bot.</p>
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem;">
+            <a href="https://t.me/ftamous" class="button-glow" style="background: #1e293b; border:1px solid #6366f1;" target="_blank"><i class="fab fa-telegram"></i> Owner @ftamous</a>
+            <a href="https://t.me/questforce" class="button-glow" target="_blank"><i class="fas fa-users"></i> Group Support</a>
+        </div>
+        <p style="margin-top: 2rem; font-size: 0.85rem;">Terima kasih atas kepercayaan anda terhadap <strong>@forcemodebot</strong>. 🙏</p>
+    </div>
+
+    <div class="footer">
+        <p><i class="fas fa-code"></i> Force Mode Bot — mengelola grup jadi lebih aman & tertib. Update v3.0 (FBOT)</p>
+        <p style="margin-top: 0.5rem;">© 2026 ForceModeBot | Seluruh fitur dapat diakses via command <code>/settings</code></p>
+    </div>
+</div>
+
+<script>
+    // Generate random particles
+    const particlesContainer = document.getElementById('particles');
+    const particleCount = 70;
+    for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.classList.add('particle');
+        const size = Math.random() * 6 + 2;
+        particle.style.width = size + 'px';
+        particle.style.height = size + 'px';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.animationDelay = Math.random() * 20 + 's';
+        particle.style.animationDuration = Math.random() * 10 + 8 + 's';
+        particle.style.opacity = Math.random() * 0.4;
+        particlesContainer.appendChild(particle);
+    }
+</script>
+</body>
+</html>

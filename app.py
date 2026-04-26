@@ -1265,6 +1265,11 @@ def serve_admin_panel(endpoint):
 def serve_website(endpoint):
     return send_from_directory(base_dir, 'website.html')
 
+@app.route('/forcemode/ask-forceubot')
+def forcemode_ask_forceubot():
+    """Halaman penjelasn forceubot"""
+    return send_from_directory(os.path.join(base_dir, 'forcemode', 'html'), 'ask-forceubot.html')
+
 @app.route('/fragment/pay')
 def fragment_pay_page():
     """Halaman pembayaran QRIS"""
