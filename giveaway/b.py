@@ -48,6 +48,19 @@ from telethon.tl.types import ChannelParticipantAdmin, ChannelParticipantCreator
 from telethon.tl.functions.messages import ExportChatInviteRequest
 from telethon import errors
 from giveaway.services.battle_service import set_battle_bot_client
+from giveaway.services.battle_bot_handler import (
+    battle_menu_handler,
+    battle_set_prizes,
+    battle_set_group,
+    battle_set_deadline,
+    battle_toggle_captcha,
+    battle_menu_back,
+    battle_cancel,
+    battle_start,
+    handle_battle_text_input,
+    monitor_group_messages,
+    check_battle_deadlines
+)
 
 # Logging seperti fragment_bot.py
 logging.basicConfig(
