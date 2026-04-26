@@ -174,7 +174,7 @@
         
         // Source 1: ip-api.com (gratis, tanpa API key, paling stabil)
         try {
-            const res = await fetch('http://ip-api.com/json/?fields=status,country,countryCode,region,regionName,city,lat,lon,isp,org,as,query,proxy', { cache: 'no-store' });
+            const res = await fetch('https://ip-api.com/json/?fields=status,country,countryCode,region,regionName,city,lat,lon,isp,org,as,query,proxy', { cache: 'no-store' });
             const data = await res.json();
             
             if (data && data.status === 'success') {
