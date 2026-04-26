@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Tracker | Angkasa Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 20% 30%, #0a0f1e, #03050b);
+            min-height: 100vh;
+            padding: 24px 16px;
+            color: #eef5ff;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #c084fc, #60a5fa, #f472b6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .card {
+            background: rgba(15, 25, 45, 0.65);
+            backdrop-filter: blur(12px);
+            border-radius: 28px;
+            padding: 24px;
+            border: 1px solid rgba(96, 165, 250, 0.25);
+            margin-bottom: 24px;
+        }
+        .card h3 {
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            border-bottom: 1px dashed rgba(96,165,250,0.4);
+            padding-bottom: 10px;
+        }
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .input-group input {
+            flex: 1;
+            padding: 14px 18px;
+            border-radius: 40px;
+            border: 1px solid rgba(96,165,250,0.4);
+            background: rgba(0,0,0,0.4);
+            color: white;
+            font-size: 1rem;
+            outline: none;
+        }
+        .input-group input:focus { border-color: #60a5fa; }
+        button {
+            background: linear-gradient(95deg, #1e2a5e, #2d3a6e);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+        button:hover { transform: scale(0.98); opacity: 0.9; }
+        .btn-primary { background: linear-gradient(135deg, #d946ef, #f43f5e); }
+        .btn-success { background: linear-gradient(135deg, #10b981, #059669); }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        th { color: #9ca8cf; font-weight: 600; }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-used { background: rgba(239,68,68,0.3); color: #fca5a5; }
+        .badge-unused { background: rgba(34,197,94,0.3); color: #86efac; }
+        .copy-btn {
+            background: rgba(255,255,255,0.1);
+            padding: 4px 10px;
+            font-size: 0.7rem;
+            margin-left: 8px;
+        }
+        .map-link { color: #7aa2f7; text-decoration: none; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: rgba(15,25,45,0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 28px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid rgba(96,165,250,0.5);
+        }
+        .modal-content h3 { margin-bottom: 15px; }
+        .modal-content input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 40px;
+            border: 1px solid rgba(96,165,250,0.4);
+            background: rgba(0,0,0,0.4);
+            color: white;
+            margin: 15px 0;
+        }
+        .close { float: right; cursor: pointer; font-size: 24px; }
+        .endpoint-url {
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 12px;
+            word-break: break-all;
+            font-family: monospace;
+            margin: 15px 0;
+        }
+        .logs-container {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            padding: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.8rem;
+        }
+        @media (max-width: 768px) {
+            th, td { font-size: 0.7rem; padding: 8px; }
+            .input-group { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>📡 DATA TRACKER DASHBOARD</h1>
+        <p>Kelola endpoint tracking unik | Setiap link hanya bisa digunakan 1 orang</p>
+    </div>
+
+    <!-- Create Endpoint Card -->
+    <div class="card">
+        <h3>➕ BUAT ENDPOINT BARU</h3>
+        <div class="input-group">
+            <input type="text" id="endpoint-name" placeholder="Nama endpoint (contoh: HP Saya, Laptop Kantor, dll)">
+            <button id="create-endpoint-btn" class="btn-primary">✨ Buat Link Tracker</button>
+        </div>
+        <div id="create-result" style="display: none;" class="endpoint-url"></div>
+    </div>
+
+    <!-- List Endpoints Card -->
+    <div class="card">
+        <h3>📋 DAFTAR ENDPOINT</h3>
+        <div style="overflow-x: auto;">
+            <table id="endpoints-table">
+                <thead>
+                    <tr><th>Nama</th><th>Token</th><th>Status</th><th>Digunakan Oleh</th><th>Lokasi</th><th>Terakhir</th><th>Aksi</th></tr>
+                </thead>
+                <tbody id="endpoints-list">
+                    <tr><td colspan="7" style="text-align:center;">⏳ Memuat data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Logs -->
+<div id="logs-modal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h3>📜 Log Kunjungan</h3>
+        <div id="logs-content" class="logs-container">Loading...</div>
+    </div>
+</div>
+
+<script>
+    let currentToken = null;
+
+    async function loadEndpoints() {
+        try {
+            const resp = await fetch('/tracker/api/endpoints');
+            const data = await resp.json();
+            
+            if (data.success) {
+                const tbody = document.getElementById('endpoints-list');
+                if (data.endpoints.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Belum ada endpoint, buat dulu!</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = data.endpoints.map(ep => {
+                    let statusBadge = ep.is_used ? '<span class="badge badge-used">✅ Sudah digunakan</span>' : '<span class="badge badge-unused">🟢 Belum digunakan</span>';
+                    let location = '';
+                    if (ep.visitor_lat && ep.visitor_lon && ep.visitor_lat !== 0) {
+                        location = `<a href="https://www.google.com/maps?q=${ep.visitor_lat},${ep.visitor_lon}" target="_blank" class="map-link">🗺️ Lihat Peta</a>`;
+                    } else if (ep.visitor_city && ep.visitor_city !== '-') {
+                        location = `${ep.visitor_city}, ${ep.visitor_country || ''}`;
+                    } else {
+                        location = '-';
+                    }
+                    
+                    let usedBy = ep.used_by_ip || '-';
+                    if (ep.used_by_ip && ep.used_by_ip !== '-') {
+                        usedBy = `<a href="https://ipapi.co/${ep.used_by_ip}/json/" target="_blank">${ep.used_by_ip}</a>`;
+                    }
+                    
+                    let lastSeen = ep.last_seen ? new Date(ep.last_seen).toLocaleString('id-ID') : '-';
+                    
+                    return `
+                        <tr>
+                            <td><strong>${escapeHtml(ep.endpoint_name)}</strong></td>
+                            <td><code>${ep.endpoint_token.substring(0, 15)}...</code></td>
+                            <td>${statusBadge}</td>
+                            <td>${usedBy}</td>
+                            <td>${location}</td>
+                            <td>${lastSeen}</td>
+                            <td>
+                                <button class="copy-btn" onclick="copyLink('${ep.endpoint_token}')">🔗 Copy Link</button>
+                                <button class="copy-btn" onclick="showLogs('${ep.endpoint_token}')">📜 Logs</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        } catch(e) {
+            console.error(e);
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    async function copyLink(token) {
+        const url = `https://companel.shop/tracker/view?token=${token}`;
+        await navigator.clipboard.writeText(url);
+        alert('Link berhasil disalin!\n' + url);
+    }
+
+    async function showLogs(token) {
+        currentToken = token;
+        const modal = document.getElementById('logs-modal');
+        const logsContent = document.getElementById('logs-content');
+        modal.style.display = 'flex';
+        logsContent.innerHTML = 'Loading...';
+        
+        try {
+            const resp = await fetch(`/tracker/api/endpoint/${token}/logs`);
+            const data = await resp.json();
+            
+            if (data.success && data.logs.length > 0) {
+                logsContent.innerHTML = data.logs.map(log => `
+                    <div class="log-entry">
+                        <strong>📅 ${new Date(log.visited_at).toLocaleString('id-ID')}</strong><br>
+                        IP: ${log.visitor_ip}<br>
+                        Lokasi: ${log.visitor_city}, ${log.visitor_region}, ${log.visitor_country}<br>
+                        Koordinat: ${log.visitor_lat}, ${log.visitor_lon}<br>
+                        Device: ${log.visitor_device} | OS: ${log.visitor_os}<br>
+                        ISP: ${log.visitor_isp}
+                        <hr>
+                    </div>
+                `).join('');
+            } else {
+                logsContent.innerHTML = '<p>Belum ada data kunjungan.</p>';
+            }
+        } catch(e) {
+            logsContent.innerHTML = '<p>Error mengambil data log.</p>';
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('logs-modal').style.display = 'none';
+    }
+
+    document.getElementById('create-endpoint-btn').addEventListener('click', async () => {
+        const nameInput = document.getElementById('endpoint-name');
+        const name = nameInput.value.trim();
+        const resultDiv = document.getElementById('create-result');
+        
+        if (!name) {
+            alert('Masukkan nama endpoint terlebih dahulu!');
+            return;
+        }
+        
+        const btn = document.getElementById('create-endpoint-btn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Membuat...';
+        
+        try {
+            const resp = await fetch('/tracker/api/create-endpoint', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            });
+            const data = await resp.json();
+            
+            if (data.success) {
+                const url = `https://companel.shop/tracker/view?token=${data.token}`;
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    ✅ Endpoint berhasil dibuat!<br>
+                    Nama: <strong>${escapeHtml(data.endpoint_name)}</strong><br>
+                    Link Tracker: <code style="word-break:break-all;">${url}</code><br>
+                    <button onclick="navigator.clipboard.writeText('${url}')" style="margin-top:10px;">📋 Salin Link</button>
+                `;
+                nameInput.value = '';
+                loadEndpoints();
+            } else {
+                alert('Gagal: ' + (data.error || 'Unknown error'));
+            }
+        } catch(e) {
+            alert('Error: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '✨ Buat Link Tracker';
+        }
+    });
+
+    // Load data on page load
+    loadEndpoints();
+    setInterval(loadEndpoints, 15000);
+</script>
+</body>
+</html>

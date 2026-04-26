@@ -229,6 +229,13 @@ except ImportError as e:
     print(f"⚠️ panel_service import error: {e}")
     panel_bp = None
 
+try:
+    from tracker.services.data_tracker_service import data_tracker_bp
+    print("✅ data_tracker_service imported")
+except ImportError as e:
+    print(f"⚠️ data_tracker_service skipped: {e}")
+    data_tracker_bp = None
+
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
 # Setup logging
@@ -469,6 +476,10 @@ if gift_scanned_bp:
     print("✅ Gift Scanned blueprint registered (no prefix)")
 else:
     print("⚠️ Gift Scanned blueprint NOT registered - service unavailable")
+
+if data_tracker_bp:
+    app.register_blueprint(data_tracker_bp, url_prefix='/tracker')
+    print("✅ data_tracker_bp registered at /tracker")
 
 # ==================== GIFT SCANNED STATIC ROUTES ====================
 
@@ -989,6 +1000,39 @@ def serve_main_panel():
         return send_from_directory(html_dir, 'panel.html')
     return send_from_directory(base_dir, 'panel.html')
 
+# ==================== TRACKER ROUTES ====================
+# <<<<<< TARUH KODE DI SINI >>>>>>
+
+@app.route('/tracker')
+def serve_tracker_main():
+    from flask import redirect
+    return redirect('/tracker/html/data-tracker.html')
+
+@app.route('/tracker-data')
+def serve_tracker_data():
+    from flask import redirect
+    return redirect('/tracker/html/data-tracker.html')
+
+@app.route('/tracker/html/<path:filename>')
+def serve_tracker_html(filename):
+    tracker_html_dir = os.path.join(base_dir, 'tracker', 'html')
+    if os.path.exists(os.path.join(tracker_html_dir, filename)):
+        return send_from_directory(tracker_html_dir, filename)
+    return "File not found", 404
+
+@app.route('/tracker/css/<path:filename>')
+def serve_tracker_css(filename):
+    tracker_css_dir = os.path.join(base_dir, 'tracker', 'css')
+    if os.path.exists(os.path.join(tracker_css_dir, filename)):
+        return send_from_directory(tracker_css_dir, filename)
+    return "File not found", 404
+
+@app.route('/tracker/js/<path:filename>')
+def serve_tracker_js(filename):
+    tracker_js_dir = os.path.join(base_dir, 'tracker', 'js')
+    if os.path.exists(os.path.join(tracker_js_dir, filename)):
+        return send_from_directory(tracker_js_dir, filename)
+    return "File not found", 404
 
 @app.route('/format')
 def serve_main_format():
