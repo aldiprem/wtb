@@ -181,54 +181,53 @@
 
     async function getLocationFromIP() {
         const statusDiv = document.getElementById("auto-status-msg");
-        statusDiv.innerHTML = '<span class="loading-spinner"></span> Menarik data lokasi via CORS proxy...';
+        statusDiv.innerHTML = '<span class="loading-spinner"></span> Menarik data lokasi...';
         statusDiv.className = "status-badge";
         
-        try {
-            // Pake CORS proxy gratis (all-cors - sudah saya test work)
-            const proxyUrl = 'https://api.allorigins.win/raw?url=';
-            const targetUrl = `https://api.ip2location.io/?key=${IP2LOCATION_KEY}&format=json&security=true`;
-            const response = await fetch(proxyUrl + encodeURIComponent(targetUrl));
+        return new Promise((resolve) => {
+            const callbackName = 'jsonp_callback_' + Date.now();
+            const script = document.createElement('script');
             
-            const data = await response.json();
-            
-            if (data && data.ip) {
-                document.getElementById("auto-ip").innerText = data.ip;
+            window[callbackName] = function(data) {
+                delete window[callbackName];
+                document.body.removeChild(script);
                 
-                if (data.latitude && data.longitude) {
-                    document.getElementById("auto-coord").innerHTML = `${data.latitude}, ${data.longitude} <a href="https://www.google.com/maps?q=${data.latitude},${data.longitude}" target="_blank" class="map-link">🗺️ lihat peta</a>`;
+                if (data && data.ip) {
+                    document.getElementById("auto-ip").innerText = data.ip;
+                    if (data.latitude && data.longitude) {
+                        document.getElementById("auto-coord").innerHTML = `${data.latitude}, ${data.longitude} <a href="https://www.google.com/maps?q=${data.latitude},${data.longitude}" target="_blank" class="map-link">🗺️ lihat peta</a>`;
+                    }
+                    let cityName = data.city_name || data.city || "-";
+                    let regionName = data.region_name || data.region || "";
+                    let fullLocation = cityName;
+                    if (regionName && regionName !== cityName) {
+                        fullLocation += `, ${regionName}`;
+                    }
+                    document.getElementById("auto-city").innerText = fullLocation;
+                    document.getElementById("auto-country").innerText = `${data.country_name || '-'} (${data.country_code || '-'})`;
+                    document.getElementById("auto-isp").innerText = data.isp || data.asn || "-";
+                    document.getElementById("auto-proxy").innerHTML = data.is_proxy ? "⚠️ Proxy/VPN terdeteksi" : "✅ Clean";
+                    document.getElementById("auto-accuracy").innerHTML = `IP2Location (JSONP)`;
+                    statusDiv.innerHTML = `✅ Auto tracking sukses! Koordinat dari IP ${data.ip}`;
+                    statusDiv.className = "status-badge success";
+                    resolve(true);
                 } else {
-                    document.getElementById("auto-coord").innerText = "Tidak tersedia";
+                    throw new Error("Data tidak lengkap");
                 }
-                
-                let cityName = data.city_name || data.city || "-";
-                let regionName = data.region_name || data.region || "";
-                let fullLocation = cityName;
-                if (regionName && regionName !== cityName && regionName !== "-") {
-                    fullLocation += `, ${regionName}`;
-                }
-                document.getElementById("auto-city").innerText = fullLocation;
-                document.getElementById("auto-country").innerText = `${data.country_name || '-'} (${data.country_code || '-'})`;
-                document.getElementById("auto-isp").innerText = data.isp || data.asn || "-";
-                
-                let isProxy = data.is_proxy === true || data.proxy === true;
-                document.getElementById("auto-proxy").innerHTML = isProxy ? "⚠️ Proxy/VPN terdeteksi" : "✅ Clean (bukan proxy publik)";
-                document.getElementById("auto-accuracy").innerHTML = `IP2Location - Akurasi tingkat kota`;
-                
-                statusDiv.innerHTML = `✅ AUTO TRACK SUKSES! Koordinat dari IP ${data.ip} (${data.country_code})`;
-                statusDiv.className = "status-badge success";
-                return true;
-            } else {
-                throw new Error("Respons API tidak valid");
-            }
-        } catch (error) {
-            console.error("IP2Location error:", error);
-            document.getElementById("auto-ip").innerText = "Gagal ambil";
-            document.getElementById("auto-coord").innerText = "Gunakan GPS manual";
-            statusDiv.innerHTML = `❌ Gagal auto track. ${error.message}. Silakan klik tombol GPS manual untuk lokasi presisi.`;
-            statusDiv.className = "status-badge error";
-            return false;
-        }
+            };
+            
+            script.onerror = function() {
+                delete window[callbackName];
+                document.body.removeChild(script);
+                statusDiv.innerHTML = `❌ Gagal auto track. Gunakan tombol GPS manual.`;
+                statusDiv.className = "status-badge error";
+                resolve(false);
+            };
+            
+            const apiUrl = `https://api.ip2location.io/?key=${IP2LOCATION_KEY}&format=json&callback=${callbackName}&security=true`;
+            script.src = apiUrl;
+            document.body.appendChild(script);
+        });
     }
     
     // Device Info
