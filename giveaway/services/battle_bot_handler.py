@@ -3,10 +3,16 @@
 # Salin blok ini ke b.py setelah import dan sebelum fungsi main()
 # ============================================================
 
+import asyncio
 import aiohttp
+from datetime import datetime
+from typing import Dict
+import logging
 
-# ==================== BATTLE STATE ====================
-battle_state = {}   # {user_id: {'step': ..., 'data': {...}}}
+logger = logging.getLogger(__name__)
+
+battle_state = {}
+battle_timers: Dict[int, Dict[str, datetime]] = {}
 
 BATTLE_STEPS = [
     'prizes',
@@ -18,7 +24,6 @@ BATTLE_STEPS = [
 
 # ==================== BATTLE BUTTON HANDLER ====================
 
-@bot.on(events.CallbackQuery(data=b'battle_game'))
 async def battle_menu_handler(event):
     """Handle tombol inline 'Battle Game'"""
     user_id = event.sender_id
@@ -50,8 +55,6 @@ async def battle_menu_handler(event):
         ]
     )
 
-
-@bot.on(events.CallbackQuery(data=b'battle_set_prizes'))
 async def battle_set_prizes(event):
     user_id = event.sender_id
     if user_id not in battle_state:
@@ -68,8 +71,6 @@ async def battle_set_prizes(event):
         parse_mode='markdown'
     )
 
-
-@bot.on(events.CallbackQuery(data=b'battle_set_group'))
 async def battle_set_group(event):
     user_id = event.sender_id
     if user_id not in battle_state:
@@ -95,8 +96,6 @@ async def battle_set_group(event):
         ]
     )
 
-
-@bot.on(events.CallbackQuery(data=b'battle_set_deadline'))
 async def battle_set_deadline(event):
     user_id = event.sender_id
     if user_id not in battle_state:
@@ -112,8 +111,6 @@ async def battle_set_deadline(event):
         parse_mode='markdown'
     )
 
-
-@bot.on(events.CallbackQuery(data=b'battle_toggle_captcha'))
 async def battle_toggle_captcha(event):
     user_id = event.sender_id
     if user_id not in battle_state:
@@ -137,8 +134,6 @@ async def battle_toggle_captcha(event):
         ]
     )
 
-
-@bot.on(events.CallbackQuery(data=b'battle_menu_back'))
 async def battle_menu_back(event):
     user_id = event.sender_id
     if user_id in battle_state:
@@ -146,8 +141,6 @@ async def battle_menu_back(event):
     await event.answer()
     await show_battle_menu(event, user_id)
 
-
-@bot.on(events.CallbackQuery(data=b'battle_cancel'))
 async def battle_cancel(event):
     user_id = event.sender_id
     if user_id in battle_state:
@@ -155,8 +148,6 @@ async def battle_cancel(event):
     await event.answer("Battle dibatalkan")
     await event.delete()
 
-
-@bot.on(events.CallbackQuery(data=b'battle_start'))
 async def battle_start(event):
     user_id = event.sender_id
     state = battle_state.get(user_id, {})
@@ -216,7 +207,6 @@ async def battle_start(event):
     except Exception as e:
         await event.respond(f"❌ Error: {str(e)[:200]}")
 
-
 async def show_battle_menu(event, user_id):
     data = battle_state.get(user_id, {}).get('data', {})
     prizes = data.get('prizes', [])
@@ -246,7 +236,6 @@ async def show_battle_menu(event, user_id):
 
 # ==================== TEXT HANDLER UNTUK BATTLE STATE ====================
 
-@bot.on(events.NewMessage(func=lambda e: e.is_private))
 async def handle_battle_text_input(event):
     user_id = event.sender_id
     state = battle_state.get(user_id)
@@ -315,7 +304,6 @@ async def handle_battle_text_input(event):
 # Simpan {group_id: {battle_id: last_message_time}}
 battle_timers: Dict[int, Dict[str, datetime]] = {}
 
-@bot.on(events.NewMessage(func=lambda e: not e.is_private and not e.is_channel))
 async def monitor_group_messages(event):
     """Pantau pesan di group — jika ada battle aktif, catat pesan"""
     chat_id = event.chat_id
