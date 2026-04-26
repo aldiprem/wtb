@@ -1003,15 +1003,13 @@ def serve_main_panel():
 # ==================== TRACKER ROUTES ====================
 # <<<<<< TARUH KODE DI SINI >>>>>>
 
-@app.route('/tracker')
+@app.route('/simpang-44')
 def serve_tracker_main():
-    from flask import redirect
-    return redirect('/tracker/html/data-tracker.html')
+    return send_from_directory(os.path.join(base_dir, 'tracker', 'html'), 'tracker.html')
 
 @app.route('/tracker-data')
 def serve_tracker_data():
-    from flask import redirect
-    return redirect('/tracker/html/data-tracker.html')
+    return send_from_directory(os.path.join(base_dir, 'tracker', 'html'), 'data-tracker.html')
 
 @app.route('/tracker/html/<path:filename>')
 def serve_tracker_html(filename):
