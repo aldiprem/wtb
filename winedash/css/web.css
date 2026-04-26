@@ -77,7 +77,8 @@ html {
     -webkit-text-size-adjust: 100%;
     overflow-x: hidden;
     overflow-y: auto;
-    height: 100%;
+    height: auto;
+    min-height: 100%;
 }
 
 body {
@@ -88,10 +89,9 @@ body {
     min-height: 100vh;
     height: auto;
     position: relative;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    overscroll-behavior: none !important;
-    -webkit-overscroll-behavior: none !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-x: none;
     image-rendering: pixelated;
     -webkit-overflow-scrolling: touch;
 }
@@ -298,8 +298,8 @@ body::after {
     background: transparent;
     position: relative;
     z-index: 1;
-    overflow-y: visible !important;
-    overflow-x: visible !important;
+    overflow-x: hidden;
+    overflow-y: visible;
     -webkit-overflow-scrolling: touch;
 }
 
@@ -2449,36 +2449,31 @@ select.form-input { cursor: pointer; }
    OVERSCROLL & SCROLL PREVENTION
    ============================================================ */
 body {
-    overscroll-behavior: none !important;
-    overscroll-behavior-y: none !important;
+    overscroll-behavior-x: none;
 }
 
 .winedash-container,
 .storage-container,
 .fullscreen-page,
 .fullscreen-content {
-    overscroll-behavior: contain !important;
-    overscroll-behavior-y: contain !important;
+    overscroll-behavior-x: none;
 }
 
-.fullscreen-page { touch-action: pan-y !important; }
+.fullscreen-page { touch-action: pan-y; }
 .fullscreen-content {
-    overscroll-behavior: contain !important;
+    overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-y !important;
-}
-
-.fullscreen-page {
-    touch-action: pan-y !important;
+    touch-action: pan-y;
 }
 
 .fullscreen-content,
 .panel-content,
 .inbox-content {
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
+/* Kunci scroll hanya saat panel/modal terbuka */
 body.panel-open,
 body.modal-open,
 body.filter-open {
@@ -2508,11 +2503,14 @@ body, .winedash-container, .tab-btn, .action-btn,
    OVERFLOW GUARD
    ============================================================ */
 .winedash-container,
+.search-container {
+    overflow-x: hidden;
+}
+
 .section-card,
 .marketplace-grid,
-.marketplace-list,
-.search-container {
-    overflow-x: hidden !important;
+.marketplace-list {
+    overflow-x: hidden;
 }
 
 /* ============================================================
