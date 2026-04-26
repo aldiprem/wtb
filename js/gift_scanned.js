@@ -425,23 +425,29 @@ function collectAllNamesFromGifts() {
     return Array.from(names).sort();
 }
 
-// ==================== PRELOAD TGS FOR FILTER ====================
+// ==================== PRELOAD TGS FOR FILTER (DINONAKTIFKAN DULU) ====================
 async function preloadFilterTgs(names) {
-    // Preload TGS untuk 10 nama pertama saja agar tidak overload
-    const namesToPreload = names.slice(0, 10);
+    const namesToPreload = names.slice(0, 2);
     
-    for (const name of namesToPreload) {
+    for (let i = 0; i < namesToPreload.length; i++) {
+        const name = namesToPreload[i];
         const tgsUrl = `/image/gifts/${name}.tgs`;
+        
+        // Delay 1 detik antar request
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         try {
-            // Fetch untuk cache
-            await fetch(tgsUrl, { method: 'HEAD' });
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            await fetch(tgsUrl, { method: 'HEAD', signal: controller.signal });
+            clearTimeout(timeoutId);
         } catch(e) {
-            // Ignore error, fallback akan handle
+            // Ignore error
         }
     }
 }
 
-// ==================== LOAD ALL NAMES (DENGAN PRELOAD TGS) ====================
+// ==================== LOAD ALL NAMES (TANPA PRELOAD OTOMATIS) ====================
 async function loadAllNames() {
     try {
         console.log('🔄 Loading gift names from /gift-scam/api/names...');
@@ -461,8 +467,7 @@ async function loadAllNames() {
                 state.nameCounts = Object.fromEntries(namesMap);
                 console.log(`✅ Fallback: Loaded ${state.allNames.length} unique gift names from gifts data`);
                 renderFilterChips();
-                // Preload TGS untuk filter
-                preloadFilterTgs(state.allNames);
+                // TIDAK panggil preloadFilterTgs di sini
             }
             return;
         }
@@ -473,8 +478,7 @@ async function loadAllNames() {
             state.nameCounts = data.name_counts || {};
             console.log(`✅ Loaded ${state.allNames.length} unique gift names from API`);
             renderFilterChips();
-            // Preload TGS untuk filter
-            preloadFilterTgs(state.allNames);
+            // TIDAK panggil preloadFilterTgs di sini - biar user scroll yang load
         } else {
             console.warn('Names API returned empty or success=false, using fallback');
             if (state.allGifts && state.allGifts.length > 0) {
@@ -489,7 +493,6 @@ async function loadAllNames() {
                 state.nameCounts = Object.fromEntries(namesMap);
                 console.log(`✅ Fallback: Loaded ${state.allNames.length} unique gift names from gifts data`);
                 renderFilterChips();
-                preloadFilterTgs(state.allNames);
             }
         }
     } catch (e) {
@@ -506,13 +509,168 @@ async function loadAllNames() {
             state.nameCounts = Object.fromEntries(namesMap);
             console.log(`✅ Fallback: Loaded ${state.allNames.length} unique gift names from gifts data`);
             renderFilterChips();
-            preloadFilterTgs(state.allNames);
         }
     }
 }
 
+// ==================== LAZY LOAD FILTER ITEMS SAAT SCROLL ====================
+function setupFilterLazyLoad() {
+    const filterList = document.getElementById('filterList');
+    if (!filterList) return;
+    
+    let loadedCount = 0;
+    const BATCH_SIZE = 15;
+    
+    const loadMoreFilterItems = () => {
+        const items = document.querySelectorAll('#filterList .filter-list-item');
+        const unloadedItems = Array.from(items).slice(loadedCount, loadedCount + BATCH_SIZE);
+        
+        unloadedItems.forEach((item, index) => {
+            const animationContainer = item.querySelector('.filter-item-animation');
+            if (!animationContainer) return;
+            
+            const tgsUrl = animationContainer.getAttribute('data-tgs');
+            if (!tgsUrl) return;
+            
+            if (animationContainer.querySelector('lottie-player')) return;
+            
+            const uniqueId = Date.now() + '_' + loadedCount + '_' + index;
+            const placeholderId = `filter_placeholder_lazy_${uniqueId}`;
+            const playerId = `filter_player_lazy_${uniqueId}`;
+            
+            const oldPlaceholder = animationContainer.querySelector('.filter-lottie-placeholder');
+            if (oldPlaceholder) oldPlaceholder.remove();
+            
+            const placeholder = document.createElement('div');
+            placeholder.id = placeholderId;
+            placeholder.className = 'filter-lottie-placeholder';
+            placeholder.style.cssText = 'width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.03);border-radius:8px;';
+            placeholder.innerHTML = '<i class="fas fa-gift" style="font-size:20px;color:var(--primary-color);opacity:0.6;"></i>';
+            animationContainer.appendChild(placeholder);
+            
+            setTimeout(() => {
+                addToTGSQueue(animationContainer, tgsUrl, playerId, placeholderId);
+            }, 200 * (loadedCount + index));
+        });
+        
+        loadedCount += unloadedItems.length;
+    };
+    
+    // Observer untuk mendeteksi scroll di filter panel
+    const filterPanel = document.getElementById('filterPanel');
+    if (filterPanel) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    loadMoreFilterItems();
+                }
+            });
+        }, { rootMargin: '100px' });
+        
+        observer.observe(filterPanel);
+    }
+    
+    // Load batch pertama
+    setTimeout(loadMoreFilterItems, 500);
+}
+
 function countGiftsByName(name) {
     return state.gifts.filter(g => g.name === name).length;
+}
+
+// ==================== TGS LOADING QUEUE (CEGAH RATE LIMIT) ====================
+const tgsLoadQueue = [];
+let isProcessingQueue = false;
+let activeRequests = 0;
+const MAX_CONCURRENT = 2;  // Kurangi jadi 2 request bersamaan
+const REQUEST_DELAY = 500; // 500ms delay antar request
+
+function addToTGSQueue(container, tgsUrl, playerId, placeholderId) {
+    tgsLoadQueue.push({ container, tgsUrl, playerId, placeholderId });
+    processTGSQueue();
+}
+
+function processTGSQueue() {
+    if (isProcessingQueue) return;
+    if (tgsLoadQueue.length === 0) return;
+    if (activeRequests >= MAX_CONCURRENT) return;
+    
+    isProcessingQueue = true;
+    
+    const processNext = () => {
+        if (tgsLoadQueue.length > 0 && activeRequests < MAX_CONCURRENT) {
+            const item = tgsLoadQueue.shift();
+            activeRequests++;
+            
+            loadSingleTGS(item.container, item.tgsUrl, item.playerId, item.placeholderId)
+                .finally(() => {
+                    activeRequests--;
+                    setTimeout(processNext, REQUEST_DELAY);
+                });
+        } else {
+            isProcessingQueue = false;
+            if (tgsLoadQueue.length > 0) {
+                setTimeout(processTGSQueue, REQUEST_DELAY);
+            }
+        }
+    };
+    
+    processNext();
+}
+
+async function loadSingleTGS(container, tgsUrl, playerId, placeholderId) {
+    return new Promise((resolve) => {
+        // Cek apakah sudah ada player
+        if (container.querySelector(`#${playerId}`)) {
+            resolve();
+            return;
+        }
+        
+        const player = document.createElement('lottie-player');
+        player.id = playerId;
+        player.setAttribute('src', tgsUrl);
+        player.setAttribute('background', 'transparent');
+        player.setAttribute('speed', '1');
+        player.setAttribute('loop', '');
+        player.setAttribute('style', 'width:36px;height:36px;');
+        
+        if (state.lottiePlaying) {
+            player.setAttribute('autoplay', '');
+        }
+        
+        const timeoutId = setTimeout(() => {
+            if (container.querySelector(`#${playerId}`) === player) {
+                player.remove();
+            }
+            const placeholder = document.getElementById(placeholderId);
+            if (placeholder) placeholder.style.display = 'flex';
+            resolve();
+        }, 8000);
+        
+        player.addEventListener('load', () => {
+            clearTimeout(timeoutId);
+            const placeholder = document.getElementById(placeholderId);
+            if (placeholder) placeholder.style.display = 'none';
+            player.style.display = 'block';
+            if (state.lottiePlaying) {
+                try { player.play(); } catch(e) {}
+            }
+            resolve();
+        });
+        
+        player.addEventListener('error', () => {
+            clearTimeout(timeoutId);
+            const placeholder = document.getElementById(placeholderId);
+            if (placeholder) {
+                placeholder.style.display = 'flex';
+            }
+            player.remove();
+            resolve();
+        });
+        
+        player.style.display = 'none';
+        container.appendChild(player);
+    });
 }
 
 // ==================== APPLY FILTER (PERBAIKI - PAKAI API FILTER) ====================
@@ -559,7 +717,6 @@ function resetFilter() {
     showToast('Filter direset', 'info');
 }
 
-// ==================== RENDER FILTER CHIPS (DENGAN ANIMASI TGS YANG BENAR) ====================
 function renderFilterChips() {
     if (!elements.filterList) return;
     
@@ -574,9 +731,6 @@ function renderFilterChips() {
     names.forEach(name => {
         const isSelected = state.selectedFilterNames.includes(name);
         const count = state.nameCounts[name] || 0;
-        
-        // Gunakan endpoint yang benar untuk file .tgs
-        // File .tgs disimpan di folder /image/gifts/
         const tgsUrl = `/image/gifts/${name}.tgs`;
         
         html += `
@@ -601,17 +755,19 @@ function renderFilterChips() {
     
     elements.filterList.innerHTML = html;
     
-    // Inisialisasi lottie untuk filter dengan delay
     setTimeout(() => {
-        initFilterLottiePlayers();
-    }, 100);
+        setupFilterLazyLoad();
+    }, 200);
 }
 
-// ==================== INIT FILTER LOTTIE PLAYERS (DENGAN LOADING YANG BENAR) ====================
+// ==================== INIT FILTER LOTTIE PLAYERS (DENGAN QUEUE DAN DELAY) ====================
 function initFilterLottiePlayers() {
     const filterItems = document.querySelectorAll('#filterList .filter-list-item');
     
-    filterItems.forEach(item => {
+    // Hanya proses 10 item pertama, sisanya nanti saat scroll
+    const itemsToProcess = Array.from(filterItems).slice(0, 15);
+    
+    itemsToProcess.forEach((item, index) => {
         const animationContainer = item.querySelector('.filter-item-animation');
         if (!animationContainer) return;
         
@@ -622,50 +778,27 @@ function initFilterLottiePlayers() {
         const existingPlayer = animationContainer.querySelector('lottie-player');
         if (existingPlayer) return;
         
-        // Sembunyikan placeholder
-        const placeholder = animationContainer.querySelector('.filter-lottie-placeholder');
+        // Buat ID unik
+        const uniqueId = Date.now() + '_' + index + '_' + Math.random().toString(36).substr(2, 6);
+        const placeholderId = `filter_placeholder_${uniqueId}`;
+        const playerId = `filter_player_${uniqueId}`;
         
-        // Buat lottie player baru
-        const player = document.createElement('lottie-player');
-        player.setAttribute('src', tgsUrl);
-        player.setAttribute('background', 'transparent');
-        player.setAttribute('speed', '1');
-        player.setAttribute('loop', '');
-        player.setAttribute('style', 'width:36px;height:36px;');
+        // Sembunyikan placeholder lama jika ada
+        const oldPlaceholder = animationContainer.querySelector('.filter-lottie-placeholder');
+        if (oldPlaceholder) oldPlaceholder.remove();
         
-        // Atur autoplay berdasarkan state
-        if (state.lottiePlaying) {
-            player.setAttribute('autoplay', '');
-        }
+        // Buat placeholder baru
+        const placeholder = document.createElement('div');
+        placeholder.id = placeholderId;
+        placeholder.className = 'filter-lottie-placeholder';
+        placeholder.style.cssText = 'width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.03);border-radius:8px;';
+        placeholder.innerHTML = '<i class="fas fa-gift" style="font-size:20px;color:var(--primary-color);opacity:0.6;"></i>';
+        animationContainer.appendChild(placeholder);
         
-        // Event listeners
-        player.addEventListener('load', () => {
-            if (placeholder) placeholder.style.display = 'none';
-            player.style.display = 'block';
-            if (state.lottiePlaying) {
-                try { player.play(); } catch(e) {}
-            }
-        });
-        
-        player.addEventListener('error', (e) => {
-            console.log('TGS load error for filter:', tgsUrl, e);
-            if (placeholder) {
-                placeholder.style.display = 'flex';
-                placeholder.innerHTML = '<i class="fas fa-gift" style="font-size:20px;color:var(--primary-color);opacity:0.6;"></i>';
-            }
-            player.style.display = 'none';
-        });
-        
-        player.style.display = 'none';
-        animationContainer.appendChild(player);
-        
-        // Coba fetch untuk validasi
-        fetch(tgsUrl, { method: 'HEAD' })
-            .catch(() => {
-                if (placeholder) {
-                    placeholder.style.display = 'flex';
-                }
-            });
+        // Delay loading dengan jarak yang lebih besar (300ms per item)
+        setTimeout(() => {
+            addToTGSQueue(animationContainer, tgsUrl, playerId, placeholderId);
+        }, 300 + (index * 200));
     });
 }
 
