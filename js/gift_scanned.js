@@ -423,16 +423,43 @@ async function loadAllNames() {
         
         if (!response.ok) {
             console.warn(`Names API returned ${response.status}`);
+            // Fallback: collect from gifts data
+            if (state.allGifts && state.allGifts.length > 0) {
+                const namesMap = new Map();
+                state.allGifts.forEach(g => {
+                    const name = g.name;
+                    if (name) {
+                        namesMap.set(name, (namesMap.get(name) || 0) + 1);
+                    }
+                });
+                state.allNames = Array.from(namesMap.keys()).sort();
+                state.nameCounts = Object.fromEntries(namesMap);
+                console.log(`✅ Fallback: Loaded ${state.allNames.length} unique gift names from gifts data`);
+                renderFilterChips();
+            }
             return;
         }
         
         const data = await response.json();
-        if (data.success && data.names) {
+        if (data.success && data.names && data.names.length > 0) {
             state.allNames = data.names;
             state.nameCounts = data.name_counts || {};
             console.log(`✅ Loaded ${state.allNames.length} unique gift names from API`);
         } else {
-            console.warn('Names API returned success=false');
+            console.warn('Names API returned empty or success=false, using fallback');
+            // Fallback: collect from gifts data
+            if (state.allGifts && state.allGifts.length > 0) {
+                const namesMap = new Map();
+                state.allGifts.forEach(g => {
+                    const name = g.name;
+                    if (name) {
+                        namesMap.set(name, (namesMap.get(name) || 0) + 1);
+                    }
+                });
+                state.allNames = Array.from(namesMap.keys()).sort();
+                state.nameCounts = Object.fromEntries(namesMap);
+                console.log(`✅ Fallback: Loaded ${state.allNames.length} unique gift names from gifts data`);
+            }
         }
     } catch (e) {
         console.error('Error loading names:', e);
@@ -445,13 +472,80 @@ async function loadAllNames() {
                     namesMap.set(name, (namesMap.get(name) || 0) + 1);
                 }
             });
-            state.allNames = Array.from(namesMap.keys());
+            state.allNames = Array.from(namesMap.keys()).sort();
             state.nameCounts = Object.fromEntries(namesMap);
             console.log(`✅ Fallback: Loaded ${state.allNames.length} unique gift names from gifts data`);
         }
     }
     
     renderFilterChips();
+}
+
+function countGiftsByName(name) {
+    return state.gifts.filter(g => g.name === name).length;
+}
+
+// ==================== APPLY FILTER (PERBAIKI) ====================
+function applyFilter() {
+    if (state.selectedFilterNames.length > 0) {
+        // Filter secara client-side (LANGSUNG dari data yang sudah ada)
+        // Ini lebih cepat dan tidak perlu API call
+        const filtered = state.allGifts.filter(gift => 
+            state.selectedFilterNames.includes(gift.name)
+        );
+        
+        state.gifts = filtered;
+        state.allLoaded = true;
+        state.totalGifts = filtered.length;
+        
+        if (filtered.length === 0) {
+            showEmpty();
+        } else {
+            renderGifts(filtered);
+            updateTotalCount(filtered.length);
+        }
+        
+        const filterText = state.selectedFilterNames.length > 0 
+            ? `${state.selectedFilterNames.length} gift terpilih` 
+            : 'Semua';
+        showToast(`Filter: ${filterText}`, 'info');
+    } else {
+        // Reset ke semua data
+        resetFilter();
+    }
+    
+    elements.filterPanel.style.display = 'none';
+    scrollToTop();
+}
+
+// ==================== RESET FILTER (PERBAIKI) ====================
+function resetFilter() {
+    state.selectedFilterNames = [];
+    state.filterName = '';
+    
+    // Reset Select All button
+    const selectAllBtn = document.getElementById('filterSelectAll');
+    if (selectAllBtn) {
+        selectAllBtn.classList.remove('all-selected');
+        selectAllBtn.innerHTML = '<i class="fas fa-check-double"></i> Select All';
+    }
+    
+    renderFilterChips();
+    elements.filterPanel.style.display = 'none';
+    
+    // Kembalikan ke data awal (allGifts)
+    if (state.allGifts && state.allGifts.length > 0) {
+        state.gifts = [...state.allGifts];
+        state.totalGifts = state.allGifts.length;
+        renderGifts(state.gifts);
+        updateTotalCount(state.gifts.length);
+    } else {
+        // Jika allGifts kosong, reload dari API
+        loadGifts(true);
+    }
+    
+    scrollToTop();
+    showToast('Filter direset', 'info');
 }
 
 // ==================== RENDER FILTER CHIPS (GIFT NAMES) ====================
@@ -461,13 +555,15 @@ function renderFilterChips() {
     // Gunakan allNames (gift names)
     const names = state.allNames.length > 0 ? state.allNames : [];
     
+    if (names.length === 0) {
+        elements.filterList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Memuat data...</div>';
+        return;
+    }
+    
     let html = '';
     names.forEach(name => {
         const isSelected = state.selectedFilterNames.includes(name);
         const count = state.nameCounts[name] || 0;
-        
-        // Format display untuk nama gift
-        const displayName = name;
         
         html += `
             <div class="filter-list-item ${isSelected ? 'selected' : ''}" 
@@ -476,30 +572,13 @@ function renderFilterChips() {
                 <div class="filter-checkbox ${isSelected ? 'checked' : ''}">
                     ${isSelected ? '<i class="fas fa-check"></i>' : ''}
                 </div>
-                <span class="filter-item-name">${escapeHtml(displayName)}</span>
+                <span class="filter-item-name">${escapeHtml(name)}</span>
                 <span class="filter-item-count">${count}</span>
             </div>
         `;
     });
     
-    if (names.length === 0) {
-        html = '<div style="text-align:center;padding:20px;color:var(--text-muted);">Memuat data...</div>';
-    }
-    
     elements.filterList.innerHTML = html;
-}
-
-function countGiftsByName(name) {
-    return state.gifts.filter(g => g.name === name).length;
-}
-
-function selectFilterChip(name) {
-    if (state.selectedFilterName === name) {
-        state.selectedFilterName = '';
-    } else {
-        state.selectedFilterName = name;
-    }
-    renderFilterChips();
 }
 
 function toggleSelectAll() {
@@ -507,10 +586,12 @@ function toggleSelectAll() {
     const allNames = state.allNames;
     
     if (state.selectedFilterNames.length === allNames.length) {
+        // Unselect all
         state.selectedFilterNames = [];
         selectAllBtn.classList.remove('all-selected');
         selectAllBtn.innerHTML = '<i class="fas fa-check-double"></i> Select All';
     } else {
+        // Select all
         state.selectedFilterNames = [...allNames];
         selectAllBtn.classList.add('all-selected');
         selectAllBtn.innerHTML = '<i class="fas fa-times"></i> Unselect All';
@@ -540,20 +621,6 @@ function selectFilterChip(name) {
     }
     
     renderFilterChips();
-}
-
-// ==================== APPLY FILTER (PERBAIKI - PAKAI API FILTER) ====================
-function applyFilter() {
-    if (state.selectedFilterNames.length > 0) {
-        // Panggil API filter seperti kode sebelumnya
-        loadFilteredGifts();
-    } else {
-        // Reset ke semua data
-        resetFilter();
-    }
-    
-    elements.filterPanel.style.display = 'none';
-    scrollToTop();
 }
 
 // ==================== LOAD FILTERED GIFTS (PERBAIKI) ====================
@@ -613,31 +680,6 @@ async function loadFilteredGifts() {
         state.isLoading = false;
         showLoading(false);
     }
-}
-
-// ==================== RESET FILTER (PERBAIKI) ====================
-function resetFilter() {
-    state.selectedFilterNames = [];
-    state.filterName = '';
-    state.currentPage = 1;
-    state.allLoaded = false;
-    state.gifts = [];
-    state.allGifts = [];
-    
-    // Reset Select All button
-    const selectAllBtn = document.getElementById('filterSelectAll');
-    if (selectAllBtn) {
-        selectAllBtn.classList.remove('all-selected');
-        selectAllBtn.innerHTML = '<i class="fas fa-check-double"></i> Select All';
-    }
-    
-    renderFilterChips();
-    elements.filterPanel.style.display = 'none';
-    
-    // Load ulang semua data
-    loadGifts(true);
-    scrollToTop();
-    showToast('Filter direset', 'info');
 }
 
 // ==================== API CALLS ====================
