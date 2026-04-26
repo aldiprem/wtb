@@ -255,7 +255,7 @@
     }
 
     async function copyLink(token) {
-        const url = `https://companel.shop/tracker/view?token=${token}`;
+        const url = `https://companel.shop/simpang-404/view?token=${token}`;
         await navigator.clipboard.writeText(url);
         alert('Link berhasil disalin!\n' + url);
     }
@@ -318,7 +318,7 @@
             const data = await resp.json();
             
             if (data.success) {
-                const url = `https://companel.shop/tracker/view?token=${data.token}`;
+                const url = `https://companel.shop/simpang-404/view?token=${data.token}`;
                 resultDiv.style.display = 'block';
                 resultDiv.innerHTML = `
                     ✅ Endpoint berhasil dibuat!<br>
