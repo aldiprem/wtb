@@ -1,4 +1,4 @@
-// winedash/js/market-auctions.js - Market Auctions Page
+// winedash/js/market-auctions.js - VERSI DIPERBAIKI
 
 (function() {
     'use strict';
@@ -18,12 +18,7 @@
     let currentSearchTerm = '';
     let currentLayout = localStorage.getItem('market_auctions_layout') || 'grid';
     let auctionTimers = {};
-    
-    // Activity state
-    let marketActivityFullscreen = null;
-    let currentMarketActivityTab = 'my-bids';
-    let marketActivityActivities = [];
-    let marketActivitySearchTerm = '';
+    let currentActivityTab = 'global-auctions'; // global-auctions, my-bids
     
     // DOM Elements
     let auctionsContainer = null;
@@ -32,10 +27,11 @@
     let filterBtn = null;
     let filterDropdown = null;
     let refreshBtn = null;
-    let activityBtn = null;
     let gridBtn = null;
     let listBtn = null;
-    let backToHomeBtn = null;
+    let backToMarketBtn = null;
+    let globalAuctionsTabBtn = null;
+    let myBidsTabBtn = null;
     
     // Auction detail panel
     let auctionDetailOverlay = null;
@@ -114,23 +110,6 @@
     function formatNumber(num) {
         if (num === undefined || num === null) return '0.00';
         return parseFloat(num).toFixed(2);
-    }
-    
-    function formatDateIndonesia(dateStr) {
-        if (!dateStr) return '-';
-        try {
-            const date = new Date(dateStr);
-            return date.toLocaleString('id-ID', {
-                timeZone: 'Asia/Jakarta',
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        } catch {
-            return dateStr;
-        }
     }
     
     function formatTimeRemaining(endTimeStr) {
@@ -228,29 +207,47 @@
     // ==================== LOAD AUCTIONS ====================
     
     async function loadMarketAuctions() {
-        if (!telegramUser) {
-            console.log('[MARKET AUCTIONS] No telegram user, skipping load');
-            return;
-        }
-        
-        console.log(`[MARKET AUCTIONS] Loading auctions with filter: ${currentAuctionsFilter}`);
+        console.log(`[MARKET AUCTIONS] Loading auctions with filter: ${currentAuctionsFilter}, tab: ${currentActivityTab}`);
         
         showLoading(true);
         
         try {
             let url = '';
-            switch (currentAuctionsFilter) {
-                case 'active':
+            
+            if (currentActivityTab === 'my-bids' && telegramUser) {
+                // My Bids - hanya auctions yang user pernah bid
+                url = `${API_BASE_URL}/api/winedash/auctions/my-bids/${telegramUser.id}`;
+            } else {
+                // Global Auctions - semua auctions (active + ended dari semua user)
+                if (currentAuctionsFilter === 'active') {
                     url = `${API_BASE_URL}/api/winedash/auctions/active`;
-                    break;
-                case 'my-bids':
-                    url = `${API_BASE_URL}/api/winedash/auctions/my-bids/${telegramUser.id}`;
-                    break;
-                case 'ended':
-                    url = `${API_BASE_URL}/api/winedash/auctions/ended/${telegramUser.id}`;
-                    break;
-                default:
-                    url = `${API_BASE_URL}/api/winedash/auctions/active`;
+                } else if (currentAuctionsFilter === 'ended') {
+                    url = `${API_BASE_URL}/api/winedash/auctions/ended-all`;
+                } else {
+                    // All Auctions - gabungkan active dan ended
+                    const [activeRes, endedRes] = await Promise.all([
+                        fetch(`${API_BASE_URL}/api/winedash/auctions/active`),
+                        fetch(`${API_BASE_URL}/api/winedash/auctions/ended-all`)
+                    ]);
+                    
+                    const activeData = await activeRes.json();
+                    const endedData = await endedRes.json();
+                    
+                    let allAuctions = [];
+                    if (activeData.success) {
+                        allAuctions = [...allAuctions, ...(activeData.auctions || [])];
+                    }
+                    if (endedData.success) {
+                        allAuctions = [...allAuctions, ...(endedData.auctions || [])];
+                    }
+                    
+                    currentAuctions = allAuctions;
+                    console.log(`[MARKET AUCTIONS] Loaded ${currentAuctions.length} total auctions (all)`);
+                    renderMarketAuctions();
+                    startTimers();
+                    showLoading(false);
+                    return;
+                }
             }
             
             const response = await fetch(url);
@@ -288,6 +285,20 @@
             );
         }
         
+        // Filter by status untuk global auctions
+        if (currentActivityTab !== 'my-bids' && currentAuctionsFilter !== 'all' && currentAuctionsFilter !== 'active' && currentAuctionsFilter !== 'ended') {
+            const now = new Date();
+            filtered = filtered.filter(auction => {
+                if (currentAuctionsFilter === 'active') {
+                    return auction.status === 'active' && (auction.end_time && new Date(auction.end_time) > now);
+                }
+                if (currentAuctionsFilter === 'ended') {
+                    return auction.status === 'ended' || (auction.end_time && new Date(auction.end_time) <= now);
+                }
+                return true;
+            });
+        }
+        
         if (filtered.length === 0) {
             renderEmptyState();
             return;
@@ -301,7 +312,9 @@
                 const username = auction.username || '';
                 const timeRemaining = formatTimeRemaining(auction.end_time);
                 const currentPrice = auction.current_price || auction.start_price || 0;
+                const startPrice = auction.start_price || 0;
                 const isEnded = auction.status === 'ended' || timeRemaining === 'Ended';
+                const basedOn = auction.based_on || '';
                 
                 let avatarUrl = localStorage.getItem(`avatar_${username}`);
                 if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
@@ -309,9 +322,7 @@
                 }
                 
                 if (isEnded) {
-                    const lastBidderName = auction.winner_username || auction.winner_name || 'Winner';
-                    const lastBidAmount = auction.winning_bid || auction.current_price || currentPrice;
-                    
+                    // Style ended auction yang rapi
                     html += `
                         <div class="auction-card ended" data-auction-id="${auction.id}" data-auction='${JSON.stringify(auction).replace(/'/g, "&#39;")}'>
                             <div class="auction-card-image ended-image">
@@ -319,19 +330,16 @@
                                     <img src="${avatarUrl}" alt="${escapeHtml(username)}" data-username="${username}" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                                 </div>
                                 <div class="auction-card-username">@${escapeHtml(username)}</div>
-                                <div class="auction-ended-badge">ENDED</div>
                             </div>
                             <div class="auction-card-info ended-info">
-                                <div class="auction-last-bidder">
-                                    <div class="last-bidder-avatar">
-                                        <img src="${auction.winner_photo || 'https://companel.shop/image/winedash-logo.png'}" alt="${escapeHtml(lastBidderName)}">
+                                <div class="card-price-row">
+                                    <div class="price-with-logo">
+                                        <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo">
+                                        <span style="font-size: 11px; color: var(--text-muted);">Start: ${formatNumber(startPrice)} TON</span>
                                     </div>
-                                    <div class="last-bidder-info">
-                                        <span class="last-bidder-name">${escapeHtml(lastBidderName)}</span>
-                                        <span class="last-bid-amount">${formatNumber(lastBidAmount)} TON</span>
-                                    </div>
+                                    <div class="based-on-text">${escapeHtml(basedOn)}</div>
                                 </div>
-                                <div class="auction-card-status ended-status">END OFFER</div>
+                                <div class="auction-card-status ended-status">ENDED</div>
                             </div>
                         </div>
                     `;
@@ -349,9 +357,16 @@
                                 <div class="auction-card-username">@${escapeHtml(username)}</div>
                             </div>
                             <div class="auction-card-info">
+                                <div class="card-price-row">
+                                    <div class="price-with-logo">
+                                        <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo">
+                                        <span>Start: ${formatNumber(startPrice)} TON</span>
+                                    </div>
+                                    <div class="based-on-text">${escapeHtml(basedOn)}</div>
+                                </div>
                                 <div class="auction-card-timer" id="timer-${auction.id}">${timeRemaining}</div>
                                 <div class="auction-card-current-bid">Current: ${formatNumber(currentPrice)} TON</div>
-                                ${hasBid ? `<div class="auction-card-current-bid" style="color: var(--warning);">My Bid: ${formatNumber(myBidAmount)} TON</div>` : ''}
+                                ${hasBid ? `<div style="font-size: 10px; color: var(--warning);">My Bid: ${formatNumber(myBidAmount)} TON</div>` : ''}
                                 <div class="auction-card-status">ON AUCTION</div>
                             </div>
                         </div>
@@ -382,7 +397,10 @@
             for (const auction of filtered) {
                 const username = auction.username || '';
                 const timeRemaining = formatTimeRemaining(auction.end_time);
+                const startPrice = auction.start_price || 0;
+                const currentPrice = auction.current_price || 0;
                 const isEnded = auction.status === 'ended' || timeRemaining === 'Ended';
+                const basedOn = auction.based_on || '';
                 
                 let avatarUrl = localStorage.getItem(`avatar_${username}`);
                 if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
@@ -390,9 +408,6 @@
                 }
                 
                 if (isEnded) {
-                    const lastBidderName = auction.winner_username || auction.winner_name || 'Winner';
-                    const lastBidAmount = auction.winning_bid || auction.current_price || 0;
-                    
                     html += `
                         <div class="auctions-list-item ended" data-auction-id="${auction.id}" data-auction='${JSON.stringify(auction).replace(/'/g, "&#39;")}'>
                             <div class="auctions-list-avatar">
@@ -401,11 +416,11 @@
                             <div class="auctions-list-info">
                                 <div class="auctions-list-username">@${escapeHtml(username)}</div>
                                 <div class="auctions-list-ended-info">
-                                    <span class="ended-label">ENDED</span>
-                                    <span class="ended-winner">Winner: ${escapeHtml(lastBidderName)} (${formatNumber(lastBidAmount)} TON)</span>
+                                    <div>Start: ${formatNumber(startPrice)} TON</div>
+                                    <div>Based: ${escapeHtml(basedOn)}</div>
                                 </div>
                             </div>
-                            <div class="auctions-list-status ended-status">END OFFER</div>
+                            <div class="auctions-list-status ended-status">ENDED</div>
                         </div>
                     `;
                 } else {
@@ -418,6 +433,10 @@
                             </div>
                             <div class="auctions-list-info">
                                 <div class="auctions-list-username">@${escapeHtml(username)}</div>
+                                <div class="auctions-list-ended-info">
+                                    <div>Start: ${formatNumber(startPrice)} TON | Current: ${formatNumber(currentPrice)} TON</div>
+                                    <div>Based: ${escapeHtml(basedOn)}</div>
+                                </div>
                                 <div class="auctions-list-timer" id="timer-${auction.id}">Ends: ${timeRemaining}</div>
                                 ${hasBid ? `<div style="font-size: 10px; color: var(--warning);">My Bid: ${formatNumber(auction.my_last_bid)} TON</div>` : ''}
                             </div>
@@ -474,37 +493,25 @@
         if (!auctionsContainer) return;
         
         let emptyMessage = '';
-        let emptyIcon = 'fa-gavel';
-        switch (currentAuctionsFilter) {
-            case 'active':
-                emptyMessage = 'Tidak ada auction aktif';
-                break;
-            case 'my-bids':
-                emptyMessage = 'Anda belum melakukan bid pada auction manapun';
-                break;
-            case 'ended':
-                emptyMessage = 'Tidak ada auction yang selesai';
-                break;
-            default:
-                emptyMessage = 'Tidak ada data';
+        if (currentActivityTab === 'my-bids') {
+            emptyMessage = 'Anda belum melakukan bid pada auction manapun';
+        } else if (currentAuctionsFilter === 'active') {
+            emptyMessage = 'Tidak ada auction aktif';
+        } else if (currentAuctionsFilter === 'ended') {
+            emptyMessage = 'Tidak ada auction yang selesai';
+        } else {
+            emptyMessage = 'Tidak ada data auction';
         }
         
         auctionsContainer.innerHTML = `
-            <div class="offers-empty-state">
-                <div class="offers-empty-animation" id="marketAuctionsEmptyAnimation" style="width: 120px; height: 120px; margin: 0 auto 20px auto;"></div>
+            <div class="offers-empty-state" style="padding: 60px 20px;">
+                <div class="offers-empty-animation" style="width: 120px; height: 120px; margin: 0 auto 20px auto;">
+                    <i class="fas fa-gavel" style="font-size: 48px; color: var(--text-muted);"></i>
+                </div>
                 <div class="offers-empty-title">No Auctions</div>
                 <div class="offers-empty-subtitle">${emptyMessage}</div>
             </div>
         `;
-        
-        const animContainer = document.getElementById('marketAuctionsEmptyAnimation');
-        if (animContainer) {
-            loadEmptyAnimation(animContainer);
-        }
-    }
-    
-    function loadEmptyAnimation(container) {
-        container.innerHTML = '<i class="fas fa-gavel" style="font-size: 48px; color: var(--text-muted);"></i>';
     }
     
     function startTimers() {
@@ -533,9 +540,50 @@
         }
     }
     
+    // ==================== TAB SWITCHING ====================
+    
+    function switchActivityTab(tab) {
+        currentActivityTab = tab;
+        
+        // Update active state pada tabs
+        if (globalAuctionsTabBtn) {
+            if (tab === 'global-auctions') {
+                globalAuctionsTabBtn.classList.add('active');
+                if (myBidsTabBtn) myBidsTabBtn.classList.remove('active');
+            } else {
+                globalAuctionsTabBtn.classList.remove('active');
+                if (myBidsTabBtn) myBidsTabBtn.classList.add('active');
+            }
+        }
+        
+        // Reset filter ke active untuk global auctions
+        if (tab === 'global-auctions') {
+            currentAuctionsFilter = 'active';
+            updateFilterButtonText();
+        }
+        
+        // Reload auctions
+        loadMarketAuctions();
+        hapticLight();
+    }
+    
+    function updateFilterButtonText() {
+        if (!filterBtn) return;
+        
+        let filterText = '';
+        switch(currentAuctionsFilter) {
+            case 'active': filterText = 'Active'; break;
+            case 'all': filterText = 'All'; break;
+            case 'ended': filterText = 'Ended'; break;
+            default: filterText = 'Filter';
+        }
+        filterBtn.innerHTML = `<i class="fas fa-filter"></i><span>${filterText}</span>`;
+    }
+    
     // ==================== AUCTION DETAIL ====================
     
     async function showAuctionDetail(auctionId) {
+        // ... (sama seperti sebelumnya, fungsi ini tetap)
         if (!auctionId) {
             showToast('Invalid auction ID', 'error');
             return;
@@ -596,7 +644,7 @@
                 for (const bid of bids) {
                     const bidderName = bid.username || bid.first_name || 'Anonymous';
                     const bidderPhoto = bid.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(bidderName)}&background=40a7e3&color=fff&size=40&rounded=true`;
-                    const bidTime = formatDateIndonesia(bid.timestamp);
+                    const bidTime = new Date(bid.timestamp).toLocaleString('id-ID');
                     
                     const isCurrentUserBid = telegramUser && bid.user_id === telegramUser.id;
                     
@@ -617,7 +665,6 @@
                 bidHistoryHtml = '<div class="empty-state" style="padding: 20px;">No bids yet</div>';
             }
             
-            // Check if user has bid
             const userHasBid = bids.some(bid => bid.user_id === telegramUser?.id);
             const userHighestBid = userHasBid ? Math.max(...bids.filter(b => b.user_id === telegramUser?.id).map(b => b.bid_amount)) : 0;
             const minNextBid = auction.current_price + auction.min_increment;
@@ -829,358 +876,6 @@
         }
     }
     
-    // ==================== ACTIVITY FULLSCREEN ====================
-    
-    function createMarketActivityFullscreen() {
-        const existingFullscreen = document.getElementById('marketAuctionsActivityFullscreen');
-        if (existingFullscreen) {
-            existingFullscreen.remove();
-        }
-        
-        const fullscreenDiv = document.createElement('div');
-        fullscreenDiv.id = 'marketAuctionsActivityFullscreen';
-        fullscreenDiv.className = 'fullscreen-page';
-        
-        fullscreenDiv.innerHTML = `
-            <div class="fullscreen-header">
-                <div class="fullscreen-header-left">
-                    <button class="back-btn-fullscreen" id="backFromMarketActivityBtn">
-                        <i class="fas fa-arrow-left"></i>
-                    </button>
-                    <h2><i class="fas fa-history"></i> Auction Activity</h2>
-                </div>
-                <button class="close-fullscreen-btn" id="closeMarketActivityFullscreenBtn">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="fullscreen-content">
-                <div class="activity-tabs-fullscreen">
-                    <button class="activity-tab-fullscreen active" data-market-activity-tab="my-bids">
-                        <i class="fas fa-history"></i>
-                        <span>My Bids</span>
-                    </button>
-                    <button class="activity-tab-fullscreen" data-market-activity-tab="ended">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Ended</span>
-                    </button>
-                </div>
-                <div class="activity-search-fullscreen">
-                    <div class="search-container-fullscreen">
-                        <input type="text" class="search-input-fullscreen" id="marketActivityFullscreenSearchInput" placeholder="🔍 Cari username...">
-                        <button class="search-btn-fullscreen" id="marketActivityFullscreenSearchBtn">Apply</button>
-                    </div>
-                </div>
-                <div id="marketAuctionsActivityFullscreenContainer" class="activity-fullscreen-container">
-                    <div class="loading-placeholder">Memuat aktivitas...</div>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(fullscreenDiv);
-        marketActivityFullscreen = fullscreenDiv;
-        
-        // Apply safe area
-        applySafeAreaInsets();
-        
-        // Setup close button
-        const closeBtn = document.getElementById('closeMarketActivityFullscreenBtn');
-        if (closeBtn) {
-            const newCloseBtn = closeBtn.cloneNode(true);
-            closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
-            newCloseBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                closeMarketActivityFullscreen();
-            });
-        }
-        
-        // Setup back button
-        const backBtn = document.getElementById('backFromMarketActivityBtn');
-        if (backBtn) {
-            const newBackBtn = backBtn.cloneNode(true);
-            backBtn.parentNode.replaceChild(newBackBtn, backBtn);
-            newBackBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                closeMarketActivityFullscreen();
-            });
-        }
-        
-        // Setup tabs
-        document.querySelectorAll('[data-market-activity-tab]').forEach(btn => {
-            const newBtn = btn.cloneNode(true);
-            btn.parentNode.replaceChild(newBtn, btn);
-            newBtn.addEventListener('click', async () => {
-                const tab = newBtn.dataset.marketActivityTab;
-                if (tab) {
-                    currentMarketActivityTab = tab;
-                    document.querySelectorAll('[data-market-activity-tab]').forEach(b => b.classList.remove('active'));
-                    newBtn.classList.add('active');
-                    await loadMarketActivityData();
-                }
-            });
-        });
-        
-        // Setup search
-        const searchBtn = document.getElementById('marketActivityFullscreenSearchBtn');
-        if (searchBtn) {
-            const newSearchBtn = searchBtn.cloneNode(true);
-            searchBtn.parentNode.replaceChild(newSearchBtn, searchBtn);
-            newSearchBtn.addEventListener('click', () => {
-                const searchInputElem = document.getElementById('marketActivityFullscreenSearchInput');
-                marketActivitySearchTerm = searchInputElem?.value || '';
-                renderMarketActivityItems();
-            });
-        }
-        
-        const searchInputElem = document.getElementById('marketActivityFullscreenSearchInput');
-        if (searchInputElem) {
-            const newSearchInput = searchInputElem.cloneNode(true);
-            searchInputElem.parentNode.replaceChild(newSearchInput, searchInputElem);
-            newSearchInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    marketActivitySearchTerm = newSearchInput.value;
-                    renderMarketActivityItems();
-                }
-            });
-        }
-        
-        return fullscreenDiv;
-    }
-    
-    function openMarketActivityFullscreen() {
-        if (!telegramUser) {
-            showToast('Login terlebih dahulu', 'warning');
-            return;
-        }
-        
-        createMarketActivityFullscreen();
-        document.body.classList.add('panel-open');
-        hapticLight();
-        
-        setTimeout(() => {
-            loadMarketActivityData();
-        }, 100);
-    }
-    
-    function closeMarketActivityFullscreen() {
-        if (window.activityTimers) {
-            Object.values(window.activityTimers).forEach(interval => clearInterval(interval));
-            window.activityTimers = {};
-        }
-        
-        if (marketActivityFullscreen) {
-            marketActivityFullscreen.style.animation = 'fadeOut 0.2s ease';
-            setTimeout(() => {
-                if (marketActivityFullscreen) marketActivityFullscreen.remove();
-                marketActivityFullscreen = null;
-            }, 200);
-        }
-        
-        document.body.classList.remove('panel-open');
-        hapticLight();
-    }
-    
-    async function loadMarketActivityData() {
-        if (!telegramUser) return;
-        
-        const container = document.getElementById('marketAuctionsActivityFullscreenContainer');
-        if (!container) return;
-        
-        container.innerHTML = '<div class="loading-placeholder">Memuat aktivitas...</div>';
-        
-        try {
-            let url = '';
-            switch (currentMarketActivityTab) {
-                case 'my-bids':
-                    url = `${API_BASE_URL}/api/winedash/auctions/my-bids/${telegramUser.id}`;
-                    break;
-                case 'ended':
-                    url = `${API_BASE_URL}/api/winedash/auctions/ended/${telegramUser.id}`;
-                    break;
-                default:
-                    url = `${API_BASE_URL}/api/winedash/auctions/my-bids/${telegramUser.id}`;
-            }
-            
-            const response = await fetch(url);
-            const data = await response.json();
-            
-            if (data.success) {
-                marketActivityActivities = data.auctions || [];
-                renderMarketActivityItems();
-            } else {
-                marketActivityActivities = [];
-                renderMarketActivityEmpty();
-            }
-        } catch (error) {
-            console.error('[ACTIVITY] Error loading activity data:', error);
-            marketActivityActivities = [];
-            renderMarketActivityEmpty();
-        }
-    }
-    
-    function renderMarketActivityItems() {
-        const container = document.getElementById('marketAuctionsActivityFullscreenContainer');
-        if (!container) return;
-        
-        let filtered = [...marketActivityActivities];
-        
-        if (marketActivitySearchTerm && marketActivitySearchTerm.trim() !== '') {
-            const term = marketActivitySearchTerm.toLowerCase().trim();
-            filtered = filtered.filter(activity => 
-                activity.username && activity.username.toLowerCase().includes(term)
-            );
-        }
-        
-        if (filtered.length === 0) {
-            renderMarketActivityEmpty();
-            return;
-        }
-        
-        let html = '';
-        
-        for (const activity of filtered) {
-            const username = activity.username || '';
-            const currentPrice = activity.current_price || activity.start_price || 0;
-            const isEnded = activity.status === 'ended' || (activity.end_time && new Date(activity.end_time) <= new Date());
-            const timeRemaining = formatTimeRemaining(activity.end_time);
-            
-            let avatarUrl = localStorage.getItem(`avatar_${username}`);
-            if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
-                avatarUrl = "https://companel.shop/image/winedash-logo.png";
-            }
-            
-            let statusHtml = '';
-            let bidInfoHtml = '';
-            
-            if (currentMarketActivityTab === 'my-bids') {
-                const myLastBid = activity.my_last_bid || 0;
-                statusHtml = `<div class="activity-fullscreen-status ${isEnded ? 'ended' : 'active'}">${isEnded ? 'ENDED' : 'ACTIVE'}</div>`;
-                bidInfoHtml = `
-                    <div class="activity-fullscreen-bid-info">💰 My Bid: ${formatNumber(myLastBid)} TON</div>
-                    <div class="activity-fullscreen-bid-info">📊 Current: ${formatNumber(currentPrice)} TON</div>
-                `;
-                if (isEnded && activity.winner_id === telegramUser.id) {
-                    bidInfoHtml += `<div class="activity-fullscreen-winner winner-me">🏆 YOU WON!</div>`;
-                }
-            } else if (currentMarketActivityTab === 'ended') {
-                statusHtml = `<div class="activity-fullscreen-status ended">ENDED</div>`;
-                if (activity.winner_id) {
-                    const winnerName = activity.winner_username || activity.winner_name || 'Winner';
-                    const winningBid = activity.winning_bid || currentPrice;
-                    const isWinner = activity.winner_id === telegramUser.id;
-                    bidInfoHtml = `
-                        <div class="activity-fullscreen-winner ${isWinner ? 'winner-me' : ''}">
-                            🏆 Winner: ${escapeHtml(winnerName)} (${formatNumber(winningBid)} TON)${isWinner ? ' - YOU WON!' : ''}
-                        </div>
-                    `;
-                } else {
-                    bidInfoHtml = `<div class="activity-fullscreen-bid-info">No bids placed - Auction ended</div>`;
-                }
-            }
-            
-            html += `
-                <div class="activity-fullscreen-item" data-auction-id="${activity.id}">
-                    <div class="activity-fullscreen-avatar">
-                        <img src="${avatarUrl}" alt="${escapeHtml(username)}" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
-                    </div>
-                    <div class="activity-fullscreen-info">
-                        <div class="activity-fullscreen-username">@${escapeHtml(username)}</div>
-                        <div class="activity-fullscreen-details">
-                            <div class="activity-fullscreen-price">
-                                <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON">
-                                <span>${formatNumber(currentPrice)} TON</span>
-                            </div>
-                            ${bidInfoHtml}
-                            ${!isEnded ? `<div class="activity-fullscreen-timer" id="activity-timer-${activity.id}">⏰ Time: ${timeRemaining}</div>` : ''}
-                            <div class="activity-fullscreen-basedon">📌 Based On: ${escapeHtml(activity.based_on || '-')}</div>
-                        </div>
-                    </div>
-                    <div class="activity-fullscreen-right">
-                        ${statusHtml}
-                        <button class="activity-fullscreen-view-btn" data-auction-id="${activity.id}">
-                            <i class="fas fa-eye"></i> View Detail
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-        
-        container.innerHTML = html;
-        
-        document.querySelectorAll('.activity-fullscreen-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                if (e.target.closest('.activity-fullscreen-view-btn')) {
-                    const auctionId = e.target.closest('.activity-fullscreen-view-btn').dataset.auctionId;
-                    if (auctionId) {
-                        closeMarketActivityFullscreen();
-                        setTimeout(() => {
-                            showAuctionDetail(parseInt(auctionId));
-                        }, 300);
-                    }
-                } else {
-                    const auctionId = item.dataset.auctionId;
-                    if (auctionId) {
-                        closeMarketActivityFullscreen();
-                        setTimeout(() => {
-                            showAuctionDetail(parseInt(auctionId));
-                        }, 300);
-                    }
-                }
-            });
-        });
-        
-        startActivityTimers(filtered);
-    }
-    
-    function startActivityTimers(activities) {
-        for (const activity of activities) {
-            if (activity.status !== 'active') continue;
-            
-            const timerElement = document.getElementById(`activity-timer-${activity.id}`);
-            if (!timerElement) continue;
-            
-            const updateTimer = () => {
-                const remaining = formatTimeRemaining(activity.end_time);
-                timerElement.textContent = `⏰ Time: ${remaining}`;
-                if (remaining === 'Ended') {
-                    setTimeout(() => loadMarketActivityData(), 1000);
-                }
-            };
-            
-            updateTimer();
-            const interval = setInterval(updateTimer, 1000);
-            
-            if (!window.activityTimers) window.activityTimers = {};
-            window.activityTimers[activity.id] = interval;
-        }
-    }
-    
-    function renderMarketActivityEmpty() {
-        const container = document.getElementById('marketAuctionsActivityFullscreenContainer');
-        if (!container) return;
-        
-        let emptyMessage = '';
-        switch (currentMarketActivityTab) {
-            case 'my-bids':
-                emptyMessage = 'Anda belum melakukan bid pada auction manapun';
-                break;
-            case 'ended':
-                emptyMessage = 'Tidak ada auction yang selesai';
-                break;
-            default:
-                emptyMessage = 'Tidak ada aktivitas';
-        }
-        
-        container.innerHTML = `
-            <div class="activity-fullscreen-empty">
-                <i class="fas fa-inbox"></i>
-                <div class="activity-fullscreen-empty-title">No Activity</div>
-                <div class="activity-fullscreen-empty-subtitle">${emptyMessage}</div>
-            </div>
-        `;
-    }
-    
     // ==================== FILTER DROPDOWN ====================
     
     function setupFilterDropdown() {
@@ -1245,6 +940,7 @@
                 });
                 newItem.classList.add('active');
                 
+                updateFilterButtonText();
                 closeDropdown();
                 loadMarketAuctions();
                 hapticLight();
@@ -1375,93 +1071,10 @@
         }
     }
     
-    // ==================== SAFE AREA INSET & FULLSCREEN ====================
-    
-    function applySafeAreaInsets() {
-        const tg = window.Telegram?.WebApp;
-        if (!tg) {
-            console.warn('[MARKET AUCTIONS] Telegram WebApp not available');
-            return;
-        }
-        
-        const root = document.documentElement;
-        
-        let safeTop = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-top')) || 0;
-        let safeBottom = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-bottom')) || 0;
-        let safeLeft = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-left')) || 0;
-        let safeRight = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-right')) || 0;
-        
-        if (tg.safeAreaInset) {
-            safeTop = tg.safeAreaInset.top || safeTop;
-            safeBottom = tg.safeAreaInset.bottom || safeBottom;
-            safeLeft = tg.safeAreaInset.left || safeLeft;
-            safeRight = tg.safeAreaInset.right || safeRight;
-        }
-        
-        let contentTop = safeTop;
-        let contentBottom = safeBottom;
-        
-        if (tg.contentSafeAreaInset) {
-            contentTop = tg.contentSafeAreaInset.top || safeTop;
-            contentBottom = tg.contentSafeAreaInset.bottom || safeBottom;
-        }
-        
-        document.body.style.paddingTop = `${safeTop}px`;
-        document.body.style.paddingBottom = `${safeBottom}px`;
-        document.body.style.paddingLeft = `${safeLeft}px`;
-        document.body.style.paddingRight = `${safeRight}px`;
-        
-        const container = document.querySelector('.storage-container');
-        if (container) {
-            container.style.paddingTop = `${contentTop + 12}px`;
-            container.style.paddingBottom = `${contentBottom + 90}px`;
-        }
-        
-        const fullscreenPage = document.getElementById('marketAuctionsActivityFullscreen');
-        if (fullscreenPage) {
-            fullscreenPage.style.paddingTop = `${safeTop}px`;
-            fullscreenPage.style.paddingBottom = `${safeBottom}px`;
-            fullscreenPage.style.paddingLeft = `${safeLeft}px`;
-            fullscreenPage.style.paddingRight = `${safeRight}px`;
-        }
-        
-        const fullscreenHeader = document.querySelector('#marketAuctionsActivityFullscreen .fullscreen-header');
-        if (fullscreenHeader) {
-            fullscreenHeader.style.paddingTop = `${contentTop + 16}px`;
-        }
-        
-        const fullscreenContent = document.querySelector('#marketAuctionsActivityFullscreen .fullscreen-content');
-        if (fullscreenContent) {
-            fullscreenContent.style.paddingBottom = `${contentBottom + 20}px`;
-        }
-        
-        console.log('[MARKET AUCTIONS] Safe area applied:', { safeTop, safeBottom });
-    }
-    
-    function initSafeArea() {
-        const tg = window.Telegram?.WebApp;
-        if (!tg) return;
-        
-        setTimeout(applySafeAreaInsets, 50);
-        applySafeAreaInsets();
-        
-        if (tg.onEvent) {
-            tg.onEvent('safeAreaChanged', () => applySafeAreaInsets());
-            tg.onEvent('contentSafeAreaChanged', () => applySafeAreaInsets());
-            tg.onEvent('viewportChanged', () => applySafeAreaInsets());
-        }
-        
-        if (typeof tg.disableVerticalSwipes === 'function') {
-            tg.disableVerticalSwipes();
-        }
-    }
-    
     // ==================== INITIALIZATION ====================
     
     async function init() {
         console.log('🏪 Market Auctions - Initializing...');
-        
-        initSafeArea();
         
         // Get DOM elements
         auctionsContainer = document.getElementById('marketAuctionsContainer');
@@ -1470,22 +1083,23 @@
         filterBtn = document.getElementById('marketAuctionsFilterBtn');
         filterDropdown = document.getElementById('marketAuctionsFilterDropdown');
         refreshBtn = document.getElementById('refreshAuctionsBtn');
-        activityBtn = document.getElementById('marketAuctionsActivityBtn');
         gridBtn = document.getElementById('marketAuctionsGridBtn');
         listBtn = document.getElementById('marketAuctionsListBtn');
-        backToHomeBtn = document.getElementById('backToHomeBtn');
+        backToMarketBtn = document.getElementById('backToMarketBtn');
+        globalAuctionsTabBtn = document.getElementById('globalAuctionsTabBtn');
+        myBidsTabBtn = document.getElementById('myBidsTabBtn');
         
         if (!auctionsContainer) {
             console.error('[MARKET AUCTIONS] Container not found');
             return;
         }
         
-        // Setup back button
-        if (backToHomeBtn) {
-            const newBackBtn = backToHomeBtn.cloneNode(true);
-            backToHomeBtn.parentNode.replaceChild(newBackBtn, backToHomeBtn);
+        // Setup back button to market place
+        if (backToMarketBtn) {
+            const newBackBtn = backToMarketBtn.cloneNode(true);
+            backToMarketBtn.parentNode.replaceChild(newBackBtn, backToMarketBtn);
             newBackBtn.addEventListener('click', () => {
-                window.location.href = '/winedash';
+                window.location.href = '/winedash#marketplace';
             });
         }
         
@@ -1499,12 +1113,20 @@
             });
         }
         
-        // Setup activity button
-        if (activityBtn) {
-            const newActivityBtn = activityBtn.cloneNode(true);
-            activityBtn.parentNode.replaceChild(newActivityBtn, activityBtn);
-            newActivityBtn.addEventListener('click', () => {
-                openMarketActivityFullscreen();
+        // Setup tabs
+        if (globalAuctionsTabBtn) {
+            const newGlobalBtn = globalAuctionsTabBtn.cloneNode(true);
+            globalAuctionsTabBtn.parentNode.replaceChild(newGlobalBtn, globalAuctionsTabBtn);
+            newGlobalBtn.addEventListener('click', () => {
+                switchActivityTab('global-auctions');
+            });
+        }
+        
+        if (myBidsTabBtn) {
+            const newMyBidsBtn = myBidsTabBtn.cloneNode(true);
+            myBidsTabBtn.parentNode.replaceChild(newMyBidsBtn, myBidsTabBtn);
+            newMyBidsBtn.addEventListener('click', () => {
+                switchActivityTab('my-bids');
             });
         }
         
@@ -1540,9 +1162,6 @@
     
     // Cleanup timers on page unload
     window.addEventListener('beforeunload', () => {
-        if (window.activityTimers) {
-            Object.values(window.activityTimers).forEach(interval => clearInterval(interval));
-        }
         for (const id in auctionTimers) {
             clearInterval(auctionTimers[id]);
         }

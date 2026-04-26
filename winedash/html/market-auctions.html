@@ -1,4 +1,5 @@
-<!-- winedash/html/market-auctions.html - Market Auctions Page -->
+<!-- winedash/html/market-auctions.html - VERSI DIPERBAIKI -->
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -6,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="HandheldFriendly" content="true">
     <meta name="MobileOptimized" content="width">
-    <title>Winedash - Market Auctions</title>
+    <title>Winedash - Auctions Market</title>
     
     <!-- CSS -->
     <link rel="stylesheet" href="/winedash/css/web.css">
@@ -37,27 +38,31 @@
     <!-- Main Container -->
     <div class="storage-container">
 
-        <!-- Header dengan tombol back -->
-        <div class="storage-header">
-            <div class="back-circle" id="backToHomeBtn">
-                <i class="fas fa-arrow-left"></i>
+        <!-- Header dengan bottom navigation style -->
+        <div class="storage-bottom-nav" style="position: relative; margin-bottom: 20px;">
+            <div class="nav-circle" id="backToMarketBtn">
+                <i class="fas fa-store"></i>
             </div>
-            <div class="storage-profile-avatar" id="marketAuctionsUserAvatar">
-                <i class="fas fa-user"></i>
-            </div>
-            <div class="storage-balance" id="marketAuctionsBalanceCard">
-                <!-- Konten akan diisi JS -->
+            <div class="nav-links-container">
+                <button class="nav-link active" data-market-activity-tab="global-auctions" id="globalAuctionsTabBtn">
+                    <i class="fas fa-globe"></i>
+                    <span>Global Auctions</span>
+                </button>
+                <button class="nav-link" data-market-activity-tab="my-bids" id="myBidsTabBtn">
+                    <i class="fas fa-history"></i>
+                    <span>My Bids</span>
+                </button>
             </div>
         </div>
 
-        <!-- Title -->
-        <div style="text-align: center; margin-bottom: 16px;">
+        <!-- HAPUS bagian title ini -->
+        <!-- <div style="text-align: center; margin-bottom: 16px;">
             <h2 style="font-size: 20px; font-weight: 700;">
                 <i class="fas fa-gavel" style="color: var(--primary); margin-right: 8px;"></i>
                 Market Auctions
             </h2>
             <p style="font-size: 12px; color: var(--text-muted);">Bid on premium usernames</p>
-        </div>
+        </div> -->
 
         <!-- Action Row untuk Auctions Market -->
         <div class="action-row">
@@ -68,10 +73,6 @@
             <button class="action-btn" id="marketAuctionsFilterBtn">
                 <i class="fas fa-filter"></i>
                 <span>Filter</span>
-            </button>
-            <button class="action-btn" id="marketAuctionsActivityBtn">
-                <i class="fas fa-history"></i>
-                <span>Activity</span>
             </button>
             <div class="layout-toggle">
                 <button class="layout-btn active" data-layout="grid" id="marketAuctionsGridBtn">
@@ -94,8 +95,8 @@
             <div class="status-dropdown-item active" data-market-auctions-filter="active">
                 <i class="fas fa-fire"></i> Active Auctions
             </div>
-            <div class="status-dropdown-item" data-market-auctions-filter="my-bids">
-                <i class="fas fa-gavel"></i> My Bids
+            <div class="status-dropdown-item" data-market-auctions-filter="all">
+                <i class="fas fa-list"></i> All Auctions
             </div>
             <div class="status-dropdown-item" data-market-auctions-filter="ended">
                 <i class="fas fa-check-circle"></i> Ended Auctions
@@ -105,47 +106,6 @@
         <!-- Auctions Container -->
         <div id="marketAuctionsContainer" style="width: 100%; min-height: 400px;">
             <div class="loading-placeholder">Memuat auctions...</div>
-        </div>
-
-        <!-- Activity Fullscreen Page -->
-        <div id="marketAuctionsActivityFullscreen" class="fullscreen-page" style="display: none;">
-            <div class="fullscreen-header">
-                <div class="fullscreen-header-left">
-                    <button class="back-btn-fullscreen" id="backFromMarketActivityBtn">
-                        <i class="fas fa-arrow-left"></i>
-                    </button>
-                    <h2><i class="fas fa-history"></i> Auction Activity</h2>
-                </div>
-                <button class="close-fullscreen-btn" id="closeMarketActivityFullscreenBtn">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="fullscreen-content">
-                <!-- Tabs Navigation -->
-                <div class="activity-tabs-fullscreen">
-                    <button class="activity-tab-fullscreen active" data-market-activity-tab="my-bids">
-                        <i class="fas fa-history"></i>
-                        <span>My Bids</span>
-                    </button>
-                    <button class="activity-tab-fullscreen" data-market-activity-tab="ended">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Ended</span>
-                    </button>
-                </div>
-
-                <!-- Search Bar -->
-                <div class="activity-search-fullscreen">
-                    <div class="search-container-fullscreen">
-                        <input type="text" class="search-input-fullscreen" id="marketActivityFullscreenSearchInput" placeholder="🔍 Cari username...">
-                        <button class="search-btn-fullscreen" id="marketActivityFullscreenSearchBtn">Apply</button>
-                    </div>
-                </div>
-
-                <!-- Activity Container -->
-                <div id="marketAuctionsActivityFullscreenContainer" class="activity-fullscreen-container">
-                    <div class="loading-placeholder">Memuat aktivitas...</div>
-                </div>
-            </div>
         </div>
 
     </div>

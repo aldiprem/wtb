@@ -400,7 +400,7 @@ def get_ended_auctions(user_id):
 
 @auctions_bp.route('/ended-all', methods=['GET', 'OPTIONS'])
 def get_all_ended_auctions():
-    """Get all ended auctions"""
+    """Get all ended auctions from all users"""
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -408,7 +408,11 @@ def get_all_ended_auctions():
         return response
     
     try:
+        print(f"[DEBUG] get_all_ended_auctions called")
+        
         auctions = auctions_db.get_ended_auctions()
+        
+        print(f"[DEBUG] Found {len(auctions)} ended auctions total")
         
         return jsonify({
             'success': True,
@@ -418,7 +422,9 @@ def get_all_ended_auctions():
         
     except Exception as e:
         print(f"Error in get_all_ended_auctions: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e), 'auctions': []}), 500
     
 @auctions_bp.route('/my-auctions/<int:user_id>', methods=['GET', 'OPTIONS'])
 def get_my_auctions_endpoint(user_id):

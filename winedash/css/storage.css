@@ -58,11 +58,6 @@ body {
     min-height: 100vh;
     line-height: 1.4;
     font-size: 13px;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
     overflow-y: auto;
     overscroll-behavior: none !important;
     image-rendering: pixelated;
@@ -145,7 +140,6 @@ body::after {
         rgba(0, 0, 0, 0.06) 4px);
 }
 
-/* Main Container */
 .storage-container {
     max-width: 500px;
     margin: 0 auto;
@@ -155,10 +149,12 @@ body::after {
     background: transparent;
     position: relative;
     z-index: 1;
-    overscroll-behavior: none;
+    overscroll-behavior: auto;
     -webkit-overflow-scrolling: touch;
     padding-top: max(8px, env(safe-area-inset-top, 0px));
     width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 /* Back Button */
@@ -1871,9 +1867,13 @@ body.modal-open {
     touch-action: pan-y !important;
 }
 
-html, body {
-    overscroll-behavior: none !important;
-    overscroll-behavior-y: none !important;
+html {
+    overscroll-behavior: none;
+}
+
+body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
 }
 
 .fullscreen-header-left {
@@ -2460,9 +2460,11 @@ html, body {
     pointer-events: auto !important;
 }
 
-#usernameContainer {
-    transition: opacity 0.2s ease;
-    width: 100%;
+#usernameContainer,
+.username-grid,
+.username-list {
+    overflow-y: visible;
+    overflow-x: visible;
 }
 
 #usernameContainer.loading-silent {
