@@ -51,6 +51,15 @@
     box-sizing: border-box;
 }
 
+html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: auto;
+    min-height: 100%;
+}
+
 body {
     font-family: 'Courier Prime', 'Courier New', monospace;
     background-color: #050810;
@@ -59,12 +68,13 @@ body {
     height: auto;
     line-height: 1.4;
     font-size: 13px;
-    overflow-y: auto;
     overflow-x: hidden;
+    overflow-y: auto;
     position: relative;
     overscroll-behavior-x: none;
     -webkit-overflow-scrolling: touch;
     image-rendering: pixelated;
+    touch-action: pan-y;
 }
 
 /* Minecraft-style background - no external image */
@@ -1777,9 +1787,9 @@ body.modal-open {
 body:not(.panel-open):not(.modal-open) {
     overflow-y: auto;
     overflow-x: hidden;
-    touch-action: auto;
     position: relative;
     height: auto;
+    touch-action: pan-y;
 }
 
 /* Status Dropdown */
@@ -1879,11 +1889,11 @@ body:not(.panel-open):not(.modal-open) {
 }
 
 html {
-    overscroll-behavior: none;
+    overscroll-behavior-x: none;
 }
 
 body {
-    overscroll-behavior: none;
+    overscroll-behavior-x: none;
     -webkit-overflow-scrolling: touch;
 }
 
@@ -2487,6 +2497,7 @@ body {
 .fullscreen-content {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 }
 
 body.modal-open .storage-container {
