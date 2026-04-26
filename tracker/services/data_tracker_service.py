@@ -84,7 +84,7 @@ data_tracker_bp = Blueprint('data_tracker', __name__)
 
 def generate_endpoint_token(length=35):
     """Generate token unik untuk endpoint"""
-    alphabet = string.ascii_letters + string.digits + '_-+'
+    alphabet = string.ascii_letters + string.digits + '_-'
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 def get_client_ip():

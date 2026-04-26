@@ -1014,7 +1014,11 @@ def serve_tracker_data():
 @app.route('/tracker/view')
 def tracker_view_page():
     """Halaman tracking untuk endpoint unik - menggunakan blueprint atau langsung"""
-    token = request.args.get('token', '')
+    from urllib.parse import unquote
+    
+    token_raw = request.args.get('token', '')
+    # Decode URL encoding (mengubah %2B kembali menjadi +)
+    token = unquote(token_raw)
     
     if not token:
         return '''
@@ -1030,6 +1034,9 @@ def tracker_view_page():
     # Import blueprint function
     try:
         from tracker.services.data_tracker_service import view_tracker
+        # Override token yang sudah di-decode
+        request.args = dict(request.args)
+        request.args['token'] = token
         return view_tracker()
     except ImportError:
         # Fallback: akses database langsung
@@ -1059,7 +1066,7 @@ def tracker_view_page():
             <head><meta charset="UTF-8"><title>Not Found</title>
             <style>body{background:#0a0f1e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;font-family:monospace;}</style>
             </head>
-            <body><div style="text-align:center"><h1>🔒 404</h1><p>Link tidak valid atau sudah expired.</p></div></body>
+            <body><div style="text-align:center"><h1>🔒 404</h1><p>Link tidak valid atau sudah expired.</p><p>Token: ''' + token + '''</p></div></body>
             </html>
             ''', 404
         

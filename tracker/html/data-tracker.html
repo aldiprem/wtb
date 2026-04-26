@@ -255,7 +255,8 @@
     }
 
     async function copyLink(token) {
-        const url = `https://companel.shop/tracker/view?token=${token}`;
+        const encodedToken = encodeURIComponent(token);
+        const url = `https://companel.shop/tracker/view?token=${encodedToken}`;
         await navigator.clipboard.writeText(url);
         alert('Link berhasil disalin!\n' + url);
     }
