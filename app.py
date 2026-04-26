@@ -190,6 +190,12 @@ except ImportError as e:
     print(f"⚠️ market_service skipped: {e}")
 
 try:
+    from giveaway.services.battle_service import battle_bp
+    print("✅ battle_service imported")
+except ImportError as e:
+    print(f"⚠️ battle_service skipped: {e}")
+
+try:
     from services.source_code_service import get_winedash_source_logic
     print("✅ source_code_service imported")
 except ImportError as e:
@@ -456,6 +462,8 @@ if games_bp:
     app.register_blueprint(games_bp)
 if create_bp:
     app.register_blueprint(create_bp, url_prefix='/api/giveaway')
+if battle_bp:
+    app.register_blueprint(battle_bp, url_prefix='/api/battle')
 if winedash_bp:
     app.register_blueprint(winedash_bp, url_prefix='/api/winedash')
 if offers_bp:
@@ -808,6 +816,10 @@ def serve_winedash_ton_manifest():
         "privacyPolicyUrl": "https://companel.shop/privacy"
     }
     return jsonify(manifest)
+
+@app.route('/giveaway/battle')
+def battle_page():
+    return send_from_directory('giveaway/static', 'battle.html')
 
 @app.route('/giveaways')
 def serve_giveaways_page():

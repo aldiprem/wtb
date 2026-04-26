@@ -47,6 +47,7 @@ from telethon.tl.functions.channels import GetParticipantRequest
 from telethon.tl.types import ChannelParticipantAdmin, ChannelParticipantCreator, ChannelParticipantBanned, ChannelParticipantLeft
 from telethon.tl.functions.messages import ExportChatInviteRequest
 from telethon import errors
+from giveaway.services.battle_service import set_battle_bot_client
 
 # Logging seperti fragment_bot.py
 logging.basicConfig(
@@ -950,7 +951,8 @@ __Bot ini adalah bot create giveaway, anda dapat membuat giveaway disini dan den
     """
     
     buttons = [
-        [Button.inline("🎁 Buat Giveaway", data="create_giveaway")],
+        [Button.inline("🎁 Buat Giveaway", data="create_giveaway"),
+         Button.inline("⚔️ Battle Game", data="battle_game")],
         [Button.inline("📊 Statistik", data="stats"),
          Button.inline("👤 Profil", data="profil")]
     ]
@@ -2628,7 +2630,10 @@ async def main():
     except Exception as e:
         logger.warning(f"Failed to register bot to Flask: {e}")
     
+    set_battle_bot_client(bot)
+
     # Start monitoring
+    asyncio.create_task(check_battle_deadlines())
     asyncio.create_task(check_on_giveaway_expired())
     asyncio.create_task(check_pending_membership())
     asyncio.create_task(cleanup_invalid_giveaways())

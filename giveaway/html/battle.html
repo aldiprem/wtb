@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="HandheldFriendly" content="true">
+    <title>Battle Game</title>
+
+    <link rel="stylesheet" href="/giveaway/css/battle.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+
+    <!-- Loading -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memuat Battle...</div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Main -->
+    <div class="battle-container">
+
+        <!-- Profile Header (sama seperti giveaway) -->
+        <div class="profile-card">
+            <div class="profile-left">
+                <div class="profile-avatar" id="userAvatar"><i class="fas fa-user"></i></div>
+                <div class="profile-info">
+                    <div class="profile-name" id="userName">Memuat...</div>
+                    <div class="profile-username" id="userUsername">@username</div>
+                </div>
+            </div>
+            <div class="stats-right">
+                <div class="stat-item">
+                    <i class="fas fa-sword"></i>
+                    <span class="stat-value" id="statCreated">0</span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-users"></i>
+                    <span class="stat-value" id="statParticipated">0</span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-trophy"></i>
+                    <span class="stat-value" id="statWon">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Battle Status Card -->
+        <div class="battle-status-card" id="battleStatusCard">
+            <div class="battle-badge" id="battleBadge">
+                <i class="fas fa-bolt"></i>
+                <span id="battleBadgeText">Battle Aktif</span>
+            </div>
+            <div class="battle-group-info">
+                <i class="fas fa-users"></i>
+                <span id="battleGroupName">Memuat...</span>
+            </div>
+            <div class="deadline-info">
+                <i class="fas fa-clock"></i>
+                <span>Deadline: <strong id="deadlineMinutes">5</strong> menit tanpa pesan</span>
+            </div>
+            <div class="expired-message" id="expiredMessage" style="display:none;">
+                <i class="fas fa-flag-checkered"></i>
+                <span>Battle telah berakhir!</span>
+            </div>
+        </div>
+
+        <!-- Leaderboard Card (Top N Pesan Terakhir dengan Hadiah) -->
+        <div class="leaderboard-card">
+            <div class="card-header">
+                <i class="fas fa-crown"></i>
+                <h3>Leaderboard</h3>
+                <span class="leaderboard-subtitle" id="leaderSubtitle">Pesan terakhir = posisi teratas</span>
+            </div>
+            <div class="leaderboard-list" id="leaderboardList">
+                <div class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <p>Belum ada pesan masuk</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Participants Summary -->
+        <div class="participants-summary-card" id="participantsSummary" style="display:none;">
+            <div class="avatars-row" id="avatarsRow"></div>
+            <div class="participants-count-text" id="participantsCountText">0 Peserta</div>
+            <button class="btn-see-all" id="seeAllParticipantsBtn">
+                <i class="fas fa-list"></i> Lihat Semua Peserta
+            </button>
+        </div>
+
+        <!-- Participants Modal -->
+        <div class="modal-overlay" id="participantsModal">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3><i class="fas fa-users"></i> Semua Peserta</h3>
+                    <button class="modal-close" id="closeParticipantsModal">&times;</button>
+                </div>
+                <div class="modal-body" id="participantsList"></div>
+            </div>
+        </div>
+
+        <!-- FAB -->
+        <div class="fab-container">
+            <div class="fab-buttons-wrapper">
+                <button class="fab-btn fab-back" id="backToLobbyBtn">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <button class="fab-btn fab-battle" id="battleRefreshBtn">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>Refresh</span>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="/giveaway/js/battle.js"></script>
+</body>
+</html>
