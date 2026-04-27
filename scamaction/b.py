@@ -1,10 +1,26 @@
 #!/usr/bin/env python3
 # bot.py — ScamAction Telegram Bot (Telethon)
 
+#!/usr/bin/env python3
+# bot.py — ScamAction Telegram Bot (Telethon)
+
 import asyncio
 import re
 import sqlite3
 from datetime import datetime
+
+# Load environment variables FIRST
+from dotenv import load_dotenv
+import os
+
+# Cari .env file dari /root/wtb/.env
+env_path = '/root/wtb/.env'
+if os.path.exists(env_path):
+    load_dotenv(env_path)
+    print(f"✅ Loaded .env from {env_path}")
+else:
+    load_dotenv()
+    print("⚠️ .env not found at /root/wtb/.env, using defaults")
 
 from telethon import TelegramClient, events, Button, types, errors
 from telethon.extensions.markdown import DEFAULT_DELIMITERS
@@ -18,13 +34,20 @@ from telethon.extensions import markdown
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
-API_ID       = 24576633
-API_HASH     = "29931cf620fad738ee7f69442c98e2ee"
-BOT_TOKEN    = "7689833071:AAGG8asmIrx4s3bAARJ95aMXtqt9twXDsuE"
-PHONE_NUMBER = "+62 812 88721195"
-OWNER_ID     = 7998861975
-CHANNEL_INFO = -1002727091820
-GROUP_ADMINS = -1003871235753
+API_ID       = int(os.getenv('API_ID', ""))
+API_HASH     = os.getenv('API_HASH', "")
+BOT_TOKEN    = os.getenv('SCAM_TOKEN', os.getenv('BOT_TOKEN', ""))
+PHONE_NUMBER = os.getenv('PHONE_NUMBER', "")
+OWNER_ID     = int(os.getenv('OWNER_ID', 7998861975))
+CHANNEL_INFO = int(os.getenv('CHANNEL_INFO', -1002727091820))
+GROUP_ADMINS = int(os.getenv('GROUP_ADMINS', -1003871235753))
+
+print(f"\n📱 ScamAction Bot Config:")
+print(f"   API_ID: {API_ID}")
+print(f"   API_HASH: {API_HASH[:10]}...")
+print(f"   BOT_TOKEN: {BOT_TOKEN[:15]}...")
+print(f"   OWNER_ID: {OWNER_ID}")
+print(f"   GROUP_ADMINS: {GROUP_ADMINS}\n")
 
 # ─── DB imports ───────────────────────────────────────────────────────────────
 
