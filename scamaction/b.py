@@ -338,6 +338,7 @@ async def scan_confirm(event):
 
 # ─── Monitor (bot ditambah ke group/channel) ──────────────────────────────────
 
+
 @bot.on(events.ChatAction())
 async def on_chat_action(event):
     """Deteksi bot ditambahkan ke group/channel."""
