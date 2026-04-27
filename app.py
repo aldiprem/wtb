@@ -203,7 +203,13 @@ except ImportError as e:
     def get_winedash_source_logic():
         return "<p>Source code viewer temporarily unavailable</p>"
 
-# IMPORT GIFT SCANNED SERVICE - DENGAN ERROR HANDLING YANG LEBIH BAIK
+try:
+    from scamaction.services.data_service import scam_bp
+    print("✅ scamaction.data_service imported")
+except ImportError as e:
+    print(f"⚠️ scamaction.data_service skipped: {e}")
+    scam_bp = None
+
 try:
     from services.gift_scanned_service import gift_scanned_bp
     print("✅ gift_scanned_service imported")
@@ -478,6 +484,8 @@ if market_bp:
     app.register_blueprint(market_bp)
 if panel_bp:
     app.register_blueprint(panel_bp)
+if scam_bp:
+    app.register_blueprint(scam_bp)
 
 if gift_scanned_bp:
     app.register_blueprint(gift_scanned_bp)
@@ -488,6 +496,37 @@ else:
 if data_tracker_bp:
     app.register_blueprint(data_tracker_bp, url_prefix='/tracker')
     print("✅ data_tracker_bp registered at /tracker")
+
+# ==================== SCAMACTION STATIC ROUTES ====================
+
+# Route untuk halaman panel ScamAction
+@app.route('/scamaction')
+@app.route('/scamaction/')
+@app.route('/scamaction/panel')
+def serve_scamaction_panel():
+    """Halaman utama ScamAction Panel"""
+    scamaction_html_dir = os.path.join(base_dir, 'scamaction', 'html')
+    if os.path.exists(os.path.join(scamaction_html_dir, 'panel.html')):
+        return send_from_directory(scamaction_html_dir, 'panel.html')
+    return "Panel not found", 404
+
+# Route untuk CSS ScamAction
+@app.route('/scamaction/css/<path:filename>')
+def serve_scamaction_css(filename):
+    """Serve CSS files for ScamAction Panel"""
+    scamaction_css_dir = os.path.join(base_dir, 'scamaction', 'css')
+    if os.path.exists(os.path.join(scamaction_css_dir, filename)):
+        return send_from_directory(scamaction_css_dir, filename)
+    return "CSS file not found", 404
+
+# Route untuk JS ScamAction
+@app.route('/scamaction/js/<path:filename>')
+def serve_scamaction_js(filename):
+    """Serve JS files for ScamAction Panel"""
+    scamaction_js_dir = os.path.join(base_dir, 'scamaction', 'js')
+    if os.path.exists(os.path.join(scamaction_js_dir, filename)):
+        return send_from_directory(scamaction_js_dir, filename)
+    return "JS file not found", 404
 
 # ==================== GIFT SCANNED STATIC ROUTES ====================
 

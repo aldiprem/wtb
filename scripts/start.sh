@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script untuk menjalankan aplikasi (app.py + fragment_bot.py + giveaway/b.py + winedash/b.py)
+# Script untuk menjalankan aplikasi (app.py + fragment_bot.py + giveaway/b.py + winedash/b.py + scamaction/b.py)
 
 # Warna untuk output
 GREEN='\033[0;32m'
@@ -214,9 +214,54 @@ kill_jaseb_bot() {
     fi
 }
 
+# ==================== FUNGSI MEMATIKAN SCAMACTION BOT ====================
+kill_scamaction_bot() {
+    echo -e "${YELLOW}🔍 Memeriksa ScamAction Bot...${NC}"
+    
+    if [ -f "/tmp/scamaction_bot.pid" ]; then
+        PID=$(cat /tmp/scamaction_bot.pid)
+        if kill -0 $PID 2>/dev/null; then
+            echo -e "${YELLOW}📡 Menghentikan ScamAction Bot (PID: $PID)...${NC}"
+            kill -15 $PID 2>/dev/null
+            sleep 2
+            if kill -0 $PID 2>/dev/null; then
+                kill -9 $PID 2>/dev/null
+            fi
+            echo -e "${GREEN}✅ ScamAction Bot dihentikan${NC}"
+        fi
+        rm -f /tmp/scamaction_bot.pid
+    fi
+    
+    PIDS=$(ps aux | grep "scamaction/b.py" | grep -v grep | awk '{print $2}')
+    if [ -n "$PIDS" ]; then
+        for PID in $PIDS; do
+            echo -e "${YELLOW}📡 Menghentikan ScamAction Bot process (PID: $PID)...${NC}"
+            kill -15 $PID 2>/dev/null
+            sleep 1
+            kill -9 $PID 2>/dev/null
+        done
+        echo -e "${GREEN}✅ ScamAction Bot processes dihentikan${NC}"
+    fi
+    
+    PIDS=$(lsof 2>/dev/null | grep "scamaction_bot_session" | awk '{print $2}')
+    if [ -n "$PIDS" ]; then
+        for PID in $PIDS; do
+            echo -e "${YELLOW}📡 Menghentikan session Telethon (PID: $PID)...${NC}"
+            kill -9 $PID 2>/dev/null
+        done
+    fi
+    
+    rm -f scamaction/scamaction_bot_session.session 2>/dev/null
+    
+    if screen -list | grep -q "scamaction_bot"; then
+        screen -S scamaction_bot -X quit 2>/dev/null
+        echo -e "${GREEN}✅ Screen session scamaction_bot dihentikan${NC}"
+    fi
+}
+
 # ==================== FUNGSI MEMBERSIHKAN PID FILES ====================
 clean_pid_files() {
-    for pid_file in flask_server.pid fragment_bot.pid giveaway_bot.pid winedash_bot.pid; do
+    for pid_file in flask_server.pid fragment_bot.pid giveaway_bot.pid winedash_bot.pid jaseb_bot.pid scamaction_bot.pid; do
         if [ -f "/tmp/$pid_file" ]; then
             OLD_PID=$(cat "/tmp/$pid_file")
             if ! kill -0 $OLD_PID 2>/dev/null; then
@@ -234,6 +279,7 @@ kill_fragment_bot
 kill_giveaway_bot
 kill_winedash_bot
 kill_jaseb_bot
+kill_scamaction_bot
 clean_pid_files
 
 # Tunggu sebentar agar proses benar-benar mati
@@ -289,6 +335,21 @@ if [ ! -f "winedash/b.py" ]; then
 else
     echo -e "${GREEN}✅ Winedash module terdeteksi${NC}"
     WINEDASH_EXISTS=true
+fi
+
+# ==================== CEK FOLDER SCAMACTION ====================
+if [ ! -d "scamaction" ]; then
+    echo -e "${YELLOW}⚠️  Folder scamaction tidak ditemukan, membuat struktur folder...${NC}"
+    mkdir -p scamaction/database scamaction/html scamaction/css scamaction/js scamaction/services
+    mkdir -p scamaction/logs
+fi
+
+if [ ! -f "scamaction/b.py" ]; then
+    echo -e "${RED}❌ File scamaction/b.py tidak ditemukan!${NC}"
+    SCAMACTION_EXISTS=false
+else
+    echo -e "${GREEN}✅ ScamAction module terdeteksi${NC}"
+    SCAMACTION_EXISTS=true
 fi
 
 # Aktifkan virtual environment
@@ -397,6 +458,27 @@ else
     JASEB_PID="N/A"
 fi
 
+# ==================== JALANKAN SCAMACTION BOT ====================
+echo -e "${BLUE}🛡️ Menjalankan ScamAction Bot...${NC}"
+if [ "$SCAMACTION_EXISTS" = true ]; then
+    pip3 install telethon python-dotenv > /dev/null 2>&1
+    
+    mkdir -p scamaction/database scamaction/logs
+    
+    rm -f scamaction/*.session 2>/dev/null
+    
+    cd scamaction
+    nohup python3 b.py > logs/scamaction_bot.log 2>&1 &
+    SCAMACTION_PID=$!
+    echo $SCAMACTION_PID > ../tmp/scamaction_bot.pid
+    cd ..
+    echo -e "${GREEN}✅ ScamAction Bot berjalan dengan PID: $SCAMACTION_PID${NC}"
+    echo "$SCAMACTION_PID" > /tmp/scamaction_bot.pid
+else
+    echo -e "${YELLOW}⚠️  ScamAction Bot tidak bisa dijalankan - file scamaction/b.py tidak ditemukan${NC}"
+    SCAMACTION_PID="N/A"
+fi
+
 # ==================== OUTPUT STATUS ====================
 echo ""
 echo -e "${GREEN}========================================${NC}"
@@ -408,20 +490,32 @@ echo -e "🤖 Fragment Bot   : PID $BOT_PID"
 echo -e "🎁 Giveaway Bot   : PID $GIVEAWAY_PID"
 echo -e "💎 Winedash Bot   : PID $WINEDASH_PID"
 echo -e "🤖 Jaseb Bot      : PID $JASEB_PID"
+echo -e "🛡️ ScamAction Bot : PID $SCAMACTION_PID"
 echo -e ""
 echo -e "${YELLOW}🌐 Akses: https://companel.shop${NC}"
 echo -e "${YELLOW}🌐 Akses Games: https://companel.shop/games${NC}"
 echo -e "${YELLOW}🌐 Akses Winedash: https://companel.shop/winedash${NC}"
+echo -e "${YELLOW}🌐 Akses ScamAction Panel: https://companel.shop/scamaction/panel${NC}"
 echo -e "${BLUE}🎁 Giveaway Bot commands:${NC}"
 echo -e "   /start - Start bot"
 echo -e "   /newgiveaway - Create giveaway"
 echo -e "   /join - Join active giveaway"
+echo -e ""
+echo -e "${BLUE}🛡️ ScamAction Bot commands:${NC}"
+echo -e "   /start - Start bot"
+echo -e "   +ch <id> - Add scan channel"
+echo -e "   -ch <id> - Remove scan channel"
+echo -e "   %ch - List scan channels"
+echo -e "   #ch - Reset scan channels"
+echo -e "   /scan - Scan channels for scammer IDs"
 echo -e ""
 echo -e "${YELLOW}📋 Log files:${NC}"
 echo -e "   Flask log:      tail -f logs/flask.log"
 echo -e "   Fragment log:   tail -f logs/fragment_bot.log"
 echo -e "   Giveaway log:   tail -f logs/giveaway_bot.log"
 echo -e "   Winedash log:   tail -f logs/winedash_bot.log"
+echo -e "   Jaseb log:      tail -f logs/jaseb_bot.log"
+echo -e "   ScamAction log: tail -f scamaction/logs/scamaction_bot.log"
 echo -e ""
 echo -e "${YELLOW}Gunakan './stop.sh' untuk menghentikan semua server${NC}"
 echo -e "${GREEN}========================================${NC}"

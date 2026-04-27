@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>ScamAction Panel - Monitor Penipuan</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/scamaction/css/panel.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>ScamAction</span>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-page="dashboard">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-page="channels">
+                    <i class="fas fa-hashtag"></i>
+                    <span>Scan Channels</span>
+                </a>
+                <a href="#" class="nav-item" data-page="scanned">
+                    <i class="fas fa-database"></i>
+                    <span>Scanned IDs</span>
+                </a>
+                <a href="#" class="nav-item" data-page="monitors">
+                    <i class="fas fa-eye"></i>
+                    <span>Monitor</span>
+                </a>
+                <a href="#" class="nav-item" data-page="reports">
+                    <i class="fas fa-flag"></i>
+                    <span>Laporan</span>
+                </a>
+                <a href="#" class="nav-item" data-page="alerts">
+                    <i class="fas fa-bell"></i>
+                    <span>Alert Logs</span>
+                </a>
+                <a href="#" class="nav-item" data-page="users">
+                    <i class="fas fa-users"></i>
+                    <span>Users</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info" id="userInfo">
+                    <i class="fas fa-user-circle"></i>
+                    <div class="user-details">
+                        <span class="user-name" id="userName">Loading...</span>
+                        <span class="user-id" id="userId">-</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="top-bar">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 id="pageTitle">Dashboard</h1>
+                <button class="refresh-btn" id="refreshBtn">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+
+            <div class="content-wrapper" id="contentWrapper">
+                <!-- Dashboard Page -->
+                <div class="page active" id="dashboard-page">
+                    <div class="stats-grid" id="statsGrid">
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-user-slash"></i></div>
+                            <div class="stat-info">
+                                <h3 id="totalScammers">0</h3>
+                                <p>Total ID Penipu</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-hashtag"></i></div>
+                            <div class="stat-info">
+                                <h3 id="totalScanChannels">0</h3>
+                                <p>Scan Channels</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-eye"></i></div>
+                            <div class="stat-info">
+                                <h3 id="totalMonitorActive">0</h3>
+                                <p>Monitor Aktif</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-bell"></i></div>
+                            <div class="stat-info">
+                                <h3 id="totalAlerts">0</h3>
+                                <p>Alert Terkirim</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-flag"></i></div>
+                            <div class="stat-info">
+                                <h3 id="totalReports">0</h3>
+                                <p>Laporan Masuk</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-users"></i></div>
+                            <div class="stat-info">
+                                <h3 id="totalUsers">0</h3>
+                                <p>Total Users</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="recent-section">
+                        <div class="section-header">
+                            <h2><i class="fas fa-clock"></i> Recent Alerts</h2>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="data-table" id="recentAlertsTable">
+                                <thead>
+                                    <tr>
+                                        <th>User ID</th>
+                                        <th>Chat Name</th>
+                                        <th>Triggered At</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentAlertsBody">
+                                    <tr><td colspan="3" class="text-center">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Channels Page -->
+                <div class="page" id="channels-page">
+                    <div class="page-actions">
+                        <button class="btn btn-primary" id="addChannelBtn">
+                            <i class="fas fa-plus"></i> Add Channel
+                        </button>
+                        <button class="btn btn-danger" id="resetChannelsBtn">
+                            <i class="fas fa-trash"></i> Reset All
+                        </button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="data-table" id="channelsTable">
+                            <thead>
+                                <tr>
+                                    <th>Channel ID</th>
+                                    <th>Channel Name</th>
+                                    <th>Username</th>
+                                    <th>Added At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="channelsBody">
+                                <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Scanned IDs Page -->
+                <div class="page" id="scanned-page">
+                    <div class="page-actions">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchUserId" placeholder="Cari User ID...">
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="data-table" id="scannedTable">
+                            <thead>
+                                <tr>
+                                    <th>User ID</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scannedBody">
+                                <tr><td colspan="2" class="text-center">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Monitor Page -->
+                <div class="page" id="monitors-page">
+                    <div class="table-wrapper">
+                        <table class="data-table" id="monitorsTable">
+                            <thead>
+                                <tr>
+                                    <th>Chat ID</th>
+                                    <th>Chat Name</th>
+                                    <th>Status</th>
+                                    <th>Added By</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monitorsBody">
+                                <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Reports Page -->
+                <div class="page" id="reports-page">
+                    <div class="table-wrapper">
+                        <table class="data-table" id="reportsTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>User ID</th>
+                                    <th>Status</th>
+                                    <th>Created At</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reportsBody">
+                                <tr><td colspan="4" class="text-center">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Alerts Page -->
+                <div class="page" id="alerts-page">
+                    <div class="table-wrapper">
+                        <table class="data-table" id="alertsTable">
+                            <thead>
+                                <tr>
+                                    <th>User ID</th>
+                                    <th>Chat Name</th>
+                                    <th>Triggered At</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alertsBody">
+                                <tr><td colspan="3" class="text-center">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Users Page -->
+                <div class="page" id="users-page">
+                    <div class="table-wrapper">
+                        <table class="data-table" id="usersTable">
+                            <thead>
+                                <tr>
+                                    <th>User ID</th>
+                                    <th>Fullname</th>
+                                    <th>Username</th>
+                                    <th>First Start</th>
+                                    <th>Last Start</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersBody">
+                                <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Add Channel -->
+    <div class="modal" id="addChannelModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Tambah Channel Scan</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Channel ID</label>
+                    <input type="text" id="channelIdInput" placeholder="Contoh: -1001234567890">
+                </div>
+                <div class="form-group">
+                    <label>Channel Name</label>
+                    <input type="text" id="channelNameInput" placeholder="Nama channel">
+                </div>
+                <div class="form-group">
+                    <label>Username (opsional)</label>
+                    <input type="text" id="channelUsernameInput" placeholder="@username">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-close">Batal</button>
+                <button class="btn btn-primary" id="saveChannelBtn">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detail Scammer -->
+    <div class="modal" id="scammerDetailModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>Detail Penipu</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-info">
+                    <p><strong>User ID:</strong> <span id="detailUserId"></span></p>
+                </div>
+                <h4>Referensi Pesan:</h4>
+                <div class="references-list" id="referencesList"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-close">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detail Monitor -->
+    <div class="modal" id="monitorDetailModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="monitorDetailTitle">Detail Monitor</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-info">
+                    <p><strong>Chat ID:</strong> <span id="monitorChatId"></span></p>
+                    <p><strong>Chat Name:</strong> <span id="monitorChatName"></span></p>
+                    <p><strong>Username:</strong> <span id="monitorChatUsername"></span></p>
+                    <p><strong>Status:</strong> <span id="monitorStatus"></span></p>
+                    <p><strong>Added By:</strong> <span id="monitorAddedBy"></span></p>
+                </div>
+                <div class="monitor-actions">
+                    <button class="btn" id="toggleMonitorBtn">Toggle Active</button>
+                </div>
+                <h4>Admin List:</h4>
+                <div class="admin-section">
+                    <div class="admin-input">
+                        <input type="text" id="newAdminId" placeholder="User ID">
+                        <button class="btn btn-primary" id="addAdminBtn">+ Add Admin</button>
+                        <button class="btn btn-danger" id="resetAdminsBtn">Reset All</button>
+                    </div>
+                    <div class="admin-list" id="adminList"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-close">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/scamaction/js/panel.js"></script>
+</body>
+</html>
