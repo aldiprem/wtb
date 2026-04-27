@@ -16,9 +16,6 @@ from database.data import (
 import json
 import sqlite3
 
-# Blueprint dengan prefix /api/scamaction
-# Pastikan app.py mendaftarkannya tanpa url_prefix tambahan:
-#   app.register_blueprint(scam_bp)
 scam_bp = Blueprint('scamaction', __name__, url_prefix='/api/scamaction')
 
 DB_PATH = '/root/wtb/scamaction/scamaction.db'
