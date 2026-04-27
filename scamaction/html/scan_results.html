@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Scan Results - ScamAction</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--tg-theme-bg-color, #1e1f22);
+            color: var(--tg-theme-text-color, #dbdee1);
+            padding: 16px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: var(--tg-theme-secondary-bg-color, #2b2d31);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            font-size: 13px;
+            color: var(--tg-theme-hint-color, #949ba4);
+        }
+        
+        .stats {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-card {
+            background: var(--tg-theme-secondary-bg-color, #2b2d31);
+            border-radius: 12px;
+            padding: 12px 16px;
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        .stat-card .label {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #949ba4);
+            margin-bottom: 4px;
+        }
+        
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        
+        .result-card {
+            background: var(--tg-theme-secondary-bg-color, #2b2d31);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        
+        .user-id {
+            font-family: monospace;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+        
+        .badge-known {
+            background: #ed4245;
+            color: white;
+        }
+        
+        .badge-unknown {
+            background: #23a55a;
+            color: white;
+        }
+        
+        .references {
+            margin-top: 8px;
+            padding-left: 12px;
+            border-left: 2px solid var(--tg-theme-hint-color, #949ba4);
+        }
+        
+        .reference {
+            font-size: 12px;
+            margin: 4px 0;
+        }
+        
+        .reference a {
+            color: var(--tg-theme-link-color, #5865f2);
+            text-decoration: none;
+        }
+        
+        .reference a:hover {
+            text-decoration: underline;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--tg-theme-hint-color, #949ba4);
+        }
+        
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #ed4245;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .page-btn {
+            background: var(--tg-theme-button-color, #5865f2);
+            color: var(--tg-theme-button-text-color, white);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .search-box {
+            margin-bottom: 16px;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--tg-theme-secondary-bg-color, #2b2d31);
+            border: 1px solid var(--tg-theme-hint-color, #949ba4);
+            border-radius: 8px;
+            color: var(--tg-theme-text-color, #dbdee1);
+            font-size: 14px;
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--tg-theme-button-color, #5865f2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="app">
+        <div class="loading">Loading...</div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+        
+        let allResults = [];
+        let filteredResults = [];
+        let currentPage = 0;
+        const itemsPerPage = 20;
+        
+        // Get token from startapp parameter
+        let token = null;
+        if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+            token = tg.initDataUnsafe.start_param;
+        } else if (window.location.hash) {
+            const params = new URLSearchParams(window.location.hash.substring(1));
+            token = params.get('startapp');
+        }
+        
+        if (!token) {
+            document.getElementById('app').innerHTML = '<div class="error">No token provided</div>';
+        } else {
+            loadResults(token);
+        }
+        
+        async function loadResults(token) {
+            try {
+                const response = await fetch(`/api/scan_results/${token}`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    document.getElementById('app').innerHTML = `<div class="error">${data.error || 'Failed to load results'}</div>`;
+                    return;
+                }
+                
+                allResults = data.data.results || [];
+                filteredResults = [...allResults];
+                renderPage();
+                
+            } catch (error) {
+                document.getElementById('app').innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+        
+        function renderPage() {
+            const totalPages = Math.ceil(filteredResults.length / itemsPerPage);
+            const start = currentPage * itemsPerPage;
+            const end = start + itemsPerPage;
+            const pageResults = filteredResults.slice(start, end);
+            
+            const html = `
+                <div class="header">
+                    <h1>🔍 Hasil Scan</h1>
+                    <p>Channel: ${escapeHtml(data.data.monitor_chat_name)}</p>
+                    <p>Filter Channel: ${escapeHtml(data.data.scan_channel_name)}</p>
+                    <p>Format: ${escapeHtml(data.data.format_text)}</p>
+                    <p>Expired: ${new Date(data.data.expires_at).toLocaleString()}</p>
+                </div>
+                
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="label">Total Ditemukan</div>
+                        <div class="value">${data.data.total_found}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Terdata di DB</div>
+                        <div class="value">${allResults.filter(r => r.is_known).length}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Belum Terdata</div>
+                        <div class="value">${allResults.filter(r => !r.is_known).length}</div>
+                    </div>
+                </div>
+                
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Cari User ID..." onkeyup="filterResults()">
+                </div>
+                
+                <div id="resultsList">
+                    ${pageResults.map(result => renderResultCard(result)).join('')}
+                </div>
+                
+                ${totalPages > 1 ? `
+                <div class="pagination">
+                    <button class="page-btn" onclick="changePage(-1)" ${currentPage === 0 ? 'disabled' : ''}>◀ Sebelumnya</button>
+                    <span style="padding: 8px;">Halaman ${currentPage + 1} / ${totalPages}</span>
+                    <button class="page-btn" onclick="changePage(1)" ${currentPage >= totalPages - 1 ? 'disabled' : ''}>Selanjutnya ▶</button>
+                </div>
+                ` : ''}
+            `;
+            
+            document.getElementById('app').innerHTML = html;
+        }
+        
+        function renderResultCard(result) {
+            const statusBadge = result.is_known 
+                ? '<span class="badge badge-known">Terdata</span>' 
+                : '<span class="badge badge-unknown">Belum Terdata</span>';
+            
+            const referencesHtml = result.references.length > 0 
+                ? `<div class="references">
+                    ${result.references.map(ref => `
+                        <div class="reference">
+                            📌 <a href="${ref.link}" target="_blank">${escapeHtml(ref.channel_name)} — pesan #${ref.msg_id}</a>
+                        </div>
+                    `).join('')}
+                   </div>`
+                : '';
+            
+            return `
+                <div class="result-card">
+                    <div class="user-id">
+                        🆔 ${result.user_id}${statusBadge}
+                    </div>
+                    ${referencesHtml}
+                </div>
+            `;
+        }
+        
+        function filterResults() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            if (!searchTerm) {
+                filteredResults = [...allResults];
+            } else {
+                filteredResults = allResults.filter(r => r.user_id.toString().includes(searchTerm));
+            }
+            currentPage = 0;
+            renderPage();
+        }
+        
+        function changePage(delta) {
+            const totalPages = Math.ceil(filteredResults.length / itemsPerPage);
+            const newPage = currentPage + delta;
+            if (newPage >= 0 && newPage < totalPages) {
+                currentPage = newPage;
+                renderPage();
+            }
+        }
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

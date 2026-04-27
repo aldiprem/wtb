@@ -526,7 +526,8 @@ async def cb_mon_detail(event):
     toggle_label = "🔴 Nonaktifkan" if ch['is_active'] else "🟢 Aktifkan"
     buttons = [
         [Button.inline(toggle_label, data=f"mon_toggle_{cid}")],
-        [Button.inline("🔍 SCAN MEMBERS", data=f"mon_scan_members:{cid}")],  # Tombol baru
+        [Button.inline("🔍 SCAN MEMBERS", data=f"mon_scan_members:{cid}"),
+         Button.inline("📊 SORTIR SCAN", data=f"mon_sort_scan:{cid}")],
         [Button.inline("➕ Add Admin", data=f"mon_addadmin_{cid}"),
          Button.inline("➖ Del Admin", data=f"mon_deladmin_{cid}")],
         [Button.inline("🔄 Reset Admin", data=f"mon_resetadmin_{cid}")],
@@ -863,6 +864,87 @@ async def cb_mon_toggle(event):
     ]
     await event.edit(text, buttons=buttons)
 
+@bot.on(events.CallbackQuery(pattern=r"^mon_sort_scan:(-?\d+)$"))
+async def mon_sort_scan(event):
+    """Handler untuk sortir scan di monitor detail"""
+    cid = int(event.pattern_match.group(1))
+    uid = event.sender_id
+    
+    # Cek permission
+    ch_data = get_monitor_channel(cid)
+    if not ch_data:
+        await event.answer("Channel tidak ditemukan!", alert=True)
+        return
+    
+    if not (is_owner(uid) or is_monitor_admin(cid, uid) or ch_data['added_by'] == uid):
+        await event.answer("Anda tidak memiliki akses!", alert=True)
+        return
+    
+    # Ambil daftar channel dari database scan_channels
+    channels = get_scan_channels()
+    
+    if not channels:
+        await event.answer("Tidak ada channel scan yang tersimpan!", alert=True)
+        return
+    
+    # Simpan state bahwa user sedang dalam mode sortir dari monitor
+    scan_results_cache[uid] = {
+        "monitor_chat_id": cid,
+        "monitor_chat_name": ch_data['chat_name'],
+        "sort_mode": True
+    }
+    
+    msg = "📊 **SORTIR SCAN ANGGOTA**\n\n"
+    msg += f"**Grup:** {ch_data['chat_name']}\n\n"
+    msg += "Pilih channel untuk menyaring ID yang muncul di channel tersebut:\n\n"
+    
+    buttons = []
+    for ch in channels:
+        ch_name = ch['channel_name']
+        ch_username = ch.get('username', '')
+        display = f"📡 {ch_name}" + (f" (@{ch_username})" if ch_username else "")
+        buttons.append([Button.inline(display, data=f"mon_sort_select:{ch['channel_id']}:{cid}")])
+    
+    buttons.append([Button.inline("🔙 BATAL", data=f"mon_detail_{cid}")])
+    
+    await event.edit(msg, buttons=buttons)
+
+@bot.on(events.CallbackQuery(pattern=r"^mon_sort_select:(-?\d+):(-?\d+)$"))
+async def mon_sort_select(event):
+    """Handler untuk memilih channel sortir dari monitor"""
+    channel_id = int(event.pattern_match.group(1))
+    monitor_cid = int(event.pattern_match.group(2))
+    uid = event.sender_id
+    
+    # Dapatkan informasi channel
+    channels = get_scan_channels()
+    selected_channel = None
+    for ch in channels:
+        if ch['channel_id'] == channel_id:
+            selected_channel = ch
+            break
+    
+    if not selected_channel:
+        await event.answer("Channel tidak ditemukan!", alert=True)
+        return
+    
+    # Tampilkan menu format pesan
+    msg = "✏️ **MASUKKAN FORMAT PESAN**\n\n"
+    msg += f"Channel terpilih: **{selected_channel['channel_name']}**\n\n"
+    msg += "Masukkan format pesan untuk mengambil ID dari channel tersebut.\n"
+    msg += "Gunakan `{}` sebagai placeholder untuk ID yang akan diambil.\n\n"
+    msg += "**Contoh format:**\n"
+    msg += "• `ID Penipu: {}`\n"
+    msg += "• `ID {} Penipu`\n"
+    msg += "• `User ID: {}`\n\n"
+    msg += "Kirim pesan dengan format yang diinginkan (hanya 1 baris):"
+    
+    buttons = [[Button.inline("🔙 BATAL", data=f"mon_detail_{monitor_cid}")]]
+    
+    await event.edit(msg, buttons=buttons)
+    
+    # Set state menunggu input format
+    user_state[uid] = f"mon_sort_format:{channel_id}:{monitor_cid}"
 
 @bot.on(events.CallbackQuery(pattern=r"^mon_addadmin_(-?\d+)$"))
 async def cb_mon_addadmin(event):
@@ -873,6 +955,107 @@ async def cb_mon_addadmin(event):
         buttons=[[Button.inline("🔙 Batal", data=f"mon_detail_{cid}")]]
     )
 
+@bot.on(events.NewMessage)
+async def handle_mon_sort_format(event):
+    """Handler untuk menerima format pesan sortir dari monitor"""
+    uid = event.sender_id
+    state = user_state.get(uid, "")
+    
+    if not state.startswith("mon_sort_format:"):
+        return
+    
+    if event.raw_text.startswith('/'):
+        return
+    
+    parts = state.split(":")
+    channel_id = int(parts[1])
+    monitor_cid = int(parts[2])
+    format_text = event.raw_text.strip()
+    
+    if not format_text:
+        await event.reply("❌ Format tidak boleh kosong!")
+        return
+    
+    if "{}" not in format_text:
+        await event.reply("❌ Format harus mengandung `{}` sebagai placeholder ID!")
+        return
+    
+    await event.reply("⏳ **Memproses sortir...**\n\nMengambil data dari channel...")
+    
+    try:
+        # Scan pesan di channel untuk mencari ID dengan format tertentu
+        found_ids = {}
+        
+        async for msg in ubot.iter_messages(channel_id, limit=500):
+            if msg.text:
+                pattern = format_text.replace("{}", r"(\d{9,11})")
+                match = re.search(pattern, msg.text)
+                
+                if match:
+                    found_id = int(match.group(1))
+                    if found_id not in found_ids:
+                        found_ids[found_id] = {
+                            'msg_id': msg.id,
+                            'text': msg.text[:100]
+                        }
+        
+        # Buat token unik untuk hasil scan
+        import secrets
+        scan_token = secrets.token_urlsafe(32)
+        
+        # Simpan hasil scan ke database
+        conn = sqlite3.connect('/root/wtb/scamaction/scamaction.db')
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS scan_results (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                scan_token TEXT UNIQUE,
+                monitor_chat_id INTEGER,
+                monitor_chat_name TEXT,
+                scan_channel_id INTEGER,
+                scan_channel_name TEXT,
+                format_text TEXT,
+                found_ids TEXT,
+                created_at TEXT,
+                expires_at TEXT
+            )
+        """)
+        
+        import json
+        from datetime import datetime, timedelta
+        
+        now = datetime.now()
+        expires = now + timedelta(days=7)
+        
+        cur.execute("""
+            INSERT INTO scan_results (scan_token, monitor_chat_id, monitor_chat_name, scan_channel_id, scan_channel_name, format_text, found_ids, created_at, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (scan_token, monitor_cid, cache.get('monitor_chat_name', 'Unknown'), channel_id, selected_channel['channel_name'], format_text, json.dumps(found_ids), now.isoformat(), expires.isoformat()))
+        
+        conn.commit()
+        conn.close()
+        
+        # Buat link MiniApp
+        bot_username = (await bot.get_me()).username
+        mini_app_link = f"https://t.me/{bot_username}/scanning?startapp={scan_token}"
+        
+        msg_result = f"✅ **SORTIR SELESAI!**\n\n"
+        msg_result += f"Channel: {selected_channel['channel_name']}\n"
+        msg_result += f"Format: `{format_text}`\n"
+        msg_result += f"ID ditemukan: {len(found_ids)}\n\n"
+        msg_result += f"🔗 **Link MiniApp:**\n[Klik untuk lihat hasil]({mini_app_link})"
+        
+        buttons = [[Button.inline("🔙 KEMBALI", data=f"mon_detail_{monitor_cid}")]]
+        await event.reply(msg_result, buttons=buttons, link_preview=False)
+        
+    except FloodWaitError as e:
+        await event.reply(f"⚠️ Rate limit! Tunggu {e.seconds} detik.")
+    except Exception as e:
+        await event.reply(f"❌ Error: {str(e)[:200]}")
+    
+    user_state.pop(uid, None)
 
 @bot.on(events.CallbackQuery(pattern=r"^mon_deladmin_(-?\d+)$"))
 async def cb_mon_deladmin(event):
