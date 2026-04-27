@@ -50,6 +50,7 @@ auctions_bp = None
 debug_bp = None
 admin_bp = None
 market_bp = None
+scam_bp = None
 
 try:
     from services.website_service import website_bp
@@ -208,7 +209,6 @@ try:
     print("✅ scamaction.data_service imported")
 except ImportError as e:
     print(f"⚠️ scamaction.data_service skipped: {e}")
-    scam_bp = None
 
 try:
     from services.gift_scanned_service import gift_scanned_bp

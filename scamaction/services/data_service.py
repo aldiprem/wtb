@@ -2,10 +2,10 @@
 # Prefix blueprint: /api/scamaction  (didaftarkan di app.py: app.register_blueprint(scam_bp))
 # Panel JS harus mengakses: /api/scamaction/stats, /api/scamaction/channels, dst.
 
-import sys, os
+import sys
+import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from flask import Blueprint, request, jsonify
 from database.data import (
     add_scan_channel, remove_scan_channel, get_scan_channels, reset_scan_channels,
     get_all_scanned_ids, get_scammer_references, is_known_scammer, get_stats,
@@ -13,6 +13,8 @@ from database.data import (
     add_monitor_admin, remove_monitor_admin, reset_monitor_admins, get_monitor_admins,
     get_reports, get_monitor_alerts, get_all_users, get_user,
 )
+
+from flask import Blueprint, request, jsonify
 import json
 import sqlite3
 
