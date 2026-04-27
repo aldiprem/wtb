@@ -644,26 +644,55 @@ async def cb_lapor_konfirm(event):
 # ─── Run ──────────────────────────────────────────────────────────────────────
 
 async def main():
-    await ubot.start(phone=PHONE_NUMBER)
-    print("✅ ubot (userbot) started")
-    print("✅ bot started")
-    await bot.run_until_disconnected()
+    """Main function to run both userbot and bot."""
+    try:
+        await ubot.start(phone=PHONE_NUMBER)
+        print("✅ ubot (userbot) started")
+        print("✅ bot started")
+        await bot.run_until_disconnected()
+    except Exception as e:
+        print(f"❌ Error in main: {e}")
+        raise
 
-if __name__ == "__main__":
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+async def cleanup():
+    """Cleanup connections."""
+    try:
+        if bot and bot.is_connected():
+            await bot.disconnect()
+    except Exception as e:
+        print(f"Error disconnecting bot: {e}")
     
     try:
-        loop.run_until_complete(main())
+        if ubot and ubot.is_connected():
+            await ubot.disconnect()
+    except Exception as e:
+        print(f"Error disconnecting ubot: {e}")
+
+if __name__ == "__main__":
+    # Solution for Python 3.13+ event loop issue
+    try:
+        asyncio.run(main())
     except KeyboardInterrupt:
         print("\n🛑 Bot ScamAction dihentikan oleh user")
+    except RuntimeError as e:
+        if "event loop" in str(e):
+            # Fallback for Python 3.13+
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(main())
+            except KeyboardInterrupt:
+                print("\n🛑 Bot ScamAction dihentikan oleh user")
+            except Exception as e:
+                print(f"❌ Error: {e}")
+            finally:
+                try:
+                    loop.run_until_complete(cleanup())
+                except Exception:
+                    pass
+                loop.close()
+                print("✅ Bot ScamAction ditutup")
+        else:
+            print(f"❌ Error: {e}")
     except Exception as e:
         print(f"❌ Error: {e}")
-    finally:
-        # Cleanup
-        if not bot.is_connected():
-            loop.run_until_complete(bot.disconnect())
-        if not ubot.is_connected():
-            loop.run_until_complete(ubot.disconnect())
-        loop.close()
-        print("✅ Bot ScamAction ditutup")
