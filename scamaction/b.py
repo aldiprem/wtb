@@ -723,30 +723,18 @@ async def cb_lapor_konfirm(event):
 # ─── Run ──────────────────────────────────────────────────────────────────────
 
 async def main():
-    """Main function to run both userbot and bot."""
-    try:
-        await ubot.start(phone=PHONE_NUMBER)
-        print("✅ ubot (userbot) started")
-        print("✅ bot started")
-        await bot.run_until_disconnected()
-    except Exception as e:
-        print(f"❌ Error in main: {e}")
-        raise
+    await ubot.start(phone=PHONE_NUMBER)
+    print("✅ ubot (userbot) started")
+    print("✅ bot started")
+    await bot.run_until_disconnected()
 
 if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
     try:
-        asyncio.run(main())
+        loop.run_until_complete(main())
     except KeyboardInterrupt:
         print("\n🛑 Bot ScamAction dihentikan oleh user")
-    except RuntimeError as e:
-        if "event loop" in str(e):
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                loop.run_until_complete(main())
-            except KeyboardInterrupt:
-                print("\n🛑 Bot ScamAction dihentikan oleh user")
-            finally:
-                loop.close()
-        else:
-            print(f"❌ Error: {e}")
+    except Exception as e:
+        print(f"❌ Error: {e}")
+    finally:
+        loop.close()
