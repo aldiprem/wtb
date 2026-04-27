@@ -465,7 +465,8 @@ if [ "$SCAMACTION_EXISTS" = true ]; then
     
     mkdir -p scamaction/database scamaction/logs
     
-    rm -f scamaction/*.session 2>/dev/null
+    # HAPUS atau KOMENTARI baris ini:
+    # rm -f scamaction/*.session 2>/dev/null
     
     cd scamaction
     nohup python3 b.py > logs/scamaction_bot.log 2>&1 &
