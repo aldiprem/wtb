@@ -10,8 +10,25 @@ from database.data import (
     add_monitor_admin, remove_monitor_admin, reset_monitor_admins, get_monitor_admins,
     get_reports, get_monitor_alerts, get_all_users, get_user,
 )
+import json
+import sqlite3
 
 scam_bp = Blueprint('scamaction', __name__, url_prefix='/api/scamaction')
+
+def get_channel_link(channel_id, msg_id):
+    """Mendapatkan link channel (public jika ada username)"""
+    channels = get_scan_channels()
+    for ch in channels:
+        if ch['channel_id'] == channel_id:
+            username = ch.get('username')
+            if username:
+                return f"https://t.me/{username}/{msg_id}"
+            break
+    
+    channel_id_str = str(channel_id)
+    if channel_id_str.startswith('-100'):
+        channel_id_str = channel_id_str[4:]
+    return f"https://t.me/c/{channel_id_str}/{msg_id}"
 
 # ─── Dashboard / Stats ────────────────────────────────────────────────────────
 
@@ -191,4 +208,77 @@ def api_user_detail(user_id):
             return jsonify({'success': False, 'error': 'Not found'}), 404
         return jsonify({'success': True, 'data': u})
     except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    
+# ─── Scan Results API ─────────────────────────────────────────────────────────
+
+@scam_bp.route('/scan_results/<token>', methods=['GET'])
+def get_scan_results(token):
+    """API untuk mengambil hasil scan berdasarkan token"""
+    try:
+        db_path = '/root/wtb/scamaction/scamaction.db'
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        
+        # Cek tabel scan_results
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='scan_results'")
+        if not cur.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'error': 'No results found'}), 404
+        
+        cur.execute("""
+            SELECT scan_token, monitor_chat_id, monitor_chat_name, scan_channel_id, scan_channel_name, format_text, found_ids, created_at, expires_at
+            FROM scan_results WHERE scan_token = ? AND expires_at > datetime('now')
+        """, (token,))
+        
+        row = cur.fetchone()
+        conn.close()
+        
+        if not row:
+            return jsonify({'success': False, 'error': 'Link expired or not found'}), 404
+        
+        found_ids = json.loads(row['found_ids']) if row['found_ids'] else {}
+        
+        # Untuk setiap ID, cari info user dan referensi
+        results = []
+        for user_id, info in found_ids.items():
+            # Cek apakah user terdata di database
+            is_known = is_known_scammer(int(user_id))
+            refs = get_scammer_references(int(user_id)) if is_known else []
+            
+            # Format referensi
+            ref_list = []
+            for r in refs:
+                ch_link = get_channel_link(r['channel_id'], r['msg_id'])
+                ref_list.append({
+                    'channel_name': r['channel_name'],
+                    'msg_id': r['msg_id'],
+                    'link': ch_link
+                })
+            
+            results.append({
+                'user_id': int(user_id),
+                'is_known': is_known,
+                'references': ref_list,
+                'source_msg_id': info.get('msg_id'),
+                'source_text': info.get('text', '')
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'token': row['scan_token'],
+                'monitor_chat_name': row['monitor_chat_name'],
+                'scan_channel_name': row['scan_channel_name'],
+                'format_text': row['format_text'],
+                'created_at': row['created_at'],
+                'expires_at': row['expires_at'],
+                'total_found': len(results),
+                'results': results
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error in get_scan_results: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500

@@ -208,7 +208,7 @@
         
         async function loadResults(token) {
             try {
-                const response = await fetch(`/api/scan_results/${token}`);
+                const response = await fetch(`/api/scamaction/scan_results/${token}`);
                 const data = await response.json();
                 
                 if (!data.success) {
