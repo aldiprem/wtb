@@ -185,73 +185,6 @@ async def start(event):
     ]
     await event.respond(msg, buttons=buttons)
 
-
-# ─── OWNER: Channel management (+, -, %, #) ───────────────────────────────────
-
-# ─── OWNER: Channel management (+, -, %, #) ───────────────────────────────────
-
-@bot.on(events.NewMessage(pattern=r"^\+ch (.+)$"))
-async def owner_add_channel(event):
-    if not is_owner(event.sender_id): 
-        return
-    
-    arg = event.pattern_match.group(1).strip()
-    msg = await event.reply("⏳ Memproses...")
-    
-    try:
-        # Coba get entity channel
-        ch = await bot.get_entity(int(arg) if arg.lstrip('-').isdigit() else arg)
-        cid = ch.id
-        cname = getattr(ch, 'title', str(cid))
-        cun = getattr(ch, 'username', '') or ''
-        
-        # Simpan ke database scan_channels
-        add_scan_channel(cid, cname, cun)
-        
-        # Userbot join ke channel
-        try:
-            ubot_entity = await ubot.get_entity(int(arg) if arg.lstrip('-').isdigit() else arg)
-            await ubot(JoinChannelRequest(ubot_entity))
-            print(f"✅ Userbot joined channel: {cname}")
-        except UserAlreadyParticipantError:
-            print(f"Userbot already in channel: {cname}")
-        except Exception as e:
-            print(f"⚠️ Userbot failed to join channel: {e}")
-        
-        await msg.edit(f"✅ Channel **{cname}** (`{cid}`) ditambahkan ke daftar scan.\n🤖 Userbot juga telah bergabung.")
-        
-    except FloodWaitError as e:
-        await msg.edit(f"⚠️ Rate limit! Tunggu {e.seconds} detik.")
-    except Exception as e:
-        await msg.edit(f"❌ Gagal: `{e}`")
-
-@bot.on(events.NewMessage(pattern=r"^\-ch (.+)$"))
-async def owner_remove_channel(event):
-    if not is_owner(event.sender_id): return
-    arg = event.pattern_match.group(1).strip()
-    cid = int(arg) if arg.lstrip('-').isdigit() else None
-    if cid:
-        remove_scan_channel(cid)
-        await event.reply(f"🗑 Channel `{cid}` dihapus dari daftar scan.")
-    else:
-        await event.reply("❌ Format: `-ch -1001234567890`")
-
-
-@bot.on(events.NewMessage(pattern=r"^%ch$"))
-async def owner_list_channels(event):
-    if not is_owner(event.sender_id): return
-    channels = get_scan_channels()
-    text = "📋 **Daftar Channel Scan:**\n\n" + build_channel_list_text(channels)
-    await event.reply(text)
-
-
-@bot.on(events.NewMessage(pattern=r"^#ch$"))
-async def owner_reset_channels(event):
-    if not is_owner(event.sender_id): return
-    reset_scan_channels()
-    await event.reply("🔄 Semua channel scan telah di-reset.")
-
-
 # ─── /scan command ────────────────────────────────────────────────────────────
 
 @bot.on(events.NewMessage(pattern="^/scan$"))
@@ -457,7 +390,7 @@ async def on_new_member(event):
                 continue
             
             print(f"[DEBUG] Checking user {user.id} - is_scammer: {is_known_scammer(user.id)}")
-            
+                        
             if is_known_scammer(user.id):
                 refs = get_scammer_references(user.id)
                 save_monitor_alert(user.id, cid, ch_data['chat_name'])
@@ -470,27 +403,27 @@ async def on_new_member(event):
                     ch_link = f"https://t.me/c/{channel_id_str}/{r['msg_id']}"
                     lines.append(f"• [{r['channel_name']} — pesan #{r['msg_id']}]({ch_link})")
                 
-                msg = f"""🚨 **PENIPU TERDETEKSI!**
+                # Ubah pesan dari "PENIPU" menjadi informasi
+                msg = f"""📋 **INFORMASI USER ID TERDAFTAR**
 
-User ID: `{user.id}` bergabung ke **{ch_data['chat_name']}**
+            User ID: `{user.id}` bergabung ke **{ch_data['chat_name']}**
 
-**Ditemukan di:**
-{chr(10).join(lines) if lines else '_Tidak ada referensi_'}"""
+            **ID ini ditemukan di laporan:**
+            {chr(10).join(lines) if lines else '_Tidak ada referensi_'}
+
+            *Data ini berdasarkan laporan yang masuk ke sistem.*"""
                 
-                # Kirim ke added_by dan semua monitor admins
+                # Kirim notifikasi
                 notif_targets = {ch_data['added_by']}
                 for adm in get_monitor_admins(cid):
                     notif_targets.add(adm['user_id'])
                 notif_targets.add(OWNER_ID)
                 
-                print(f"[DEBUG] Sending notification to: {notif_targets}")
-                
                 for target in notif_targets:
                     try:
-                        await bot.send_message(target, msg)
-                        print(f"[DEBUG] Notification sent to {target}")
-                    except Exception as e:
-                        print(f"[DEBUG] Failed to send to {target}: {e}")
+                        await bot.send_message(target, msg, link_preview=False)
+                    except Exception:
+                        pass
                         
     except Exception as e:
         print(f"[ERROR] on_new_member: {e}")
@@ -578,6 +511,7 @@ async def cb_mon_detail(event):
     toggle_label = "🔴 Nonaktifkan" if ch['is_active'] else "🟢 Aktifkan"
     buttons = [
         [Button.inline(toggle_label, data=f"mon_toggle_{cid}")],
+        [Button.inline("🔍 SCAN MEMBERS", data=f"mon_scan_members:{cid}")],  # Tombol baru
         [Button.inline("➕ Add Admin", data=f"mon_addadmin_{cid}"),
          Button.inline("➖ Del Admin", data=f"mon_deladmin_{cid}")],
         [Button.inline("🔄 Reset Admin", data=f"mon_resetadmin_{cid}")],
@@ -585,6 +519,83 @@ async def cb_mon_detail(event):
     ]
     await event.edit(text, buttons=buttons)
 
+@bot.on(events.CallbackQuery(pattern=r"^mon_scan_members:(-?\d+)$"))
+async def mon_scan_members(event):
+    """Scan semua anggota group untuk cek di database"""
+    cid = int(event.pattern_match.group(1))
+    uid = event.sender_id
+    
+    # Cek permission
+    ch_data = get_monitor_channel(cid)
+    if not ch_data:
+        await event.answer("Channel tidak ditemukan!", alert=True)
+        return
+    
+    if not (is_owner(uid) or is_monitor_admin(cid, uid) or ch_data['added_by'] == uid):
+        await event.answer("Anda tidak memiliki akses!", alert=True)
+        return
+    
+    await event.edit("⏳ **Scanning anggota grup...**\n\nMohon tunggu, sedang memeriksa semua anggota...")
+    
+    try:
+        # Dapatkan semua anggota grup
+        participants = await bot.get_participants(cid)
+        total = len(participants)
+        
+        found_users = []
+        for i, user in enumerate(participants):
+            if user.bot:
+                continue
+            
+            if is_known_scammer(user.id):
+                refs = get_scammer_references(user.id)
+                found_users.append({
+                    'id': user.id,
+                    'first_name': user.first_name,
+                    'username': user.username,
+                    'refs': refs
+                })
+            
+            # Update status setiap 50 user
+            if i % 50 == 0:
+                await event.edit(f"⏳ **Scanning anggota grup...**\n\nProgres: {i}/{total} anggota\nDitemukan: {len(found_users)} ID terdata")
+        
+        # Kirim hasil scan
+        if found_users:
+            msg = f"🔍 **HASIL SCAN ANGGOTA GRUP**\n\n"
+            msg += f"**Grup:** {ch_data['chat_name']}\n"
+            msg += f"**Total anggota:** {total}\n"
+            msg += f"**ID terdata di database:** {len(found_users)}\n\n"
+            
+            for u in found_users[:20]:  # Max 20 hasil
+                mention = f"[{u['first_name'] or u['id']}](tg://user?id={u['id']})"
+                msg += f"• {mention} (`{u['id']}`)\n"
+                for r in u['refs'][:2]:  # Max 2 referensi
+                    channel_id_str = str(r['channel_id'])
+                    if channel_id_str.startswith('-100'):
+                        channel_id_str = channel_id_str[4:]
+                    ch_link = f"https://t.me/c/{channel_id_str}/{r['msg_id']}"
+                    msg += f"  └ [Ditemukan di {r['channel_name']}]({ch_link})\n"
+                msg += "\n"
+            
+            if len(found_users) > 20:
+                msg += f"\n*...dan {len(found_users) - 20} lainnya*"
+            
+            buttons = [[Button.inline("🔙 KEMBALI", data=f"mon_detail_{cid}")]]
+            await event.edit(msg, buttons=buttons, link_preview=False)
+        else:
+            msg = f"✅ **HASIL SCAN ANGGOTA GRUP**\n\n"
+            msg += f"**Grup:** {ch_data['chat_name']}\n"
+            msg += f"**Total anggota:** {total}\n"
+            msg += f"**ID terdata di database:** 0\n\n"
+            msg += "Tidak ada ID yang terdata di database."
+            
+            buttons = [[Button.inline("🔙 KEMBALI", data=f"mon_detail_{cid}")]]
+            await event.edit(msg, buttons=buttons)
+            
+    except Exception as e:
+        await event.edit(f"❌ Error: {str(e)[:200]}")
+        print(f"Error scanning members: {e}")
 
 @bot.on(events.CallbackQuery(pattern=r"^mon_toggle_(-?\d+)$"))
 async def cb_mon_toggle(event):
@@ -642,20 +653,151 @@ async def cb_mon_resetadmin(event):
     await event.answer("✅ Semua admin di-reset", alert=False)
 
 
-# ─── Callback: Scan menu ──────────────────────────────────────────────────────
+# ─── Scan Channel Management (Callback based) ─────────────────────────────────
 
 @bot.on(events.CallbackQuery(pattern="^scan_menu$"))
 async def cb_scan_menu(event):
     if not is_owner(event.sender_id):
         await event.answer("⛔ Hanya owner", alert=True)
         return
+    
     channels = get_scan_channels()
-    text = "🔍 **Scan Channel**\n\n" + build_channel_list_text(channels)
-    await event.edit(text, buttons=[
-        [Button.inline("▶ Mulai Scan", data="scan_start")],
-        [Button.inline("🔙 Kembali", data="main_menu")]
-    ])
+    text = "🔍 **Manajemen Channel Scan**\n\n"
+    
+    if channels:
+        text += "**Daftar Channel:**\n"
+        for ch in channels:
+            # Hitung jumlah ID yang discan dari channel ini
+            count = get_scanned_count_by_channel(ch['channel_id'])
+            text += f"• `{ch['channel_id']}` — **{ch['channel_name']}**\n"
+            text += f"  └ 📊 {count} ID tersimpan\n"
+    else:
+        text += "_Belum ada channel yang tersimpan._"
+    
+    buttons = [
+        [Button.inline("➕ ADD CHANNEL", data="scan:add")],
+        [Button.inline("🗑 DELETE CHANNEL", data="scan:delete")],
+        [Button.inline("📋 LIST CHANNEL", data="scan:list")],
+        [Button.inline("🔙 KEMBALI", data="main_menu")]
+    ]
+    
+    await event.edit(text, buttons=buttons)
 
+@bot.on(events.CallbackQuery(pattern="^scan:add$"))
+async def scan_add_channel(event):
+    if not is_owner(event.sender_id):
+        return
+    
+    user_state[event.sender_id] = "scan_add_waiting"
+    await event.edit(
+        "➕ **Tambah Channel Scan**\n\n"
+        "Kirim **ID Channel** atau **username channel** yang ingin ditambahkan.\n\n"
+        "Contoh: `-1001234567890` atau `@channelusername`",
+        buttons=[[Button.inline("🔙 BATAL", data="scan_menu")]]
+    )
+
+@bot.on(events.NewMessage)
+async def handle_scan_add_input(event):
+    uid = event.sender_id
+    if user_state.get(uid) != "scan_add_waiting":
+        return
+    
+    if event.raw_text.startswith('/'):
+        return
+    
+    arg = event.raw_text.strip()
+    msg = await event.reply("⏳ Memproses...")
+    
+    try:
+        ch = await bot.get_entity(int(arg) if arg.lstrip('-').isdigit() else arg)
+        cid = ch.id
+        cname = getattr(ch, 'title', str(cid))
+        cun = getattr(ch, 'username', '') or ''
+        
+        add_scan_channel(cid, cname, cun)
+        
+        # Userbot join ke channel
+        try:
+            ubot_entity = await ubot.get_entity(int(arg) if arg.lstrip('-').isdigit() else arg)
+            await ubot(JoinChannelRequest(ubot_entity))
+        except UserAlreadyParticipantError:
+            pass
+        except Exception as e:
+            print(f"Userbot join error: {e}")
+        
+        await msg.edit(f"✅ Channel **{cname}** (`{cid}`) ditambahkan.")
+        await asyncio.sleep(1)
+        await cb_scan_menu(event)
+        
+    except FloodWaitError as e:
+        await msg.edit(f"⚠️ Rate limit! Tunggu {e.seconds} detik.")
+    except Exception as e:
+        await msg.edit(f"❌ Gagal: `{e}`")
+    
+    user_state.pop(uid, None)
+
+@bot.on(events.CallbackQuery(pattern="^scan:delete$"))
+async def scan_delete_channel(event):
+    if not is_owner(event.sender_id):
+        return
+    
+    channels = get_scan_channels()
+    if not channels:
+        await event.answer("Tidak ada channel yang tersimpan!", alert=True)
+        await cb_scan_menu(event)
+        return
+    
+    buttons = []
+    for ch in channels:
+        buttons.append([Button.inline(f"🗑 {ch['channel_name']}", data=f"scan:delete_confirm:{ch['channel_id']}")])
+    buttons.append([Button.inline("🔙 BATAL", data="scan_menu")])
+    
+    await event.edit("🗑 **Pilih channel yang akan dihapus:**", buttons=buttons)
+
+@bot.on(events.CallbackQuery(pattern=r"^scan:delete_confirm:(-?\d+)$"))
+async def scan_delete_confirm(event):
+    if not is_owner(event.sender_id):
+        return
+    
+    cid = int(event.pattern_match.group(1))
+    remove_scan_channel(cid)
+    await event.answer("Channel dihapus!", alert=True)
+    await cb_scan_menu(event)
+
+@bot.on(events.CallbackQuery(pattern="^scan:list$"))
+async def scan_list_channel(event):
+    if not is_owner(event.sender_id):
+        return
+    
+    channels = get_scan_channels()
+    if not channels:
+        await event.answer("Tidak ada channel yang tersimpan!", alert=True)
+        await cb_scan_menu(event)
+        return
+    
+    text = "📋 **DETAIL CHANNEL SCAN**\n\n"
+    for ch in channels:
+        count = get_scanned_count_by_channel(ch['channel_id'])
+        text += f"**{ch['channel_name']}**\n"
+        text += f"├ ID: `{ch['channel_id']}`\n"
+        text += f"├ Username: @{ch['username'] or '-'}\n"
+        text += f"└ 📊 ID Tersimpan: {count}\n\n"
+    
+    buttons = [[Button.inline("🔙 KEMBALI", data="scan_menu")]]
+    await event.edit(text, buttons=buttons)
+
+def get_scanned_count_by_channel(channel_id):
+    """Mendapatkan jumlah ID yang discan dari channel tertentu"""
+    try:
+        conn = sqlite3.connect('/root/wtb/scamaction/scamaction.db')
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(DISTINCT user_id) as count FROM scanned_ids WHERE channel_id = ?", (channel_id,))
+        row = cur.fetchone()
+        conn.close()
+        return row['count'] if row else 0
+    except:
+        return 0
 
 @bot.on(events.CallbackQuery(pattern="^scan_start$"))
 async def cb_scan_start(event):
