@@ -363,8 +363,9 @@ async def on_chat_action(event):
     try:
         chat = await event.get_chat()
         
-        # Jika channel / broadcast
+        # Jika channel / broadcast, skip
         if getattr(chat, "broadcast", False):
+            print(f"[DEBUG] Chat {chat.id} is broadcast, skipping")
             return
         
         # Ambil chat_id
@@ -372,15 +373,8 @@ async def on_chat_action(event):
         me = await bot.get_me()
         bot_id = me.id
         
-        # Cek permission
-        try:
-            permissions = await bot.get_permissions(chat_id, bot_id)
-            if hasattr(permissions, "send_messages") and not permissions.send_messages:
-                print(f"Bot tidak bisa kirim pesan di {chat_id}, skip.")
-                return
-        except Exception as e:
-            print(f"Gagal cek izin kirim pesan di {chat_id}: {e}")
-            return
+        print(f"[DEBUG] on_chat_action: chat_id={chat_id}, bot_id={bot_id}")
+        print(f"[DEBUG] event.user_added={event.user_added}, event.user_id={event.user_id}")
         
         # Cek apakah bot ditambahkan
         if event.user_added and event.user_id == bot_id:
@@ -391,84 +385,175 @@ async def on_chat_action(event):
             cname = getattr(chat, 'title', str(cid))
             cun = getattr(chat, 'username', '') or ''
             
+            print(f"[DEBUG] Bot added to {cname} ({cid}) by {adder}")
+            
+            # Simpan ke database
             add_monitor_channel(cid, cname, cun, adder)
             
+            # Kirim notifikasi ke user yang menambahkan
             try:
                 await bot.send_message(
                     adder,
-                    f"[🖥](tg://emoji?id=5197264711437389632) Bot ditambahkan ke **{cname}** (`{cid}`)\n"
+                    f"[🖥](tg://emoji?id=5197264711437389632) **Bot ditambahkan ke {cname}**\n\n"
+                    f"ID: `{cid}`\n"
+                    f"Username: @{cun if cun else '-'}\n\n"
                     f"Monitor telah diaktifkan. Gunakan tombol **Monitor** di /start untuk mengaturnya."
                 )
+                print(f"[DEBUG] Notification sent to {adder}")
             except Exception as e:
-                print(f"Gagal kirim notifikasi ke {adder}: {e}")
+                print(f"[ERROR] Failed to send notification to {adder}: {e}")
+            
+            # Kirim juga ke owner
+            try:
+                await bot.send_message(
+                    OWNER_ID,
+                    f"[🤖] Bot ditambahkan ke **{cname}** (`{cid}`)\nDitambahkan oleh: `{adder}`"
+                )
+            except Exception as e:
+                print(f"[ERROR] Failed to notify owner: {e}")
                 
     except Exception as e:
-        print(f"Error di on_chat_action: {e}")
+        print(f"[ERROR] on_chat_action: {e}")
+        import traceback
+        traceback.print_exc()
 
 @bot.on(events.ChatAction())
 async def on_new_member(event):
     """Saat ada user baru bergabung ke channel/group yang di-monitor."""
-    if not (event.user_added or event.user_joined):
-        return
-    chat = await event.get_chat()
-    cid  = chat.id
+    try:
+        # Debug print
+        print(f"[DEBUG] on_new_member triggered")
+        print(f"[DEBUG] event.user_added={event.user_added}, event.user_joined={event.user_joined}")
+        
+        if not (event.user_added or event.user_joined):
+            return
+        
+        chat = await event.get_chat()
+        cid = chat.id
+        
+        print(f"[DEBUG] Chat ID: {cid}, Chat Title: {getattr(chat, 'title', 'Unknown')}")
+        
+        # Cek apakah channel ini di-monitor
+        ch_data = get_monitor_channel(cid)
+        print(f"[DEBUG] Monitor channel data: {ch_data}")
+        
+        if not ch_data:
+            print(f"[DEBUG] Channel {cid} not in monitor list")
+            return
+        
+        if not ch_data.get('is_active'):
+            print(f"[DEBUG] Monitor for {cid} is inactive")
+            return
+        
+        me = await bot.get_me()
+        bot_id = me.id
+        
+        # Dapatkan daftar user yang bergabung
+        users = event.users if hasattr(event, 'users') else []
+        print(f"[DEBUG] Users joined: {[u.id for u in users if u]}")
+        
+        for user in users:
+            if not user or user.id == bot_id:
+                continue
+            
+            print(f"[DEBUG] Checking user {user.id} - is_scammer: {is_known_scammer(user.id)}")
+            
+            if is_known_scammer(user.id):
+                refs = get_scammer_references(user.id)
+                save_monitor_alert(user.id, cid, ch_data['chat_name'])
+                
+                lines = []
+                for r in refs:
+                    channel_id_str = str(r['channel_id'])
+                    if channel_id_str.startswith('-100'):
+                        channel_id_str = channel_id_str[4:]
+                    ch_link = f"https://t.me/c/{channel_id_str}/{r['msg_id']}"
+                    lines.append(f"• [{r['channel_name']} — pesan #{r['msg_id']}]({ch_link})")
+                
+                msg = f"""🚨 **PENIPU TERDETEKSI!**
 
-    ch_data = get_monitor_channel(cid)
-    if not ch_data or not ch_data.get('is_active'):
-        return
+User ID: `{user.id}` bergabung ke **{ch_data['chat_name']}**
 
-    me = await bot.get_me()
-    for uid in (event.users or []):
-        if not uid or uid.id == me.id:
-            continue
-        if is_known_scammer(uid.id):
-            refs = get_scammer_references(uid.id)
-            save_monitor_alert(uid.id, cid, ch_data['chat_name'])
-
-            lines = []
-            for r in refs:
-                ch_link = f"https://t.me/c/{str(r['channel_id']).lstrip('-100')}/{r['msg_id']}"
-                lines.append(f"• [{r['channel_name']} — pesan #{r['msg_id']}]({ch_link})")
-
-            msg = (
-                f"🚨 **PENIPU TERDETEKSI!**\n\n"
-                f"User ID: `{uid.id}` bergabung ke **{ch_data['chat_name']}**\n\n"
-                f"**Ditemukan di:**\n" + "\n".join(lines)
-            )
-
-            # Kirim ke added_by dan semua monitor admins
-            notif_targets = {ch_data['added_by']}
-            for adm in get_monitor_admins(cid):
-                notif_targets.add(adm['user_id'])
-
-            for target in notif_targets:
-                try:
-                    await bot.send_message(target, msg)
-                except Exception:
-                    pass
-
-
-# ─── Callback: Monitor ────────────────────────────────────────────────────────
+**Ditemukan di:**
+{chr(10).join(lines) if lines else '_Tidak ada referensi_'}"""
+                
+                # Kirim ke added_by dan semua monitor admins
+                notif_targets = {ch_data['added_by']}
+                for adm in get_monitor_admins(cid):
+                    notif_targets.add(adm['user_id'])
+                notif_targets.add(OWNER_ID)
+                
+                print(f"[DEBUG] Sending notification to: {notif_targets}")
+                
+                for target in notif_targets:
+                    try:
+                        await bot.send_message(target, msg)
+                        print(f"[DEBUG] Notification sent to {target}")
+                    except Exception as e:
+                        print(f"[DEBUG] Failed to send to {target}: {e}")
+                        
+    except Exception as e:
+        print(f"[ERROR] on_new_member: {e}")
+        import traceback
+        traceback.print_exc()
 
 @bot.on(events.CallbackQuery(pattern="^monitor$"))
 async def cb_monitor(event):
     uid = event.sender_id
-    channels = get_monitor_channels(uid)
-    if not channels:
+    
+    print(f"[DEBUG] cb_monitor called by user {uid}")
+    
+    # Ambil semua channel yang di-monitor (tanpa filter added_by)
+    # Karena user bisa menjadi admin juga
+    channels = get_monitor_channels(None)  # Ambil semua
+    
+    print(f"[DEBUG] All monitor channels: {channels}")
+    
+    # Filter channel yang user memiliki akses (sebagai admin atau owner)
+    user_channels = []
+    for ch in channels:
+        if is_owner(uid) or is_monitor_admin(ch['chat_id'], uid) or ch['added_by'] == uid:
+            user_channels.append(ch)
+    
+    print(f"[DEBUG] User accessible channels: {user_channels}")
+    
+    if not user_channels:
         await event.edit(
-            "🖥 **Monitor**\n\nBelum ada channel/group yang dipantau.\nTambahkan bot ke group/channel Anda.",
+            "🖥 **Monitor**\n\n"
+            "Belum ada channel/group yang dipantau.\n"
+            "Tambahkan bot ke group/channel Anda, atau minta admin untuk menambahkan Anda.",
             buttons=[[Button.inline("🔙 Kembali", data="main_menu")]]
         )
         return
-
-    buttons = [[Button.inline(
-        f"{'🟢' if c['is_active'] else '🔴'} {c['chat_name']}",
-        data=f"mon_detail_{c['chat_id']}"
-    )] for c in channels]
+    
+    buttons = []
+    for c in user_channels:
+        status_icon = "🟢" if c['is_active'] else "🔴"
+        button_text = f"{status_icon} {c['chat_name']}"
+        buttons.append([Button.inline(button_text, data=f"mon_detail_{c['chat_id']}")])
+    
     buttons.append([Button.inline("🔙 Kembali", data="main_menu")])
-
+    
     await event.edit("🖥 **Monitor — Pilih Channel/Group:**", buttons=buttons)
 
+@bot.on(events.NewMessage(pattern="^/debug_monitor$"))
+async def debug_monitor(event):
+    if not is_owner(event.sender_id):
+        return
+    
+    channels = get_monitor_channels(None)
+    msg = "📋 **Monitor Channels Debug:**\n\n"
+    if not channels:
+        msg += "Tidak ada channel yang terdaftar!"
+    else:
+        for ch in channels:
+            msg += f"• ID: `{ch['chat_id']}`\n"
+            msg += f"  Name: {ch['chat_name']}\n"
+            msg += f"  Active: {ch['is_active']}\n"
+            msg += f"  Added By: `{ch['added_by']}`\n"
+            msg += f"  Username: @{ch['chat_username'] or '-'}\n\n"
+    
+    await event.reply(msg)
 
 @bot.on(events.CallbackQuery(pattern=r"^mon_detail_(-?\d+)$"))
 async def cb_mon_detail(event):

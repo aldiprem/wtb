@@ -187,12 +187,13 @@ def get_monitor_channels(added_by: int = None):
     conn = get_conn()
     if added_by:
         rows = conn.execute(
-            "SELECT * FROM monitor_channels WHERE added_by = ? ORDER BY added_at DESC", (added_by,)
+            "SELECT * FROM monitor_channels WHERE added_by = ? ORDER BY added_at DESC", 
+            (added_by,)
         ).fetchall()
     else:
         rows = conn.execute("SELECT * FROM monitor_channels ORDER BY added_at DESC").fetchall()
     conn.close()
-    return [dict(r) for r in rows]
+    return [dict(r) for r in rows] if rows else []
 
 def toggle_monitor_channel(chat_id: int) -> int:
     conn = get_conn()
