@@ -31,6 +31,17 @@ from telethon.tl.types import (
     ChannelParticipantCreator, ChannelParticipantAdmin
 )
 from telethon.extensions import markdown
+from telethon.tl.functions.channels import JoinChannelRequest
+from telethon.errors import (
+    UserAlreadyParticipantError,
+    FloodWaitError,
+    PhoneNumberInvalidError,
+    PhoneCodeInvalidError,
+    PhoneCodeExpiredError,
+    SessionPasswordNeededError,
+    PasswordHashInvalidError,
+    RPCError
+)
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -177,20 +188,42 @@ async def start(event):
 
 # ─── OWNER: Channel management (+, -, %, #) ───────────────────────────────────
 
+# ─── OWNER: Channel management (+, -, %, #) ───────────────────────────────────
+
 @bot.on(events.NewMessage(pattern=r"^\+ch (.+)$"))
 async def owner_add_channel(event):
-    if not is_owner(event.sender_id): return
+    if not is_owner(event.sender_id): 
+        return
+    
     arg = event.pattern_match.group(1).strip()
+    msg = await event.reply("⏳ Memproses...")
+    
     try:
+        # Coba get entity channel
         ch = await bot.get_entity(int(arg) if arg.lstrip('-').isdigit() else arg)
-        cid   = ch.id
+        cid = ch.id
         cname = getattr(ch, 'title', str(cid))
-        cun   = getattr(ch, 'username', '') or ''
+        cun = getattr(ch, 'username', '') or ''
+        
+        # Simpan ke database scan_channels
         add_scan_channel(cid, cname, cun)
-        await event.reply(f"✅ Channel **{cname}** (`{cid}`) ditambahkan ke daftar scan.")
+        
+        # Userbot join ke channel
+        try:
+            ubot_entity = await ubot.get_entity(int(arg) if arg.lstrip('-').isdigit() else arg)
+            await ubot(JoinChannelRequest(ubot_entity))
+            print(f"✅ Userbot joined channel: {cname}")
+        except UserAlreadyParticipantError:
+            print(f"Userbot already in channel: {cname}")
+        except Exception as e:
+            print(f"⚠️ Userbot failed to join channel: {e}")
+        
+        await msg.edit(f"✅ Channel **{cname}** (`{cid}`) ditambahkan ke daftar scan.\n🤖 Userbot juga telah bergabung.")
+        
+    except FloodWaitError as e:
+        await msg.edit(f"⚠️ Rate limit! Tunggu {e.seconds} detik.")
     except Exception as e:
-        await event.reply(f"❌ Gagal: `{e}`")
-
+        await msg.edit(f"❌ Gagal: `{e}`")
 
 @bot.on(events.NewMessage(pattern=r"^\-ch (.+)$"))
 async def owner_remove_channel(event):
@@ -223,7 +256,9 @@ async def owner_reset_channels(event):
 
 @bot.on(events.NewMessage(pattern="^/scan$"))
 async def cmd_scan(event):
-    if not is_owner(event.sender_id): return
+    if not is_owner(event.sender_id): 
+        return
+    
     channels = get_scan_channels()
     if not channels:
         await event.reply("❌ Belum ada channel yang tersimpan. Tambah dengan `+ch <id>`")
@@ -235,12 +270,11 @@ async def cmd_scan(event):
 
     await event.reply(text, buttons=_build_scan_buttons(channels, set()))
 
-
 def _build_scan_buttons(channels, selected):
     rows = []
-    row  = []
+    row = []
     for i, ch in enumerate(channels):
-        cid   = ch['channel_id']
+        cid = ch['channel_id']
         label = ("✅ " if cid in selected else "") + str(cid)
         row.append(Button.inline(label, data=f"scan_toggle_{cid}"))
         if len(row) == 4:
@@ -254,10 +288,11 @@ def _build_scan_buttons(channels, selected):
     ])
     return rows
 
-
 @bot.on(events.CallbackQuery(pattern=r"^scan_toggle_(-?\d+)$"))
 async def scan_toggle(event):
-    if not is_owner(event.sender_id): return
+    if not is_owner(event.sender_id): 
+        return
+    
     cid = int(event.pattern_match.group(1))
     sel = scan_select.get(event.sender_id, set())
     sel.symmetric_difference_update({cid})
@@ -266,65 +301,109 @@ async def scan_toggle(event):
     channels = get_scan_channels()
     await event.edit(buttons=_build_scan_buttons(channels, sel))
 
-
 @bot.on(events.CallbackQuery(pattern="^scan_confirm$"))
 async def scan_confirm(event):
-    if not is_owner(event.sender_id): return
+    if not is_owner(event.sender_id): 
+        return
+    
     sel = scan_select.get(event.sender_id, set())
     if not sel:
         await event.answer("⚠ Pilih minimal 1 channel dulu!", alert=True)
         return
 
-    await event.edit("⏳ Scanning sedang berjalan...")
+    await event.edit("⏳ Scanning sedang berjalan...\n📡 Menggunakan userbot untuk mengambil data...")
+    
     total = 0
+    stats = []
+    
     for cid in sel:
         try:
-            ch    = await ubot.get_entity(cid)
+            # Gunakan ubot (userbot) untuk scan, bukan bot
+            ch = await ubot.get_entity(cid)
             cname = getattr(ch, 'title', str(cid))
+            
+            stats.append(f"\n📡 Scanning **{cname}**...")
+            await event.edit("⏳ Scanning sedang berjalan...\n" + "\n".join(stats[-5:]))
+            
             async for msg in ubot.iter_messages(cid, limit=None):
                 if msg.text:
                     ids = extract_telegram_ids(msg.text)
                     for uid in ids:
                         save_scanned_id(uid, cid, cname, msg.id)
                         total += 1
+            
+            stats.append(f"✅ {cname}: selesai")
+            
+        except FloodWaitError as e:
+            wait_time = min(e.seconds, 60)
+            stats.append(f"⚠️ Rate limit, tunggu {wait_time} detik...")
+            await event.edit("⏳ Scanning sedang berjalan...\n" + "\n".join(stats[-5:]))
+            await asyncio.sleep(wait_time)
+            
+        except UserAlreadyParticipantError:
+            stats.append(f"⚠️ {cname}: Userbot sudah jadi member")
+            
         except Exception as e:
-            await bot.send_message(event.sender_id, f"⚠ Gagal scan `{cid}`: `{e}`")
+            stats.append(f"❌ {cname}: {str(e)[:50]}")
+            print(f"Error scanning {cid}: {e}")
 
     await event.edit(
-        f"✅ Scan selesai!\n\n**Total ID ditemukan:** `{total}`\n"
-        f"**Channel di-scan:** `{len(sel)}`",
+        f"✅ **Scan selesai!**\n\n"
+        f"**Total ID ditemukan:** `{total}`\n"
+        f"**Channel di-scan:** `{len(sel)}`\n\n"
+        + "\n".join(stats[-10:]),
         buttons=[[Button.inline("🔙 Menu Utama", data="main_menu")]]
     )
-
 
 # ─── Monitor (bot ditambah ke group/channel) ──────────────────────────────────
 
 @bot.on(events.ChatAction())
 async def on_chat_action(event):
     """Deteksi bot ditambahkan ke group/channel."""
-    if event.user_added or event.user_joined:
-        me = await bot.get_me()
-        added = [u for u in (event.users or []) if u and u.id == me.id]
-        if not added:
-            return
+    try:
         chat = await event.get_chat()
-        cid   = chat.id
-        cname = getattr(chat, 'title', str(cid))
-        cun   = getattr(chat, 'username', '') or ''
-
-        adder = event.action_message.action.users[0] if hasattr(event.action_message.action, 'users') else None
-        added_by = adder if isinstance(adder, int) else (event.sender_id or OWNER_ID)
-
-        add_monitor_channel(cid, cname, cun, added_by)
+        
+        # Jika channel / broadcast
+        if getattr(chat, "broadcast", False):
+            return
+        
+        # Ambil chat_id
+        chat_id = event.chat_id
+        me = await bot.get_me()
+        bot_id = me.id
+        
+        # Cek permission
         try:
-            await bot.send_message(
-                added_by,
-                f"[🖥](tg://emoji?id=5197264711437389632) Bot ditambahkan ke **{cname}** (`{cid}`)\n"
-                f"Monitor telah diaktifkan. Gunakan tombol **Monitor** di /start untuk mengaturnya."
-            )
-        except Exception:
-            pass
-
+            permissions = await bot.get_permissions(chat_id, bot_id)
+            if hasattr(permissions, "send_messages") and not permissions.send_messages:
+                print(f"Bot tidak bisa kirim pesan di {chat_id}, skip.")
+                return
+        except Exception as e:
+            print(f"Gagal cek izin kirim pesan di {chat_id}: {e}")
+            return
+        
+        # Cek apakah bot ditambahkan
+        if event.user_added and event.user_id == bot_id:
+            # Dapatkan siapa yang menambahkan bot
+            adder = event.sender_id if event.sender_id else OWNER_ID
+            
+            cid = chat.id
+            cname = getattr(chat, 'title', str(cid))
+            cun = getattr(chat, 'username', '') or ''
+            
+            add_monitor_channel(cid, cname, cun, adder)
+            
+            try:
+                await bot.send_message(
+                    adder,
+                    f"[🖥](tg://emoji?id=5197264711437389632) Bot ditambahkan ke **{cname}** (`{cid}`)\n"
+                    f"Monitor telah diaktifkan. Gunakan tombol **Monitor** di /start untuk mengaturnya."
+                )
+            except Exception as e:
+                print(f"Gagal kirim notifikasi ke {adder}: {e}")
+                
+    except Exception as e:
+        print(f"Error di on_chat_action: {e}")
 
 @bot.on(events.ChatAction())
 async def on_new_member(event):
@@ -644,18 +723,30 @@ async def cb_lapor_konfirm(event):
 # ─── Run ──────────────────────────────────────────────────────────────────────
 
 async def main():
-    await ubot.start(phone=PHONE_NUMBER)
-    print("✅ ubot (userbot) started")
-    print("✅ bot started")
-    await bot.run_until_disconnected()
+    """Main function to run both userbot and bot."""
+    try:
+        await ubot.start(phone=PHONE_NUMBER)
+        print("✅ ubot (userbot) started")
+        print("✅ bot started")
+        await bot.run_until_disconnected()
+    except Exception as e:
+        print(f"❌ Error in main: {e}")
+        raise
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
     try:
-        loop.run_until_complete(main())
+        asyncio.run(main())
     except KeyboardInterrupt:
         print("\n🛑 Bot ScamAction dihentikan oleh user")
-    except Exception as e:
-        print(f"❌ Error: {e}")
-    finally:
-        loop.close()
+    except RuntimeError as e:
+        if "event loop" in str(e):
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(main())
+            except KeyboardInterrupt:
+                print("\n🛑 Bot ScamAction dihentikan oleh user")
+            finally:
+                loop.close()
+        else:
+            print(f"❌ Error: {e}")
