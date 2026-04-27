@@ -54,7 +54,8 @@ from giveaway.services.battle_service import set_battle_bot_client
 # ============================================================
 
 battle_state = {}
-battle_timers: dict = {}   # {group_id: {battle_id: datetime}}
+battle_timers: dict = {}
+winner_selection_state = {}
 
 # -------- menu utama battle --------
 async def battle_menu_handler(event):
@@ -759,11 +760,30 @@ async def check_on_giveaway_expired():
                                     logger.warning(f"Could not get entity for winner {winner_id}: {e}")
                                     winner_mentions.append(f"{i}. 🎉 User {winner_id}")
                                     winner_details.append(f"{i}. User ID: `{winner_id}`")
-                            
-                            # Buat daftar winner dengan hadiah yang sesuai
+                                                        
+                            manual_prize_map = {}
+                            try:
+                                with sqlite3.connect(db.db_path) as conn:
+                                    cursor = conn.cursor()
+                                    cursor.execute('''
+                                        SELECT user_id, prize_index, prize_text 
+                                        FROM giveaway_winner_prizes 
+                                        WHERE giveaway_code = ?
+                                    ''', (giveaway['giveaway_code'],))
+                                    rows = cursor.fetchall()
+                                    for row in rows:
+                                        manual_prize_map[row[0]] = {'index': row[1], 'text': row[2]}
+                            except Exception as e:
+                                logger.warning(f"Could not get manual prize mapping: {e}")
+
                             winner_list = []
                             for i, winner_id in enumerate(winners):
-                                prize_text = prize_lines[i] if i < len(prize_lines) else f"Hadiah ke-{i+1}"
+                                # Check if this winner has manual prize assignment
+                                if winner_id in manual_prize_map:
+                                    prize_text = manual_prize_map[winner_id]['text']
+                                else:
+                                    prize_text = prize_lines[i] if i < len(prize_lines) else f"Hadiah ke-{i+1}"
+                                
                                 try:
                                     user = await bot.get_entity(winner_id)
                                     full_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "User"
@@ -1278,6 +1298,239 @@ async def force_sub_manager(event):
         await event.reply(f"✅ **Force Subs ditambahkan:** {success}")
     elif mode == "-":
         await event.reply(f"🗑️ **Force Subs dihapus:** {success}")
+
+@bot.on(events.NewMessage(pattern=r"^/setwinner(?:\s+(\d+)\s+(\S+))?$"))
+async def set_winner_command(event):
+    """Set winner manually for a giveaway - only for owner"""
+    # Hanya owner yang bisa menggunakan perintah ini
+    if event.sender_id != OWNER_ID:
+        await event.reply("❌ Perintah ini hanya untuk owner.")
+        return
+    
+    # Parse arguments
+    match = event.pattern_match
+    user_id_str = match.group(1)
+    giveaway_id_or_code = match.group(2)
+    
+    if not user_id_str or not giveaway_id_or_code:
+        await event.reply(
+            "📝 **Cara Penggunaan:**\n\n"
+            "`/setwinner <user_id> <giveaway_code>`\n"
+            "atau\n"
+            "`/setwinner <user_id> <giveaway_id>`\n\n"
+            "**Contoh:**\n"
+            "`/setwinner 7998861975 242071016759360`\n\n"
+            "⚠️ User ID bisa didapat dari profil pengguna."
+        )
+        return
+    
+    try:
+        user_id = int(user_id_str)
+    except ValueError:
+        await event.reply("❌ User ID harus berupa angka.")
+        return
+    
+    # Cari giveaway berdasarkan code atau ID
+    giveaway = None
+    
+    # Coba cek di on_giveaway berdasarkan giveaway_code
+    giveaway = db.get_on_giveaway(giveaway_id_or_code)
+    
+    # Jika tidak ditemukan, coba berdasarkan giveaway_id
+    if not giveaway:
+        try:
+            with sqlite3.connect(db.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT * FROM on_giveaway WHERE giveaway_id = ?
+                ''', (giveaway_id_or_code,))
+                row = cursor.fetchone()
+                if row:
+                    columns = [description[0] for description in cursor.description]
+                    giveaway = dict(zip(columns, row))
+                    giveaway['participants'] = json.loads(giveaway['participants']) if giveaway['participants'] else []
+                    giveaway['winners'] = json.loads(giveaway['winners']) if giveaway['winners'] else []
+        except Exception as e:
+            logger.error(f"Error finding giveaway by ID: {e}")
+    
+    if not giveaway:
+        await event.reply(f"❌ Giveaway dengan kode/ID `{giveaway_id_or_code}` tidak ditemukan.")
+        return
+    
+    # Cek apakah giveaway masih aktif
+    now = datetime.now().isoformat()
+    if giveaway['end_time'] <= now:
+        await event.reply(f"❌ Giveaway `{giveaway['giveaway_code']}` sudah berakhir.")
+        return
+    
+    # Parse prize list
+    prize_lines = [p.strip() for p in giveaway['prize'].split('\n') if p.strip()]
+    winners_count = len(prize_lines)
+    
+    # Dapatkan info user yang akan di-set sebagai winner
+    try:
+        user_entity = await bot.get_entity(user_id)
+        user_name = f"{user_entity.first_name or ''} {user_entity.last_name or ''}".strip() or user_entity.username or str(user_id)
+        user_mention = f"[{user_name}](tg://user?id={user_id})"
+        user_username = f"@{user_entity.username}" if user_entity.username else ""
+    except Exception as e:
+        user_name = f"User {user_id}"
+        user_mention = f"User {user_id}"
+        user_username = ""
+    
+    # Format prize list with numbers
+    prize_list_text = "\n".join([f"{i+1}. {p}" for i, p in enumerate(prize_lines)])
+    
+    # Store winner selection state
+    winner_selection_state[event.sender_id] = {
+        'giveaway_code': giveaway['giveaway_code'],
+        'giveaway_id': giveaway['giveaway_id'],
+        'user_id': user_id,
+        'user_name': user_name,
+        'user_username': user_username,
+        'user_mention': user_mention,
+        'prizes': prize_lines,
+        'winners_count': winners_count,
+        'step': 'select_prize'
+    }
+    
+    # Create inline buttons for each prize (4 per row)
+    buttons = []
+    row = []
+    for i, prize in enumerate(prize_lines, 1):
+        prize_short = prize[:30] + "..." if len(prize) > 30 else prize
+        row.append(Button.inline(f"{i}. {prize_short}", data=f"setwinner_prize_{i}"))
+        if len(row) == 4:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+    
+    buttons.append([Button.inline("❌ Batal", data="setwinner_cancel")])
+    
+    await event.reply(
+        f"🎯 **SET WINNER MANUAL**\n\n"
+        f"👤 **Pemenang:** {user_mention}\n"
+        f"📝 **Username:** {user_username}\n"
+        f"🆔 **User ID:** `{user_id}`\n\n"
+        f"🎁 **Daftar Hadiah:**\n"
+        f"{prize_list_text}\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"⚠️ **Pilih hadiah yang akan dimenangkan oleh user ini.**",
+        buttons=buttons,
+        parse_mode='markdown'
+    )
+
+@bot.on(events.CallbackQuery(pattern=r"^setwinner_prize_(\d+)$"))
+async def setwinner_prize_callback(event):
+    """Handle prize selection for manual winner"""
+    user_id = event.sender_id
+    
+    if user_id not in winner_selection_state:
+        await event.answer("❌ Sesi tidak valid. Silakan jalankan /setwinner lagi.", alert=True)
+        return
+    
+    state = winner_selection_state[user_id]
+    prize_index = int(event.data.decode().split('_')[-1])
+    
+    if prize_index < 1 or prize_index > len(state['prizes']):
+        await event.answer("❌ Pilihan tidak valid.", alert=True)
+        return
+    
+    selected_prize = state['prizes'][prize_index - 1]
+    winner_user_id = state['user_id']
+    giveaway_code = state['giveaway_code']
+    
+    await event.answer(f"✅ Memilih hadiah #{prize_index}: {selected_prize[:50]}...", alert=True)
+    
+    loading_msg = await event.respond("⏳ **Menyimpan pemenang...**")
+    
+    try:
+        # Get current giveaway data
+        giveaway = db.get_on_giveaway(giveaway_code)
+        
+        if not giveaway:
+            await loading_msg.edit("❌ Giveaway tidak ditemukan atau sudah berakhir.")
+            del winner_selection_state[user_id]
+            return
+        
+        # Get current winners
+        current_winners = giveaway.get('winners', [])
+        
+        # Add winner if not already in list
+        if winner_user_id not in current_winners:
+            current_winners.append(winner_user_id)
+        
+        # Update winners in database
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE on_giveaway 
+                SET winners = ?
+                WHERE giveaway_code = ?
+            ''', (json.dumps(current_winners), giveaway_code))
+            conn.commit()
+        
+        # Store prize mapping in separate table
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Create table if not exists
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS giveaway_winner_prizes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    giveaway_code TEXT NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    prize_index INTEGER NOT NULL,
+                    prize_text TEXT,
+                    assigned_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(giveaway_code, user_id)
+                )
+            ''')
+            conn.commit()
+            
+            # Insert or replace
+            cursor.execute('''
+                INSERT OR REPLACE INTO giveaway_winner_prizes 
+                (giveaway_code, user_id, prize_index, prize_text)
+                VALUES (?, ?, ?, ?)
+            ''', (giveaway_code, winner_user_id, prize_index, selected_prize))
+            conn.commit()
+        
+        await loading_msg.delete()
+        
+        # Format prize list for display
+        prize_list_text = "\n".join([f"{i+1}. {p}" for i, p in enumerate(state['prizes'])])
+        
+        await event.edit(
+            f"✅ **WINNER TERSIMPAN**\n\n"
+            f"👤 **Pemenang:** {state['user_mention']}\n"
+            f"🏆 **Hadiah #{prize_index}:** {selected_prize}\n\n"
+            f"🎁 **Daftar Hadiah Giveaway:**\n"
+            f"{prize_list_text}\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📌 Pemenang akan diumumkan saat giveaway berakhir.\n"
+            f"🆔 Giveaway: `{giveaway_code}`",
+            parse_mode='markdown'
+        )
+        
+        # Clean up state
+        del winner_selection_state[user_id]
+        
+    except Exception as e:
+        await loading_msg.edit(f"❌ Error: {str(e)[:200]}")
+        logger.error(f"Error in setwinner_prize_callback: {e}")
+
+@bot.on(events.CallbackQuery(pattern=r"^setwinner_cancel$"))
+async def setwinner_cancel_callback(event):
+    """Cancel winner selection"""
+    user_id = event.sender_id
+    
+    if user_id in winner_selection_state:
+        del winner_selection_state[user_id]
+    
+    await event.answer("❌ Dibatalakan")
+    await event.edit("❌ **Set Winner dibatalkan.**")
 
 @bot.on(events.NewMessage(pattern="^/start$"))
 async def start(event):
