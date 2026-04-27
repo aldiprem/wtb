@@ -2,11 +2,64 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>ScamAction Panel - Monitor Penipuan</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="/scamaction/css/panel.css">
+    <style>
+        /* ── Safe Area Insets untuk Telegram WebApp ── */
+        :root {
+            --safe-top:    env(safe-area-inset-top,    0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-left:   env(safe-area-inset-left,   0px);
+            --safe-right:  env(safe-area-inset-right,  0px);
+        }
+
+        body {
+            padding-top:    var(--safe-top);
+            padding-bottom: var(--safe-bottom);
+            padding-left:   var(--safe-left);
+            padding-right:  var(--safe-right);
+        }
+
+        /* Sidebar: geser bawah karena safe area */
+        .sidebar {
+            top:    var(--safe-top);
+            height: calc(100vh - var(--safe-top));
+            padding-bottom: var(--safe-bottom);
+        }
+
+        /* Top bar: pasang di atas safe area */
+        .top-bar {
+            top: var(--safe-top);
+        }
+
+        /* Main content: dorong isi agar tidak tertutup top-bar + safe area */
+        .main-content {
+            padding-top: calc(60px + var(--safe-top));
+        }
+
+        .top-bar {
+            position: fixed;
+            top: 0;
+            left: 260px;
+            right: 0;
+            z-index: 50;
+        }
+
+        @media (max-width: 768px) {
+            .top-bar {
+                left: 0;
+            }
+        }
+
+        /* Content wrapper: berikan ruang bawah agar tidak tertutup notch/home-indicator */
+        .content-wrapper {
+            padding-bottom: calc(24px + var(--safe-bottom));
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -353,7 +406,6 @@
         </div>
     </div>
 
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="/scamaction/js/panel.js"></script>
 </body>
 </html>

@@ -1,4 +1,7 @@
 # services/data_service.py — ScamAction Flask Blueprint (API only)
+# Prefix blueprint: /api/scamaction  (didaftarkan di app.py: app.register_blueprint(scam_bp))
+# Panel JS harus mengakses: /api/scamaction/stats, /api/scamaction/channels, dst.
+
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -13,10 +16,16 @@ from database.data import (
 import json
 import sqlite3
 
+# Blueprint dengan prefix /api/scamaction
+# Pastikan app.py mendaftarkannya tanpa url_prefix tambahan:
+#   app.register_blueprint(scam_bp)
 scam_bp = Blueprint('scamaction', __name__, url_prefix='/api/scamaction')
 
+DB_PATH = '/root/wtb/scamaction/scamaction.db'
+
+
 def get_channel_link(channel_id, msg_id):
-    """Mendapatkan link channel (public jika ada username)"""
+    """Mendapatkan link channel (public jika ada username, fallback ke t.me/c/)"""
     channels = get_scan_channels()
     for ch in channels:
         if ch['channel_id'] == channel_id:
@@ -24,11 +33,12 @@ def get_channel_link(channel_id, msg_id):
             if username:
                 return f"https://t.me/{username}/{msg_id}"
             break
-    
+
     channel_id_str = str(channel_id)
     if channel_id_str.startswith('-100'):
         channel_id_str = channel_id_str[4:]
     return f"https://t.me/c/{channel_id_str}/{msg_id}"
+
 
 # ─── Dashboard / Stats ────────────────────────────────────────────────────────
 
@@ -62,19 +72,20 @@ def api_add_channel():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@scam_bp.route('/channels/reset', methods=['POST'])
+def api_reset_channels():
+    """Reset semua channel — harus SEBELUM route /channels/<id> agar tidak bentrok."""
+    try:
+        reset_scan_channels()
+        return jsonify({'success': True, 'message': 'Semua channel di-reset'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @scam_bp.route('/channels/<int:channel_id>', methods=['DELETE'])
 def api_remove_channel(channel_id):
     try:
         remove_scan_channel(channel_id)
         return jsonify({'success': True, 'message': f'Channel {channel_id} dihapus'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@scam_bp.route('/channels/reset', methods=['POST'])
-def api_reset_channels():
-    try:
-        reset_scan_channels()
-        return jsonify({'success': True, 'message': 'Semua channel di-reset'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -154,19 +165,20 @@ def api_add_admin(chat_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@scam_bp.route('/monitor/<int:chat_id>/admins/reset', methods=['POST'])
+def api_reset_admins(chat_id):
+    """Reset semua admin — harus SEBELUM route /admins/<user_id>."""
+    try:
+        reset_monitor_admins(chat_id)
+        return jsonify({'success': True, 'message': 'Semua admin di-reset'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @scam_bp.route('/monitor/<int:chat_id>/admins/<int:user_id>', methods=['DELETE'])
 def api_remove_admin(chat_id, user_id):
     try:
         remove_monitor_admin(chat_id, user_id)
         return jsonify({'success': True, 'message': f'Admin {user_id} dihapus'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@scam_bp.route('/monitor/<int:chat_id>/admins/reset', methods=['POST'])
-def api_reset_admins(chat_id):
-    try:
-        reset_monitor_admins(chat_id)
-        return jsonify({'success': True, 'message': 'Semua admin di-reset'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -209,76 +221,75 @@ def api_user_detail(user_id):
         return jsonify({'success': True, 'data': u})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
-    
+
 # ─── Scan Results API ─────────────────────────────────────────────────────────
 
 @scam_bp.route('/scan_results/<token>', methods=['GET'])
 def get_scan_results(token):
-    """API untuk mengambil hasil scan berdasarkan token"""
+    """API untuk mengambil hasil scan berdasarkan token (diakses oleh scan_results.html)"""
     try:
-        db_path = '/root/wtb/scamaction/scamaction.db'
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
-        
-        # Cek tabel scan_results
+
+        # Pastikan tabel ada
         cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='scan_results'")
         if not cur.fetchone():
             conn.close()
             return jsonify({'success': False, 'error': 'No results found'}), 404
-        
+
         cur.execute("""
-            SELECT scan_token, monitor_chat_id, monitor_chat_name, scan_channel_id, scan_channel_name, format_text, found_ids, created_at, expires_at
-            FROM scan_results WHERE scan_token = ? AND expires_at > datetime('now')
+            SELECT scan_token, monitor_chat_id, monitor_chat_name,
+                   scan_channel_id, scan_channel_name, format_text,
+                   found_ids, created_at, expires_at
+            FROM scan_results
+            WHERE scan_token = ? AND expires_at > datetime('now')
         """, (token,))
-        
+
         row = cur.fetchone()
         conn.close()
-        
+
         if not row:
             return jsonify({'success': False, 'error': 'Link expired or not found'}), 404
-        
+
         found_ids = json.loads(row['found_ids']) if row['found_ids'] else {}
-        
-        # Untuk setiap ID, cari info user dan referensi
+
         results = []
-        for user_id, info in found_ids.items():
-            # Cek apakah user terdata di database
-            is_known = is_known_scammer(int(user_id))
-            refs = get_scammer_references(int(user_id)) if is_known else []
-            
-            # Format referensi
+        for user_id_str, info in found_ids.items():
+            user_id  = int(user_id_str)
+            is_known = is_known_scammer(user_id)
+            refs     = get_scammer_references(user_id) if is_known else []
+
             ref_list = []
             for r in refs:
-                ch_link = get_channel_link(r['channel_id'], r['msg_id'])
                 ref_list.append({
                     'channel_name': r['channel_name'],
-                    'msg_id': r['msg_id'],
-                    'link': ch_link
+                    'msg_id':       r['msg_id'],
+                    'link':         get_channel_link(r['channel_id'], r['msg_id'])
                 })
-            
+
             results.append({
-                'user_id': int(user_id),
-                'is_known': is_known,
-                'references': ref_list,
+                'user_id':      user_id,
+                'is_known':     is_known,
+                'references':   ref_list,
                 'source_msg_id': info.get('msg_id'),
-                'source_text': info.get('text', '')
+                'source_text':  info.get('text', '')
             })
-        
+
         return jsonify({
             'success': True,
             'data': {
-                'token': row['scan_token'],
+                'token':             row['scan_token'],
                 'monitor_chat_name': row['monitor_chat_name'],
                 'scan_channel_name': row['scan_channel_name'],
-                'format_text': row['format_text'],
-                'created_at': row['created_at'],
-                'expires_at': row['expires_at'],
-                'total_found': len(results),
-                'results': results
+                'format_text':       row['format_text'],
+                'created_at':        row['created_at'],
+                'expires_at':        row['expires_at'],
+                'total_found':       len(results),
+                'results':           results
             }
         })
-        
+
     except Exception as e:
         print(f"Error in get_scan_results: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
