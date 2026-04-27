@@ -1,0 +1,227 @@
+/* css/scan_result.css - ScamAction Scan Results Styles */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --safe-top:    env(safe-area-inset-top,    0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left:   env(safe-area-inset-left,   0px);
+    --safe-right:  env(safe-area-inset-right,  0px);
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: var(--tg-theme-bg-color, #1e1f22);
+    color: var(--tg-theme-text-color, #dbdee1);
+    padding: calc(16px + var(--safe-top)) calc(16px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(16px + var(--safe-left));
+}
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Header */
+.header {
+    background: var(--tg-theme-secondary-bg-color, #2b2d31);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.header h1 {
+    font-size: 20px;
+    margin-bottom: 8px;
+}
+
+.header p {
+    font-size: 13px;
+    color: var(--tg-theme-hint-color, #949ba4);
+    word-break: break-all;
+}
+
+/* Stats Cards */
+.stats {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.stat-card {
+    background: var(--tg-theme-secondary-bg-color, #2b2d31);
+    border-radius: 12px;
+    padding: 12px 16px;
+    flex: 1;
+    min-width: 120px;
+}
+
+.stat-card .label {
+    font-size: 12px;
+    color: var(--tg-theme-hint-color, #949ba4);
+    margin-bottom: 4px;
+}
+
+.stat-card .value {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+/* Result Card */
+.result-card {
+    background: var(--tg-theme-secondary-bg-color, #2b2d31);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: transform 0.2s;
+}
+
+.result-card:hover {
+    transform: translateY(-2px);
+}
+
+.user-id {
+    font-family: monospace;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    word-break: break-all;
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-left: 8px;
+}
+
+.badge-known {
+    background: #ed4245;
+    color: white;
+}
+
+.badge-unknown {
+    background: #23a55a;
+    color: white;
+}
+
+/* References */
+.references {
+    margin-top: 8px;
+    padding-left: 12px;
+    border-left: 2px solid var(--tg-theme-hint-color, #949ba4);
+}
+
+.reference {
+    font-size: 12px;
+    margin: 4px 0;
+}
+
+.reference a {
+    color: var(--tg-theme-link-color, #5865f2);
+    text-decoration: none;
+}
+
+.reference a:hover {
+    text-decoration: underline;
+}
+
+/* Loading & Error */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--tg-theme-hint-color, #949ba4);
+}
+
+.error {
+    text-align: center;
+    padding: 40px;
+    color: #ed4245;
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin: 16px 0;
+}
+
+.page-btn {
+    background: var(--tg-theme-button-color, #5865f2);
+    color: var(--tg-theme-button-text-color, white);
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.page-btn:not(:disabled):hover {
+    opacity: 0.9;
+}
+
+/* Search Box */
+.search-box {
+    margin-bottom: 16px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--tg-theme-secondary-bg-color, #2b2d31);
+    border: 1px solid var(--tg-theme-hint-color, #949ba4);
+    border-radius: 8px;
+    color: var(--tg-theme-text-color, #dbdee1);
+    font-size: 14px;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: var(--tg-theme-button-color, #5865f2);
+}
+
+.search-box input::placeholder {
+    color: var(--tg-theme-hint-color, #949ba4);
+}
+
+/* Page Info */
+.page-info {
+    padding: 8px;
+    text-align: center;
+    color: var(--tg-theme-hint-color, #949ba4);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .stats {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .stat-card {
+        min-width: auto;
+    }
+    
+    .result-card {
+        padding: 12px;
+    }
+    
+    .user-id {
+        font-size: 12px;
+    }
+}
