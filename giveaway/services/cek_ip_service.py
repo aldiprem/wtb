@@ -9,7 +9,6 @@ sys.path.insert(0, str(ROOT_DIR))
 
 from database.cek_ip import CekIpDatabase
 
-# SESUDAH (benar — prefix diatur di app.py saja)
 cek_ip_bp = Blueprint('cek_ip', __name__)
 db = CekIpDatabase()
 

@@ -135,7 +135,22 @@ try:
     from giveaway.services.giveaway_service import giveaway_bp
     print("✅ giveaway_service imported")
 except ImportError as e:
-    print(f"⚠️ giveaway_service skipped: {e}")
+    print(f"⚠️ giveaway_service first attempt failed: {e}")
+    try:
+        import importlib.util as _ilu
+        _gsvc_path = os.path.join(ROOT_DIR, "giveaway", "services", "giveaway_service.py")
+        if os.path.exists(_gsvc_path):
+            _spec = _ilu.spec_from_file_location("giveaway_service", _gsvc_path)
+            _mod = _ilu.module_from_spec(_spec)
+            _spec.loader.exec_module(_mod)
+            giveaway_bp = _mod.giveaway_bp
+            print("✅ giveaway_service imported via spec")
+        else:
+            print(f"⚠️ giveaway_service not found at {_gsvc_path}")
+            giveaway_bp = None
+    except Exception as e2:
+        print(f"⚠️ giveaway_service skipped: {e2}")
+        giveaway_bp = None
 
 try:
     from services.crash_service import crash_bp
@@ -153,7 +168,25 @@ try:
     from giveaway.services.create_service import create_bp, set_bot_client
     print("✅ create_service imported")
 except ImportError as e:
-    print(f"⚠️ create_service skipped: {e}")
+    print(f"⚠️ create_service first attempt failed: {e}")
+    try:
+        import importlib.util as _ilu
+        _csvc_path = os.path.join(ROOT_DIR, "giveaway", "services", "create_service.py")
+        if os.path.exists(_csvc_path):
+            _spec = _ilu.spec_from_file_location("create_service", _csvc_path)
+            _mod = _ilu.module_from_spec(_spec)
+            _spec.loader.exec_module(_mod)
+            create_bp = _mod.create_bp
+            set_bot_client = _mod.set_bot_client
+            print("✅ create_service imported via spec")
+        else:
+            print(f"⚠️ create_service not found at {_csvc_path}")
+            create_bp = None
+            set_bot_client = None
+    except Exception as e2:
+        print(f"⚠️ create_service skipped: {e2}")
+        create_bp = None
+        set_bot_client = None
 
 try:
     from winedash.services.web_service import winedash_bp
@@ -255,6 +288,13 @@ except ImportError as e:
     data_tracker_bp = None
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
+
+# Pastikan sub-path giveaway bisa di-import
+_giveaway_dir = os.path.join(base_dir, 'giveaway')
+if _giveaway_dir not in sys.path:
+    sys.path.insert(0, _giveaway_dir)
+if base_dir not in sys.path:
+    sys.path.insert(0, base_dir)
 
 # Setup logging
 logging.basicConfig(
@@ -418,14 +458,6 @@ def add_security_headers(response):
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     return response
-
-# Tambahkan sementara di app.py untuk debug
-@app.route('/api/debug/routes')
-def list_routes():
-    routes = []
-    for rule in app.url_map.iter_rules():
-        routes.append(str(rule))
-    return jsonify(sorted(routes))
 
 # ==================== ERROR HANDLERS ====================
 
@@ -595,12 +627,7 @@ def serve_gift_scanned_legacy():
     """Legacy route for Gift Scanned page"""
     return serve_gift_scanned_page()
 
-# Route untuk Gift Scam (tanpa ned) - kompatibilitas
-@app.route('/gift-scam')
-@app.route('/gift-scam/')
-def serve_gift_scam():
-    """Alias for Gift Scanned page"""
-    return serve_gift_scanned_page()
+# Route /gift-scam dihandle oleh serve_gift_scanned_page di atas
 
 # ==================== ROUTE UNTUK PANEL JASEB ====================
 
