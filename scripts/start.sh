@@ -407,8 +407,6 @@ if [ "$GIVEAWAY_EXISTS" = true ]; then
     
     mkdir -p giveaway/database
     
-    rm -f giveaway/*.session 2>/dev/null
-    
     cd giveaway
     nohup python3 b.py > ../logs/giveaway_bot.log 2>&1 &
     GIVEAWAY_PID=$!
