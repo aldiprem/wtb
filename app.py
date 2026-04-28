@@ -883,8 +883,8 @@ def serve_giveaways_page():
 
 @app.route('/cek-ip/dashboard')
 def serve_cek_ip_dashboard():
-    from urllib.parse import urljoin
-    return redirect('/api/cek-ip/dashboard')
+    """Redirect ke dashboard cek-ip dengan benar"""
+    return redirect('/api/cek-ip/dashboard', code=302)
 
 @app.route('/giveaway/create')
 def serve_giveaway_create_page():

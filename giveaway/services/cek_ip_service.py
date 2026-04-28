@@ -162,6 +162,7 @@ DASHBOARD_HTML = '''
 
 @cek_ip_bp.route('/dashboard')
 def dashboard():
+    print(f"[CEK-IP] Dashboard accessed from {request.remote_addr}")
     data = db.get_all_ip_tracking(limit=200)
     stats = db.get_statistics()
     return render_template_string(DASHBOARD_HTML, data=data, stats=stats)
