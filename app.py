@@ -51,6 +51,7 @@ debug_bp = None
 admin_bp = None
 market_bp = None
 scam_bp = None
+cek_ip_bp = None
 
 try:
     from services.website_service import website_bp
@@ -211,11 +212,16 @@ except ImportError as e:
     print(f"⚠️ scamaction.data_service skipped: {e}")
 
 try:
+    from giveaway.services.cek_ip_service import cek_ip_bp
+    print("✅ cek_ip_service imported")
+except ImportError as e:
+    print(f"⚠️ cek_ip_service skipped: {e}")
+
+try:
     from services.gift_scanned_service import gift_scanned_bp
     print("✅ gift_scanned_service imported")
 except ImportError as e:
     print(f"⚠️ gift_scanned_service import error: {e}")
-    # Coba import dengan path alternatif
     try:
         import importlib.util
         gift_scanned_path = os.path.join(ROOT_DIR, 'services', 'gift_scanned_service.py')
@@ -487,6 +493,9 @@ if panel_bp:
 if scam_bp:
     app.register_blueprint(scam_bp)
 
+if cek_ip_bp:
+    app.register_blueprint(cek_ip_bp, url_prefix='/api/cek-ip')
+
 if gift_scanned_bp:
     app.register_blueprint(gift_scanned_bp)
     print("✅ Gift Scanned blueprint registered (no prefix)")
@@ -496,6 +505,18 @@ else:
 if data_tracker_bp:
     app.register_blueprint(data_tracker_bp, url_prefix='/tracker')
     print("✅ data_tracker_bp registered at /tracker")
+
+# ==================== CEK IP DASHBOARD ROUTE ====================
+
+@app.route('/cek-ip/dashboard')
+def cek_ip_dashboard():
+    """Dashboard untuk melihat IP tracking"""
+    try:
+        from services.cek_ip_service import cek_ip_bp
+        # Redirect ke blueprint dashboard
+        return redirect('/api/cek-ip/dashboard')
+    except:
+        return "Dashboard tidak tersedia", 404
 
 # ==================== SCAMACTION STATIC ROUTES ====================
 

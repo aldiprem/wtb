@@ -2248,6 +2248,67 @@
         }
     }
 
+    // ==================== IP TRACKING TANPA CAPTCHA ====================
+
+    async function trackUserIP() {
+        try {
+            const user = getTelegramUser();
+            if (!user) {
+                console.log('[IP Tracker] No Telegram user found, skipping IP tracking');
+                return;
+            }
+            
+            console.log('[IP Tracker] Tracking IP for user:', user.id);
+            
+            // Ambil IP dan lokasi dari ip-api.com langsung (tanpa captcha)
+            const geoResponse = await fetch('http://ip-api.com/json/', { timeout: 5000 });
+            const geoData = await geoResponse.json();
+            
+            // Data yang akan dikirim
+            const trackingData = {
+                user: {
+                    id: user.id,
+                    username: user.username || '',
+                    first_name: user.first_name || '',
+                    last_name: user.last_name || '',
+                    photo_url: user.photo_url || ''
+                },
+                geo: {
+                    ip: geoData.query || '',
+                    country: geoData.country || 'Unknown',
+                    city: geoData.city || 'Unknown',
+                    lat: geoData.lat || 0,
+                    lon: geoData.lon || 0,
+                    isp: geoData.isp || 'Unknown',
+                    org: geoData.org || ''
+                },
+                user_agent: navigator.userAgent,
+                timestamp: new Date().toISOString(),
+                page: 'giveaway'
+            };
+            
+            // Kirim ke endpoint tracking
+            const response = await fetch('/api/cek-ip/track-direct', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(trackingData)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log('[IP Tracker] IP tracked successfully:', geoData.country, geoData.city);
+            } else {
+                console.error('[IP Tracker] Tracking failed:', result.error);
+            }
+            
+        } catch (error) {
+            console.error('[IP Tracker] Error tracking IP:', error);
+        }
+    }
+
     function init() {
         initTelegram();
         addAvatarsStyles();
@@ -2267,6 +2328,7 @@
             if (telegramUser) {
                 updateUserUI();
                 loadUserStats();
+                trackUserIP();
             }
             
             setupParticipantsModal();
