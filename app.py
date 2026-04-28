@@ -419,6 +419,14 @@ def add_security_headers(response):
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     return response
 
+# Tambahkan sementara di app.py untuk debug
+@app.route('/api/debug/routes')
+def list_routes():
+    routes = []
+    for rule in app.url_map.iter_rules():
+        routes.append(str(rule))
+    return jsonify(sorted(routes))
+
 # ==================== ERROR HANDLERS ====================
 
 @app.errorhandler(403)
