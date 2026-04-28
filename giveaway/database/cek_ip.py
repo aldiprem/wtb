@@ -138,20 +138,9 @@ class CekIpDatabase:
                 cursor.execute('SELECT COUNT(DISTINCT ip) FROM ip_tracking')
                 unique_ips = cursor.fetchone()[0] or 0
                 
-                # Unique users
+                # Unique users (Telegram users only)
                 cursor.execute('SELECT COUNT(DISTINCT user_id) FROM ip_tracking WHERE user_id IS NOT NULL')
                 unique_users = cursor.fetchone()[0] or 0
-                
-                # Top countries
-                cursor.execute('''
-                    SELECT country, COUNT(*) as count 
-                    FROM ip_tracking 
-                    WHERE country IS NOT NULL AND country != ''
-                    GROUP BY country 
-                    ORDER BY count DESC 
-                    LIMIT 5
-                ''')
-                top_countries = [dict(row) for row in cursor.fetchall()]
                 
                 # Today's captures
                 today = datetime.now().strftime('%Y-%m-%d')
@@ -165,7 +154,6 @@ class CekIpDatabase:
                     'total': total,
                     'unique_ips': unique_ips,
                     'unique_users': unique_users,
-                    'top_countries': top_countries,
                     'today_count': today_count
                 }
         except Exception as e:
@@ -174,6 +162,5 @@ class CekIpDatabase:
                 'total': 0,
                 'unique_ips': 0,
                 'unique_users': 0,
-                'top_countries': [],
                 'today_count': 0
             }
