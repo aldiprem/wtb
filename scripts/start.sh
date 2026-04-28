@@ -386,6 +386,18 @@ else
     echo -e "${YELLOW}⚠️  Port 5050 belum terbuka, mungkin masih loading...${NC}"
 fi
 
+# Tunggu Flask benar-benar siap sebelum jalankan bot
+echo -e "${YELLOW}⏳ Menunggu Flask siap di port 5050...${NC}"
+for i in $(seq 1 20); do
+    if curl -s http://127.0.0.1:5050/api/health > /dev/null 2>&1; then
+        echo -e "${GREEN}✅ Flask siap!${NC}"
+        break
+    fi
+    echo -n "."
+    sleep 1
+done
+echo ""
+
 # ==================== JALANKAN FRAGMENT_BOT.PY DI BACKGROUND ====================
 echo -e "${GREEN}🤖 Menjalankan Fragment Bot (Telegram)...${NC}"
 if [ -f "fragment/fragment_bot.py" ]; then
@@ -407,6 +419,9 @@ if [ "$GIVEAWAY_EXISTS" = true ]; then
     
     mkdir -p giveaway/database
     
+    # JANGAN hapus session file - ini menyimpan login Telethon
+    # rm -f giveaway/*.session 2>/dev/null
+    
     cd giveaway
     nohup python3 b.py > ../logs/giveaway_bot.log 2>&1 &
     GIVEAWAY_PID=$!
@@ -426,7 +441,8 @@ if [ "$WINEDASH_EXISTS" = true ]; then
     
     mkdir -p winedash/database
     
-    rm -f winedash/*.session 2>/dev/null
+    # JANGAN hapus session file winedash
+    # rm -f winedash/*.session 2>/dev/null
     
     cd winedash
     nohup python3 b.py > ../logs/winedash_bot.log 2>&1 &
