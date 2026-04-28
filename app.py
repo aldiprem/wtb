@@ -506,18 +506,6 @@ if data_tracker_bp:
     app.register_blueprint(data_tracker_bp, url_prefix='/tracker')
     print("✅ data_tracker_bp registered at /tracker")
 
-# ==================== CEK IP DASHBOARD ROUTE ====================
-
-@app.route('/cek-ip/dashboard')
-def cek_ip_dashboard():
-    """Dashboard untuk melihat IP tracking"""
-    try:
-        from services.cek_ip_service import cek_ip_bp
-        # Redirect ke blueprint dashboard
-        return redirect('/api/cek-ip/dashboard')
-    except:
-        return "Dashboard tidak tersedia", 404
-
 # ==================== SCAMACTION STATIC ROUTES ====================
 
 # Route untuk halaman panel ScamAction
@@ -892,6 +880,11 @@ def battle_page():
 def serve_giveaways_page():
     """Halaman Giveaways"""
     return send_from_directory(os.path.join(base_dir, 'giveaway', 'html'), 'giveaway.html')
+
+@app.route('/cek-ip/dashboard')
+def serve_cek_ip_page():
+    """Halaman Giveaways"""
+    return send_from_directory(os.path.join(base_dir, 'giveaway', 'html'), 'data_ip.html')
 
 @app.route('/giveaway/create')
 def serve_giveaway_create_page():
