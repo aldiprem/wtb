@@ -6,7 +6,7 @@ import ipaddress
 import secrets
 from datetime import datetime
 from pathlib import Path
-from flask import Flask, request, jsonify, send_from_directory, abort
+from flask import Flask, request, jsonify, send_from_directory, abort, redirect
 from flask_cors import CORS
 from collections import defaultdict, Counter
 import logging
@@ -882,9 +882,9 @@ def serve_giveaways_page():
     return send_from_directory(os.path.join(base_dir, 'giveaway', 'html'), 'giveaway.html')
 
 @app.route('/cek-ip/dashboard')
-def serve_cek_ip_page():
-    """Halaman Giveaways"""
-    return send_from_directory(os.path.join(base_dir, 'giveaway', 'html'), 'data_ip.html')
+def serve_cek_ip_dashboard():
+    from urllib.parse import urljoin
+    return redirect('/api/cek-ip/dashboard')
 
 @app.route('/giveaway/create')
 def serve_giveaway_create_page():
